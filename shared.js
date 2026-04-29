@@ -1,4 +1,4 @@
-// ===== CONFIGURATION SUPABASE PARTAGÉE =====
+ // ===== CONFIGURATION SUPABASE PARTAGÉE =====
 const SUPABASE_URL = 'https://pdrwhlbhfychkbedkhcz.supabase.co';
 const SUPABASE_KEY = 'sb_publishable_-BKpAY6DCKAdRZ2ieVoHPA_ITXzptqf';
 const supaClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
@@ -7,9 +7,8 @@ const supaClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 const TABLE_RESIDENTS = 'résidents';
 const TABLE_PRESENCES = 'presences';
 
-// ===== UTILITAIRES =====
+// ===== UTILITAIRES DATE =====
 
-// Formater une date au format YYYY-MM-DD (pour Supabase)
 function dateISO(date) {
     const d = date instanceof Date ? date : new Date(date);
     const annee = d.getFullYear();
@@ -18,19 +17,16 @@ function dateISO(date) {
     return `${annee}-${mois}-${jour}`;
 }
 
-// Date d'aujourd'hui au format YYYY-MM-DD
 function aujourdhui() {
     return dateISO(new Date());
 }
 
-// Date de demain
 function demain() {
     const d = new Date();
     d.setDate(d.getDate() + 1);
     return dateISO(d);
 }
 
-// Formater une date pour l'affichage en français
 function dateFr(dateStr) {
     const d = new Date(dateStr + 'T00:00:00');
     return d.toLocaleDateString('fr-FR', {
@@ -38,7 +34,6 @@ function dateFr(dateStr) {
     });
 }
 
-// Libellé d'un repas
 function libelleRepas(code) {
     const libelles = {
         'petit_dej': '🥐 Petit-déjeuner',
@@ -48,7 +43,8 @@ function libelleRepas(code) {
     return libelles[code] || code;
 }
 
-// Charger la liste des résidents actifs (utilisé partout)
+// ===== DONNÉES =====
+
 async function chargerResidentsActifs() {
     const { data, error } = await supaClient
         .from(TABLE_RESIDENTS)
@@ -62,7 +58,8 @@ async function chargerResidentsActifs() {
     return data || [];
 }
 
-// Construit le HTML du menu d'onglets, avec l'onglet courant actif
+// ===== MENU =====
+
 function genererMenuOnglets(pageActive) {
     const onglets = [
         { id: 'residents',   fichier: 'residents.html',  label: '👥 Résidents' },
@@ -79,8 +76,34 @@ function genererMenuOnglets(pageActive) {
     return html;
 }
 
-// Insère le menu en haut de la page (à appeler dans chaque page)
 function afficherMenu(pageActive) {
     const menu = document.getElementById('menu');
     if (menu) menu.innerHTML = genererMenuOnglets(pageActive);
+}
+
+function afficherMenuComplet(pageActive, emailUtilisateur) {
+    const menu = document.getElementById('menu');
+    if (!menu) return;
+    let html = genererMenuOnglets(pageActive);
+    html += `<div style="text-align: right; margin: -10px 0 15px; font-size: 14px; color: #666;">
+        Connecté : <strong>${emailUtilisateur}</strong>
+        &nbsp;<button class="btn-secondary" style="padding: 4px 10px; font-size: 13px;" onclick="seDeconnecter()">🚪 Déconnexion</button>
+    </div>`;
+    menu.innerHTML = html;
+}
+
+// ===== AUTHENTIFICATION =====
+
+async function verifierAuth() {
+    const { data } = await supaClient.auth.getSession();
+    if (!data.session) {
+        window.location.href = 'login.html';
+        return null;
+    }
+    return data.session.user;
+}
+
+async function seDeconnecter() {
+    await supaClient.auth.signOut();
+    window.location.href = 'login.html';
 }

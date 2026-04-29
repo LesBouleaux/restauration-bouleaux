@@ -1,0 +1,81 @@
+ <!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Connexion - Restauration Les Bouleaux</title>
+    <link rel="stylesheet" href="shared.css">
+    <style>
+        .login-box {
+            max-width: 400px;
+            margin: 60px auto;
+            background: white;
+            padding: 35px;
+            border-radius: 10px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+        }
+        .login-box h1 {
+            text-align: center;
+            border: none;
+            padding-bottom: 20px;
+        }
+        .login-box .form-group { margin-bottom: 18px; }
+        .login-box button { width: 100%; padding: 14px; font-size: 16px; }
+        .login-error {
+            background: #fee;
+            color: #c00;
+            padding: 12px;
+            border-radius: 6px;
+            margin-bottom: 15px;
+            border-left: 4px solid #c00;
+        }
+    </style>
+</head>
+<body>
+    <div class="login-box">
+        <h1>🍽️ Restauration<br>Les Bouleaux</h1>
+
+        <div id="erreur"></div>
+
+        <form id="form-login" onsubmit="seConnecter(event)">
+            <div class="form-group">
+                <label for="email">Email</label>
+                <input type="email" id="email" required autocomplete="username">
+            </div>
+            <div class="form-group">
+                <label for="password">Mot de passe</label>
+                <input type="password" id="password" required autocomplete="current-password">
+            </div>
+            <button type="submit" class="btn-primary">🔐 Se connecter</button>
+        </form>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="shared.js"></script>
+    <script>
+        (async () => {
+            const { data } = await supaClient.auth.getSession();
+            if (data.session) window.location.href = 'residents.html';
+        })();
+
+        async function seConnecter(event) {
+            event.preventDefault();
+            const email = document.getElementById('email').value.trim();
+            const password = document.getElementById('password').value;
+            const erreur = document.getElementById('erreur');
+            erreur.innerHTML = '';
+
+            const { data, error } = await supaClient.auth.signInWithPassword({
+                email, password
+            });
+
+            if (error) {
+                erreur.innerHTML = `<div class="login-error">❌ ${error.message === 'Invalid login credentials' ? 'Email ou mot de passe incorrect.' : error.message}</div>`;
+                return;
+            }
+
+            window.location.href = 'residents.html';
+        }
+    </script>
+</body>
+</html>

@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+ <!DOCTYPE html>
 <html lang="fr">
 <head>
     <meta charset="UTF-8">
@@ -27,11 +27,6 @@
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script src="shared.js"></script>
     <script>
-        afficherMenu('production');
-
-        // Par défaut : demain
-        document.getElementById('date-prod').value = demain();
-
         async function genererListe() {
             const date = document.getElementById('date-prod').value;
             const contenu = document.getElementById('contenu');
@@ -45,14 +40,11 @@
             let html = `<h2>Production du ${dateFr(date)}</h2>`;
 
             for (const codeRepas of repas) {
-                // Liste des résidents PRÉSENTS pour ce repas
-                // Règle : si pas de saisie → considéré présent par défaut
                 const presentsForRepas = residents.filter(r => {
                     const p = (presences || []).find(x => x.resident_id === r.id && x.repas === codeRepas);
                     return p ? p.present : true;
                 });
 
-                // Stats adaptations
                 const avecAllergie = presentsForRepas.filter(r => r.allergies);
                 const avecIntolerance = presentsForRepas.filter(r => r.intolerances);
 
@@ -78,7 +70,14 @@
             contenu.innerHTML = html;
         }
 
-        genererListe();
+        // Démarrage protégé par auth
+        (async () => {
+            const user = await verifierAuth();
+            if (!user) return;
+            afficherMenuComplet('production', user.email);
+            document.getElementById('date-prod').value = demain();
+            genererListe();
+        })();
     </script>
 </body>
 </html>
