@@ -1,10 +1,54 @@
- <!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="fr">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Résidents - Restauration Les Bouleaux</title>
     <link rel="stylesheet" href="shared.css">
+    <style>
+        .doc-info {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            background: #e8f4ff;
+            color: #0066cc;
+            padding: 3px 10px;
+            border-radius: 12px;
+            font-size: 13px;
+            font-weight: bold;
+            margin-left: 8px;
+        }
+        .doc-info-empty {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            background: #f0f0f0;
+            color: #888;
+            padding: 3px 10px;
+            border-radius: 12px;
+            font-size: 13px;
+            font-style: italic;
+            margin-left: 8px;
+        }
+        .pdf-zone {
+            border: 2px dashed #ccc;
+            padding: 20px;
+            border-radius: 8px;
+            text-align: center;
+            background: #fafafa;
+        }
+        .pdf-zone.has-file {
+            border-color: #2c5530;
+            background: #f0f8f0;
+        }
+        .pdf-actions {
+            display: flex;
+            gap: 8px;
+            justify-content: center;
+            margin-top: 10px;
+            flex-wrap: wrap;
+        }
+    </style>
 </head>
 <body>
     <h1>🍽️ Restauration Les Bouleaux</h1>
@@ -21,6 +65,7 @@
         <p class="loading">⏳ Chargement...</p>
     </div>
 
+    <!-- Modal formulaire résident -->
     <div class="modal-overlay" id="modal">
         <div class="modal">
             <h2 id="modal-titre">Ajouter un résident</h2>
@@ -58,10 +103,26 @@
         </div>
     </div>
 
+    <!-- Modal gestion document PDF -->
+    <div class="modal-overlay" id="modal-doc">
+        <div class="modal">
+            <h2 id="modal-doc-titre">Document - Résident</h2>
+            <div id="modal-doc-contenu" class="pdf-zone">
+                <p class="loading">⏳ Chargement...</p>
+            </div>
+            <div class="form-actions">
+                <button type="button" class="btn-secondary" onclick="fermerModalDoc()">Fermer</button>
+            </div>
+        </div>
+    </div>
+
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script src="shared.js"></script>
     <script>
         let tousLesResidents = [];
+        let residentDocCourant = null;
+
+        const BUCKET_DOCUMENTS = 'documents-residents';
 
         async function charger() {
             tousLesResidents = await chargerResidentsActifs();
@@ -76,11 +137,15 @@
             }
             let html = `<p><strong>${liste.length}</strong> résident(s)</p>`;
             for (const r of liste) {
+                const docBadge = r.document_pdf
+                    ? `<span class="doc-info">📎 PDF attaché</span>`
+                    : `<span class="doc-info-empty">📎 Aucun document</span>`;
                 html += `
                     <div class="resident">
                         <h3>
-                            <span>${r.prenom} ${r.nom}</span>
+                            <span>${r.prenom} ${r.nom} ${docBadge}</span>
                             <span class="resident-actions">
+                                <button class="btn-print" onclick="ouvrirModalDoc(${r.id})">📎 Document</button>
                                 <button class="btn-edit" onclick="modifierResident(${r.id})">✏️ Modifier</button>
                                 <button class="btn-danger" onclick="archiverResident(${r.id}, '${r.prenom} ${r.nom}')">🗑️ Archiver</button>
                             </span>
@@ -155,6 +220,161 @@
             const { error } = await supaClient.from(TABLE_RESIDENTS).update({ actif: false }).eq('id', id);
             if (error) return alert('Erreur : ' + error.message);
             charger();
+        }
+
+        // ===== GESTION DOCUMENT PDF =====
+
+        async function ouvrirModalDoc(id) {
+            const r = tousLesResidents.find(x => x.id === id);
+            if (!r) return;
+            residentDocCourant = r;
+            document.getElementById('modal-doc-titre').textContent = `Document - ${r.prenom} ${r.nom}`;
+            document.getElementById('modal-doc').classList.add('active');
+            await afficherZoneDoc();
+        }
+
+        function fermerModalDoc() {
+            document.getElementById('modal-doc').classList.remove('active');
+            residentDocCourant = null;
+        }
+
+        async function afficherZoneDoc() {
+            const zone = document.getElementById('modal-doc-contenu');
+            const r = residentDocCourant;
+
+            if (r.document_pdf) {
+                // Document existant
+                zone.className = 'pdf-zone has-file';
+                zone.innerHTML = `
+                    <div style="font-size: 48px;">📄</div>
+                    <p><strong>Un document PDF est attaché à ce résident.</strong></p>
+                    <div class="pdf-actions">
+                        <button class="btn-primary" onclick="voirDoc()">👁️ Voir / Télécharger</button>
+                        <button class="btn-edit" onclick="document.getElementById('input-pdf').click()">🔄 Remplacer</button>
+                        <button class="btn-danger" onclick="supprimerDoc()">🗑️ Supprimer</button>
+                    </div>
+                    <input type="file" id="input-pdf" accept="application/pdf" style="display:none" onchange="uploaderDoc(event)">
+                `;
+            } else {
+                // Pas de document
+                zone.className = 'pdf-zone';
+                zone.innerHTML = `
+                    <div style="font-size: 48px;">📎</div>
+                    <p>Aucun document attaché à ce résident.</p>
+                    <p style="color:#888;font-size:13px;">Format accepté : PDF (max 5 MB)</p>
+                    <div class="pdf-actions">
+                        <button class="btn-primary" onclick="document.getElementById('input-pdf').click()">📤 Téléverser un PDF</button>
+                    </div>
+                    <input type="file" id="input-pdf" accept="application/pdf" style="display:none" onchange="uploaderDoc(event)">
+                `;
+            }
+        }
+
+        async function uploaderDoc(event) {
+            const fichier = event.target.files[0];
+            if (!fichier) return;
+
+            // Vérifier le type
+            if (fichier.type !== 'application/pdf') {
+                alert('❌ Seuls les fichiers PDF sont acceptés.');
+                return;
+            }
+            // Vérifier la taille
+            if (fichier.size > 5 * 1024 * 1024) {
+                alert('❌ Le fichier dépasse 5 MB.');
+                return;
+            }
+
+            const zone = document.getElementById('modal-doc-contenu');
+            zone.innerHTML = '<p class="loading">⏳ Téléversement en cours...</p>';
+
+            const r = residentDocCourant;
+            // Si un document existait, on le supprime d'abord
+            if (r.document_pdf) {
+                await supaClient.storage.from(BUCKET_DOCUMENTS).remove([r.document_pdf]);
+            }
+
+            // Nouveau chemin : resident_<id>_<timestamp>.pdf
+            const chemin = `resident_${r.id}_${Date.now()}.pdf`;
+
+            const { error: errUpload } = await supaClient.storage
+                .from(BUCKET_DOCUMENTS)
+                .upload(chemin, fichier, { contentType: 'application/pdf', upsert: false });
+
+            if (errUpload) {
+                alert('❌ Erreur upload : ' + errUpload.message);
+                await afficherZoneDoc();
+                return;
+            }
+
+            // Mettre à jour la table
+            const { error: errUpdate } = await supaClient
+                .from(TABLE_RESIDENTS)
+                .update({ document_pdf: chemin })
+                .eq('id', r.id);
+
+            if (errUpdate) {
+                alert('❌ Erreur enregistrement : ' + errUpdate.message);
+                return;
+            }
+
+            // Mettre à jour les données locales
+            r.document_pdf = chemin;
+            const idx = tousLesResidents.findIndex(x => x.id === r.id);
+            if (idx >= 0) tousLesResidents[idx].document_pdf = chemin;
+
+            await afficherZoneDoc();
+            afficher(tousLesResidents);
+        }
+
+        async function voirDoc() {
+            const r = residentDocCourant;
+            if (!r.document_pdf) return;
+
+            // Créer un lien signé valable 60 secondes
+            const { data, error } = await supaClient.storage
+                .from(BUCKET_DOCUMENTS)
+                .createSignedUrl(r.document_pdf, 60);
+
+            if (error) {
+                alert('❌ Erreur : ' + error.message);
+                return;
+            }
+            // Ouvrir dans un nouvel onglet
+            window.open(data.signedUrl, '_blank');
+        }
+
+        async function supprimerDoc() {
+            const r = residentDocCourant;
+            if (!confirm(`Supprimer le document de ${r.prenom} ${r.nom} ?\n\nCette action est définitive.`)) return;
+
+            // Supprimer le fichier du storage
+            const { error: errStorage } = await supaClient.storage
+                .from(BUCKET_DOCUMENTS)
+                .remove([r.document_pdf]);
+
+            if (errStorage) {
+                alert('❌ Erreur suppression fichier : ' + errStorage.message);
+                return;
+            }
+
+            // Mettre à jour la table
+            const { error: errUpdate } = await supaClient
+                .from(TABLE_RESIDENTS)
+                .update({ document_pdf: null })
+                .eq('id', r.id);
+
+            if (errUpdate) {
+                alert('❌ Erreur : ' + errUpdate.message);
+                return;
+            }
+
+            r.document_pdf = null;
+            const idx = tousLesResidents.findIndex(x => x.id === r.id);
+            if (idx >= 0) tousLesResidents[idx].document_pdf = null;
+
+            await afficherZoneDoc();
+            afficher(tousLesResidents);
         }
 
         // Démarrage protégé par auth (admin uniquement)
