@@ -53,9 +53,17 @@
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script src="shared.js"></script>
     <script>
+        // Si déjà connecté, redirection selon le rôle
         (async () => {
             const { data } = await supaClient.auth.getSession();
-            if (data.session) window.location.href = 'residents.html';
+            if (data.session) {
+                const profil = await chargerProfil();
+                if (profil && profil.role === 'client_ejc') {
+                    window.location.href = 'commande-ejc.html';
+                } else {
+                    window.location.href = 'residents.html';
+                }
+            }
         })();
 
         async function seConnecter(event) {
@@ -74,7 +82,13 @@
                 return;
             }
 
-            window.location.href = 'residents.html';
+            // Redirection selon le rôle
+            const profil = await chargerProfil();
+            if (profil && profil.role === 'client_ejc') {
+                window.location.href = 'commande-ejc.html';
+            } else {
+                window.location.href = 'residents.html';
+            }
         }
     </script>
 </body>

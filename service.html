@@ -1,4 +1,4 @@
- <!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="fr">
 <head>
     <meta charset="UTF-8">
@@ -52,10 +52,51 @@
                 return p && !p.present;
             });
 
+            // EJC pour le déjeuner
+            let detailEjc = '';
+            let totalEjcNet = 0;
+            if (repas === 'dejeuner') {
+                const { data: cmdArr } = await supaClient
+                    .from(TABLE_COMMANDES_EJC).select('*').eq('date', date);
+                const { data: annArr } = await supaClient
+                    .from(TABLE_ANNULATIONS_EJC).select('*').eq('date', date);
+                const cmd = (cmdArr && cmdArr[0]) || null;
+                const ann = (annArr && annArr[0]) || null;
+
+                if (cmd) {
+                    const categories = [
+                        { code: 'adulte_normal', label: 'Adulte normal' },
+                        { code: 'adulte_sans_lactose', label: 'Adulte sans lactose' },
+                        { code: 'adulte_sans_porc', label: 'Adulte sans porc' },
+                        { code: 'adulte_vegetarien', label: 'Adulte végétarien' },
+                        { code: 'adulte_sans_proteine_lactique', label: 'Adulte sans protéine lactique' },
+                        { code: 'enfant_normal', label: 'Enfant normal' },
+                        { code: 'enfant_sans_lactose', label: 'Enfant sans lactose' },
+                        { code: 'enfant_sans_porc', label: 'Enfant sans porc' },
+                        { code: 'enfant_vegetarien', label: 'Enfant végétarien' },
+                        { code: 'enfant_sans_proteine_lactique', label: 'Enfant sans protéine lactique' }
+                    ];
+                    const lignes = [];
+                    for (const c of categories) {
+                        const nbCmd = cmd[c.code] || 0;
+                        const nbAnn = (ann && ann[c.code]) || 0;
+                        const net = nbCmd - nbAnn;
+                        if (net > 0) {
+                            totalEjcNet += net;
+                            lignes.push(`<li>${c.label} : <strong>${net}</strong></li>`);
+                        }
+                    }
+                    if (lignes.length) {
+                        detailEjc = `<div class="print-section"><h3>🍴 EJC Péry — ${totalEjcNet} portion(s)</h3><ul class="print-list">${lignes.join('')}</ul></div>`;
+                    }
+                }
+            }
+
             let html = `
                 <h2>Service — ${dateFr(date)}</h2>
                 <h3>${libelleRepas(repas)}</h3>
                 <p><strong>${presents.length}</strong> résident(s) à servir`;
+            if (totalEjcNet > 0) html += ` + <strong>${totalEjcNet}</strong> EJC Péry`;
             if (absents.length) html += ` — <strong>${absents.length}</strong> absent(s)`;
             html += '</p>';
 
@@ -75,6 +116,9 @@
             }
             html += '</div>';
 
+            // Bloc EJC
+            if (detailEjc) html += detailEjc;
+
             if (absents.length) {
                 html += '<div class="print-section"><h3>❌ Absents</h3><ul class="print-list">';
                 for (const r of absents) html += `<li>${r.prenom} ${r.nom}</li>`;
@@ -84,11 +128,11 @@
             contenu.innerHTML = html;
         }
 
-        // Démarrage protégé par auth
+        // Démarrage protégé par auth (admin uniquement)
         (async () => {
-            const user = await verifierAuth();
-            if (!user) return;
-            afficherMenuComplet('service', user.email);
+            const auth = await verifierAuthEtRole(['admin']);
+            if (!auth) return;
+            afficherMenuComplet('service', auth.user.email, auth.profil.role, auth.profil.nom_affiche);
             document.getElementById('date-srv').value = aujourdhui();
             genererService();
         })();

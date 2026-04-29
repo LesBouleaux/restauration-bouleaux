@@ -1,0 +1,328 @@
+ <!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Saisie repas - EJC Péry</title>
+    <link rel="stylesheet" href="shared.css">
+    <style>
+        .semaine-nav {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            background: white;
+            padding: 15px 20px;
+            border-radius: 8px;
+            margin: 15px 0;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        .semaine-nav h2 {
+            margin: 0;
+            font-size: 18px;
+        }
+        .badge {
+            display: inline-block;
+            padding: 4px 10px;
+            border-radius: 12px;
+            font-size: 13px;
+            font-weight: bold;
+            margin-left: 10px;
+        }
+        .badge-ouvert { background: #d4edda; color: #155724; }
+        .badge-ferme { background: #f8d7da; color: #721c24; }
+        .badge-annulation { background: #fff3cd; color: #856404; }
+
+        table.repas {
+            width: 100%;
+            border-collapse: collapse;
+            background: white;
+            border-radius: 8px;
+            overflow: hidden;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            margin: 15px 0;
+        }
+        table.repas th, table.repas td {
+            padding: 10px;
+            text-align: center;
+            border-bottom: 1px solid #eee;
+        }
+        table.repas th {
+            background: #2c5530;
+            color: white;
+        }
+        table.repas th:first-child, table.repas td:first-child {
+            text-align: left;
+            background: #f5f5f5;
+            font-weight: bold;
+            min-width: 220px;
+        }
+        table.repas input[type="number"] {
+            width: 70px;
+            padding: 8px;
+            text-align: center;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+            font-size: 15px;
+        }
+        table.repas input[type="number"]:disabled {
+            background: #f0f0f0;
+            color: #888;
+        }
+        .col-total {
+            background: #f0f8f0;
+            font-weight: bold;
+        }
+        .info-banner {
+            background: #e3f2fd;
+            color: #0d47a1;
+            padding: 12px 18px;
+            border-radius: 8px;
+            border-left: 4px solid #1976d2;
+            margin: 15px 0;
+        }
+        .save-status {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            padding: 10px 18px;
+            border-radius: 6px;
+            color: white;
+            font-weight: bold;
+            display: none;
+            z-index: 200;
+        }
+        .save-status.success { background: #28a745; display: block; }
+        .save-status.error { background: #dc3545; display: block; }
+    </style>
+</head>
+<body>
+    <h1>🍴 EJC Péry — Saisie des repas</h1>
+    <div id="menu"></div>
+
+    <div id="info-banner"></div>
+
+    <div class="semaine-nav">
+        <button class="btn-secondary" onclick="changerSemaine(-1)">◀ Semaine précédente</button>
+        <h2 id="titre-semaine">Semaine du ...</h2>
+        <button class="btn-secondary" onclick="changerSemaine(1)">Semaine suivante ▶</button>
+    </div>
+
+    <div class="toolbar">
+        <button id="btn-mode-commande" class="btn-primary" onclick="changerMode('commande')">📝 Mode Commande</button>
+        <button id="btn-mode-annulation" class="btn-edit" onclick="changerMode('annulation')">⚠️ Mode Annulation</button>
+    </div>
+
+    <div id="contenu">
+        <p class="loading">⏳ Chargement...</p>
+    </div>
+
+    <div class="save-status" id="save-status"></div>
+
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="shared.js"></script>
+    <script>
+        // État global
+        let monProfil = null;
+        let lundiCourant = lundiDeLaSemaine(new Date());
+        // On commence à la semaine prochaine par défaut
+        lundiCourant.setDate(lundiCourant.getDate() + 7);
+        let mode = 'commande'; // 'commande' ou 'annulation'
+
+        const CATEGORIES = [
+            { code: 'adulte_normal',                  label: 'Adulte — Normal' },
+            { code: 'adulte_sans_lactose',            label: 'Adulte — Sans lactose' },
+            { code: 'adulte_sans_porc',               label: 'Adulte — Sans porc' },
+            { code: 'adulte_vegetarien',              label: 'Adulte — Végétarien' },
+            { code: 'adulte_sans_proteine_lactique',  label: 'Adulte — Sans protéine lactique' },
+            { code: 'enfant_normal',                  label: 'Enfant — Normal' },
+            { code: 'enfant_sans_lactose',            label: 'Enfant — Sans lactose' },
+            { code: 'enfant_sans_porc',               label: 'Enfant — Sans porc' },
+            { code: 'enfant_vegetarien',              label: 'Enfant — Végétarien' },
+            { code: 'enfant_sans_proteine_lactique',  label: 'Enfant — Sans protéine lactique' }
+        ];
+
+        function changerSemaine(delta) {
+            lundiCourant.setDate(lundiCourant.getDate() + delta * 7);
+            charger();
+        }
+
+        function changerMode(nouveauMode) {
+            mode = nouveauMode;
+            document.getElementById('btn-mode-commande').className = (mode === 'commande') ? 'btn-primary' : 'btn-secondary';
+            document.getElementById('btn-mode-annulation').className = (mode === 'annulation') ? 'btn-edit' : 'btn-secondary';
+            charger();
+        }
+
+        async function charger() {
+            const contenu = document.getElementById('contenu');
+            contenu.innerHTML = '<p class="loading">⏳ Chargement...</p>';
+
+            const jours = joursOuvresSemaine(lundiCourant);
+            const titre = `Semaine du ${dateFr(jours[0])} au ${dateFr(jours[4])}`;
+            document.getElementById('titre-semaine').textContent = titre;
+
+            // Statut commande pour cette semaine
+            const cmdOuverte = commandeOuverte(lundiCourant);
+            const isAdmin = monProfil && monProfil.role === 'admin';
+
+            // Afficher la bannière d'information
+            const banner = document.getElementById('info-banner');
+            if (mode === 'commande') {
+                if (cmdOuverte || isAdmin) {
+                    banner.innerHTML = `<div class="info-banner">
+                        📝 <strong>Mode Commande</strong> : saisissez le nombre de repas par catégorie pour chaque jour.
+                        ${isAdmin ? '<span class="badge badge-ouvert">Admin (toujours modifiable)</span>' : '<span class="badge badge-ouvert">Saisie ouverte</span>'}
+                    </div>`;
+                } else {
+                    banner.innerHTML = `<div class="info-banner">
+                        🔒 <strong>Saisie verrouillée</strong> — la limite était mardi 12h. 
+                        Pour annuler des repas commandés, utilisez le <strong>mode Annulation</strong> (facturé 50%).
+                        <span class="badge badge-ferme">Lecture seule</span>
+                    </div>`;
+                }
+            } else {
+                banner.innerHTML = `<div class="info-banner">
+                    ⚠️ <strong>Mode Annulation tardive</strong> : utilisez ce mode après la limite de mardi 12h.
+                    Les annulations sont facturées <strong>à 50% du prix initial</strong>.
+                    Possible jusqu'à <strong>08h00 le jour même</strong>.
+                    <span class="badge badge-annulation">Facturation 50%</span>
+                </div>`;
+            }
+
+            // Charger commandes et annulations de la semaine
+            const { data: commandes } = await supaClient
+                .from(TABLE_COMMANDES_EJC).select('*').in('date', jours);
+            const { data: annulations } = await supaClient
+                .from(TABLE_ANNULATIONS_EJC).select('*').in('date', jours);
+
+            const cmdMap = {};
+            for (const c of (commandes || [])) cmdMap[c.date] = c;
+            const annMap = {};
+            for (const a of (annulations || [])) annMap[a.date] = a;
+
+            // Construire le tableau
+            let html = '<table class="repas"><thead><tr><th>Catégorie</th>';
+            for (const j of jours) {
+                const d = new Date(j + 'T00:00:00');
+                html += `<th>${d.toLocaleDateString('fr-FR', { weekday: 'short', day: 'numeric', month: 'numeric' })}</th>`;
+            }
+            html += '<th class="col-total">Total</th></tr></thead><tbody>';
+
+            // Pour chaque catégorie, une ligne
+            for (const cat of CATEGORIES) {
+                html += `<tr><td>${cat.label}</td>`;
+                let totalLigne = 0;
+                for (const j of jours) {
+                    let valeur = 0;
+                    let editable = false;
+                    if (mode === 'commande') {
+                        valeur = (cmdMap[j] && cmdMap[j][cat.code]) || 0;
+                        editable = isAdmin || cmdOuverte;
+                    } else {
+                        valeur = (annMap[j] && annMap[j][cat.code]) || 0;
+                        editable = isAdmin || annulationOuverte(j);
+                    }
+                    totalLigne += valeur;
+                    html += `<td>
+                        <input type="number" min="0" value="${valeur}"
+                            ${editable ? '' : 'disabled'}
+                            data-date="${j}" data-cat="${cat.code}"
+                            onchange="enregistrer(this)">
+                    </td>`;
+                }
+                html += `<td class="col-total" id="total-cat-${cat.code}">${totalLigne}</td></tr>`;
+            }
+
+            // Ligne total par jour
+            html += '<tr style="background: #f0f8f0; font-weight: bold;"><td>TOTAL JOURNÉE</td>';
+            let totalSem = 0;
+            for (const j of jours) {
+                let totalJ = 0;
+                for (const cat of CATEGORIES) {
+                    if (mode === 'commande') {
+                        totalJ += (cmdMap[j] && cmdMap[j][cat.code]) || 0;
+                    } else {
+                        totalJ += (annMap[j] && annMap[j][cat.code]) || 0;
+                    }
+                }
+                totalSem += totalJ;
+                html += `<td id="total-jour-${j}">${totalJ}</td>`;
+            }
+            html += `<td class="col-total" id="total-semaine">${totalSem}</td></tr>`;
+            html += '</tbody></table>';
+
+            contenu.innerHTML = html;
+        }
+
+        async function enregistrer(input) {
+            const date = input.dataset.date;
+            const cat = input.dataset.cat;
+            const valeur = parseInt(input.value, 10) || 0;
+
+            const table = (mode === 'commande') ? TABLE_COMMANDES_EJC : TABLE_ANNULATIONS_EJC;
+
+            // Vérifier si une ligne existe déjà pour cette date
+            const { data: existant } = await supaClient
+                .from(table).select('*').eq('date', date).maybeSingle();
+
+            let res;
+            if (existant) {
+                // UPDATE
+                const update = { [cat]: valeur, updated_at: new Date().toISOString() };
+                res = await supaClient.from(table).update(update).eq('date', date);
+            } else {
+                // INSERT
+                const insert = { date: date, [cat]: valeur };
+                res = await supaClient.from(table).insert(insert);
+            }
+
+            const status = document.getElementById('save-status');
+            if (res.error) {
+                status.className = 'save-status error';
+                status.textContent = '❌ Erreur : ' + res.error.message;
+                console.error(res.error);
+            } else {
+                status.className = 'save-status success';
+                status.textContent = '✓ Enregistré';
+                // Recalculer les totaux à la volée
+                recalculerTotaux();
+            }
+            setTimeout(() => status.style.display = 'none', 1500);
+        }
+
+        function recalculerTotaux() {
+            const inputs = document.querySelectorAll('input[type="number"]');
+            const parCat = {};
+            const parJour = {};
+            let totalSem = 0;
+            for (const i of inputs) {
+                const cat = i.dataset.cat;
+                const date = i.dataset.date;
+                const v = parseInt(i.value, 10) || 0;
+                parCat[cat] = (parCat[cat] || 0) + v;
+                parJour[date] = (parJour[date] || 0) + v;
+                totalSem += v;
+            }
+            for (const cat in parCat) {
+                const el = document.getElementById('total-cat-' + cat);
+                if (el) el.textContent = parCat[cat];
+            }
+            for (const date in parJour) {
+                const el = document.getElementById('total-jour-' + date);
+                if (el) el.textContent = parJour[date];
+            }
+            const elSem = document.getElementById('total-semaine');
+            if (elSem) elSem.textContent = totalSem;
+        }
+
+        // Démarrage
+        (async () => {
+            const auth = await verifierAuthEtRole(['client_ejc', 'admin']);
+            if (!auth) return;
+            monProfil = auth.profil;
+            afficherMenuComplet('commande_ejc', auth.user.email, auth.profil.role, auth.profil.nom_affiche);
+            charger();
+        })();
+    </script>
+</body>
+</html>

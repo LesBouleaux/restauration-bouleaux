@@ -36,6 +36,14 @@
             const { data: presences } = await supaClient
                 .from(TABLE_PRESENCES).select('*').eq('date', date);
 
+            // Charger commandes et annulations EJC pour la date
+            const { data: cmdEjcArr } = await supaClient
+                .from(TABLE_COMMANDES_EJC).select('*').eq('date', date);
+            const { data: annEjcArr } = await supaClient
+                .from(TABLE_ANNULATIONS_EJC).select('*').eq('date', date);
+            const cmdEjc = (cmdEjcArr && cmdEjcArr[0]) || null;
+            const annEjc = (annEjcArr && annEjcArr[0]) || null;
+
             const repas = ['petit_dej', 'dejeuner', 'diner'];
             let html = `<h2>Production du ${dateFr(date)}</h2>`;
 
@@ -48,12 +56,51 @@
                 const avecAllergie = presentsForRepas.filter(r => r.allergies);
                 const avecIntolerance = presentsForRepas.filter(r => r.intolerances);
 
+                // Pour le déjeuner, on ajoute les commandes EJC (nettes des annulations)
+                let totalEjc = 0;
+                let detailEjc = '';
+                if (codeRepas === 'dejeuner' && cmdEjc) {
+                    const categories = [
+                        { code: 'adulte_normal', label: 'Adulte normal' },
+                        { code: 'adulte_sans_lactose', label: 'Adulte sans lactose' },
+                        { code: 'adulte_sans_porc', label: 'Adulte sans porc' },
+                        { code: 'adulte_vegetarien', label: 'Adulte végétarien' },
+                        { code: 'adulte_sans_proteine_lactique', label: 'Adulte sans protéine lactique' },
+                        { code: 'enfant_normal', label: 'Enfant normal' },
+                        { code: 'enfant_sans_lactose', label: 'Enfant sans lactose' },
+                        { code: 'enfant_sans_porc', label: 'Enfant sans porc' },
+                        { code: 'enfant_vegetarien', label: 'Enfant végétarien' },
+                        { code: 'enfant_sans_proteine_lactique', label: 'Enfant sans protéine lactique' }
+                    ];
+                    const lignes = [];
+                    for (const c of categories) {
+                        const cmd = cmdEjc[c.code] || 0;
+                        const ann = (annEjc && annEjc[c.code]) || 0;
+                        const net = cmd - ann;
+                        if (cmd > 0 || ann > 0) {
+                            totalEjc += net;
+                            lignes.push(`<li>${c.label} : <strong>${net}</strong> (commandé ${cmd}${ann ? `, annulé ${ann}` : ''})</li>`);
+                        }
+                    }
+                    if (lignes.length) {
+                        detailEjc = `<p><strong>EJC Péry — ${totalEjc} portion(s) :</strong></p><ul class="print-list">${lignes.join('')}</ul>`;
+                    }
+                }
+
+                const totalGeneral = presentsForRepas.length + totalEjc;
+                let titreSection = `${libelleRepas(codeRepas)} — ${presentsForRepas.length} portion(s)`;
+                if (totalEjc > 0) {
+                    titreSection = `${libelleRepas(codeRepas)} — ${totalGeneral} portion(s) au total (${presentsForRepas.length} résidents + ${totalEjc} EJC)`;
+                }
+
                 html += `
                     <div class="print-section">
-                        <h3>${libelleRepas(codeRepas)} — ${presentsForRepas.length} portion(s)</h3>`;
+                        <h3>${titreSection}</h3>`;
+
+                if (detailEjc) html += detailEjc;
 
                 if (avecAllergie.length || avecIntolerance.length) {
-                    html += '<p><strong>Adaptations à prévoir :</strong></p><ul class="print-list">';
+                    html += '<p><strong>Adaptations résidents :</strong></p><ul class="print-list">';
                     for (const r of avecAllergie) {
                         html += `<li>⚠️ <strong>${r.prenom} ${r.nom}</strong> — Allergie : ${r.allergies}</li>`;
                     }
@@ -61,7 +108,7 @@
                         html += `<li>🚫 <strong>${r.prenom} ${r.nom}</strong> — Intolérance : ${r.intolerances}</li>`;
                     }
                     html += '</ul>';
-                } else {
+                } else if (!detailEjc) {
                     html += '<p><em>Aucune adaptation particulière.</em></p>';
                 }
                 html += '</div>';
@@ -70,11 +117,11 @@
             contenu.innerHTML = html;
         }
 
-        // Démarrage protégé par auth
+        // Démarrage protégé par auth (admin uniquement)
         (async () => {
-            const user = await verifierAuth();
-            if (!user) return;
-            afficherMenuComplet('production', user.email);
+            const auth = await verifierAuthEtRole(['admin']);
+            if (!auth) return;
+            afficherMenuComplet('production', auth.user.email, auth.profil.role, auth.profil.nom_affiche);
             document.getElementById('date-prod').value = demain();
             genererListe();
         })();
