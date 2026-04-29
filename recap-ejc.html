@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+ <!DOCTYPE html>
 <html lang="fr">
 <head>
     <meta charset="UTF-8">
@@ -6,7 +6,7 @@
     <title>Récap EJC Péry - Restauration Les Bouleaux</title>
     <link rel="stylesheet" href="shared.css">
     <style>
-        .semaine-nav {
+        .periode-nav {
             display: flex;
             justify-content: space-between;
             align-items: center;
@@ -15,8 +15,30 @@
             border-radius: 8px;
             margin: 15px 0;
             box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            flex-wrap: wrap;
+            gap: 10px;
         }
-        .semaine-nav h2 { margin: 0; font-size: 18px; }
+        .periode-nav h2 { margin: 0; font-size: 18px; flex: 1; text-align: center; min-width: 200px; }
+
+        .mode-switch {
+            display: inline-flex;
+            background: #e8e8e8;
+            border-radius: 8px;
+            overflow: hidden;
+            margin: 10px 0;
+        }
+        .mode-switch button {
+            background: transparent;
+            border: none;
+            padding: 10px 20px;
+            cursor: pointer;
+            font-weight: bold;
+            color: #555;
+        }
+        .mode-switch button.active {
+            background: #2c5530;
+            color: white;
+        }
 
         .stats-grid {
             display: grid;
@@ -56,33 +78,47 @@
             overflow: hidden;
             box-shadow: 0 2px 4px rgba(0,0,0,0.1);
             margin: 15px 0;
+            font-size: 13px;
         }
         table.recap th, table.recap td {
-            padding: 10px;
+            padding: 8px 6px;
             text-align: center;
             border-bottom: 1px solid #eee;
-            font-size: 14px;
         }
-        table.recap th { background: #2c5530; color: white; }
+        table.recap th { background: #2c5530; color: white; font-size: 12px; }
         table.recap th:first-child, table.recap td:first-child {
             text-align: left;
             background: #f5f5f5;
             font-weight: bold;
-            min-width: 200px;
+            min-width: 180px;
+            font-size: 13px;
         }
-        table.recap .col-total { background: #f0f8f0; font-weight: bold; }
+        table.recap .col-total { background: #f0f8f0; font-weight: bold; color: #2c5530; }
         table.recap tr.section-header td {
             background: #e8e8e8;
             font-weight: bold;
             text-align: left;
-            font-size: 15px;
+            font-size: 14px;
             color: #2c5530;
         }
-        table.recap tr.row-annulation td:not(:first-child) {
+        /* Cellule annulation isolée (vue mois) — texte rouge italique */
+        table.recap td.cell-annulation {
             color: #c0392b;
             font-style: italic;
         }
-        table.recap tr.total-row { background: #d4edda; font-weight: bold; }
+        /* Vue semaine : toute la ligne annulation en rouge SAUF la 1ère colonne ET la colonne total */
+        table.recap tr.row-annulation td:not(:first-child):not(.col-total) {
+            color: #c0392b;
+            font-style: italic;
+        }
+        table.recap tr.total-row { background: #d4edda; font-weight: bold; color: #155724; }
+        table.recap tr.total-row td { color: #155724; }
+        table.recap tr.total-general td {
+            background: #2c5530 !important;
+            color: white !important;
+            font-weight: bold;
+            font-size: 15px;
+        }
     </style>
 </head>
 <body>
@@ -91,13 +127,20 @@
 
     <h2>📊 Récap EJC Péry</h2>
 
-    <div class="semaine-nav">
-        <button class="btn-secondary" onclick="changerSemaine(-1)">◀ Semaine précédente</button>
-        <h2 id="titre-semaine">Semaine du ...</h2>
-        <button class="btn-secondary" onclick="changerSemaine(1)">Semaine suivante ▶</button>
+    <div class="toolbar no-print">
+        <div class="mode-switch">
+            <button id="btn-mode-semaine" class="active" onclick="changerMode('semaine')">📅 Vue Semaine</button>
+            <button id="btn-mode-mois" onclick="changerMode('mois')">🗓️ Vue Mois</button>
+        </div>
     </div>
 
-    <div class="toolbar">
+    <div class="periode-nav no-print">
+        <button class="btn-secondary" onclick="changerPeriode(-1)">◀ Précédent</button>
+        <h2 id="titre-periode">Chargement...</h2>
+        <button class="btn-secondary" onclick="changerPeriode(1)">Suivant ▶</button>
+    </div>
+
+    <div class="toolbar no-print">
         <button class="btn-print" onclick="exporterCSV()">📥 Export CSV</button>
         <button class="btn-print" onclick="exporterExcel()">📊 Export Excel</button>
         <button class="btn-print" onclick="window.print()">🖨️ Imprimer / PDF</button>
@@ -112,8 +155,11 @@
     <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
     <script src="shared.js"></script>
     <script>
+        let mode = 'semaine'; // 'semaine' ou 'mois'
         let lundiCourant = lundiDeLaSemaine(new Date());
-        let donneesSemaine = null;
+        let moisCourant = new Date();
+        moisCourant.setDate(1);
+        let donneesPeriode = null;
 
         const CATEGORIES = [
             { code: 'adulte_normal',                  label: 'Adulte — Normal' },
@@ -128,18 +174,59 @@
             { code: 'enfant_sans_proteine_lactique',  label: 'Enfant — Sans protéine lactique' }
         ];
 
-        function changerSemaine(delta) {
-            lundiCourant.setDate(lundiCourant.getDate() + delta * 7);
+        function changerMode(nouveauMode) {
+            mode = nouveauMode;
+            document.getElementById('btn-mode-semaine').className = (mode === 'semaine') ? 'active' : '';
+            document.getElementById('btn-mode-mois').className = (mode === 'mois') ? 'active' : '';
             charger();
+        }
+
+        function changerPeriode(delta) {
+            if (mode === 'semaine') {
+                lundiCourant.setDate(lundiCourant.getDate() + delta * 7);
+            } else {
+                moisCourant.setMonth(moisCourant.getMonth() + delta);
+            }
+            charger();
+        }
+
+        function joursOuvresMois(date) {
+            const annee = date.getFullYear();
+            const mois = date.getMonth();
+            const jours = [];
+            const d = new Date(annee, mois, 1);
+            while (d.getMonth() === mois) {
+                const jourSem = d.getDay();
+                if (jourSem !== 0 && jourSem !== 6) {
+                    jours.push(dateISO(d));
+                }
+                d.setDate(d.getDate() + 1);
+            }
+            return jours;
         }
 
         async function charger() {
             const contenu = document.getElementById('contenu');
             contenu.innerHTML = '<p class="loading">⏳ Chargement...</p>';
 
-            const jours = joursOuvresSemaine(lundiCourant);
-            document.getElementById('titre-semaine').textContent =
-                `Semaine du ${dateFr(jours[0])} au ${dateFr(jours[4])}`;
+            let jours;
+            let titre;
+
+            if (mode === 'semaine') {
+                jours = joursOuvresSemaine(lundiCourant);
+                titre = `Semaine du ${dateFr(jours[0])} au ${dateFr(jours[jours.length-1])}`;
+            } else {
+                jours = joursOuvresMois(moisCourant);
+                const nomMois = moisCourant.toLocaleDateString('fr-FR', { month: 'long', year: 'numeric' });
+                titre = `Mois de ${nomMois.charAt(0).toUpperCase() + nomMois.slice(1)}`;
+            }
+            document.getElementById('titre-periode').textContent = titre;
+
+            if (jours.length === 0) {
+                contenu.innerHTML = '<p class="info-msg">Aucun jour ouvré dans cette période.</p>';
+                document.getElementById('stats').innerHTML = '';
+                return;
+            }
 
             const { data: commandes } = await supaClient
                 .from(TABLE_COMMANDES_EJC).select('*').in('date', jours);
@@ -151,10 +238,8 @@
             const annMap = {};
             for (const a of (annulations || [])) annMap[a.date] = a;
 
-            // Calcul des totaux
             let totalCommande = 0;
             let totalAnnulation = 0;
-            let totalNet = 0;
             const totalParCat = {};
             for (const cat of CATEGORIES) totalParCat[cat.code] = { cmd: 0, ann: 0 };
 
@@ -168,19 +253,20 @@
                     totalParCat[cat.code].ann += ann;
                 }
             }
-            totalNet = totalCommande - totalAnnulation;
+            const totalNet = totalCommande - totalAnnulation;
 
-            donneesSemaine = { jours, cmdMap, annMap, totalCommande, totalAnnulation, totalNet, totalParCat };
+            donneesPeriode = { jours, cmdMap, annMap, totalCommande, totalAnnulation, totalNet, totalParCat, titre };
 
             afficherStats();
-            afficherTableau();
+            if (mode === 'semaine') {
+                afficherTableauSemaine();
+            } else {
+                afficherTableauMois();
+            }
         }
 
         function afficherStats() {
-            const { totalCommande, totalAnnulation, totalNet } = donneesSemaine;
-            // Facturation : commandes pleines + annulations 50%
-            // Note : on facture (commandes - annulations) à 100% + annulations à 50% = commandes - 50% des annulations
-            // Pour rester simple, on affiche les chiffres bruts
+            const { totalCommande, totalAnnulation, totalNet } = donneesPeriode;
             document.getElementById('stats').innerHTML = `
                 <div class="stats-grid">
                     <div class="stat-card">
@@ -207,8 +293,8 @@
             `;
         }
 
-        function afficherTableau() {
-            const { jours, cmdMap, annMap } = donneesSemaine;
+        function afficherTableauSemaine() {
+            const { jours, cmdMap, annMap } = donneesPeriode;
 
             let html = '<table class="recap"><thead><tr><th>Catégorie</th>';
             for (const j of jours) {
@@ -217,8 +303,7 @@
             }
             html += '<th class="col-total">Total</th></tr></thead><tbody>';
 
-            // Section Commandes
-            html += '<tr class="section-header"><td colspan="7">📝 Commandes (facturées 100%)</td></tr>';
+            html += '<tr class="section-header"><td colspan="' + (jours.length + 2) + '">📝 Commandes (facturées 100%)</td></tr>';
             for (const cat of CATEGORIES) {
                 html += `<tr><td>${cat.label}</td>`;
                 let total = 0;
@@ -230,7 +315,6 @@
                 html += `<td class="col-total">${total}</td></tr>`;
             }
 
-            // Total commandes
             html += '<tr class="total-row"><td>TOTAL COMMANDES</td>';
             let totalCmdSem = 0;
             for (const j of jours) {
@@ -241,8 +325,7 @@
             }
             html += `<td class="col-total">${totalCmdSem}</td></tr>`;
 
-            // Section Annulations
-            html += '<tr class="section-header"><td colspan="7">⚠️ Annulations tardives (facturées 50%)</td></tr>';
+            html += '<tr class="section-header"><td colspan="' + (jours.length + 2) + '">⚠️ Annulations tardives (facturées 50%)</td></tr>';
             for (const cat of CATEGORIES) {
                 html += `<tr class="row-annulation"><td>${cat.label}</td>`;
                 let total = 0;
@@ -254,19 +337,17 @@
                 html += `<td class="col-total">${total}</td></tr>`;
             }
 
-            // Total annulations
             html += '<tr class="total-row"><td>TOTAL ANNULATIONS</td>';
             let totalAnnSem = 0;
             for (const j of jours) {
                 let totalJ = 0;
-                for (const cat of CATEGORIES) totalJ += (annMap[j] && annMap[j][cat.code]) || 0;
+                for (const cat of CATEGORIES) totalJ += (cmdMap[j] && cmdMap[j][cat.code]) || 0;
                 totalAnnSem += totalJ;
                 html += `<td>${totalJ || ''}</td>`;
             }
             html += `<td class="col-total">${totalAnnSem}</td></tr>`;
 
-            // Total net
-            html += '<tr class="section-header"><td colspan="7">✅ Repas servis (net)</td></tr>';
+            html += '<tr class="section-header"><td colspan="' + (jours.length + 2) + '">✅ Repas servis (net)</td></tr>';
             html += '<tr class="total-row"><td>TOTAL NET</td>';
             let totalNetSem = 0;
             for (const j of jours) {
@@ -280,26 +361,95 @@
             html += `<td class="col-total">${totalNetSem}</td></tr>`;
 
             html += '</tbody></table>';
+            document.getElementById('contenu').innerHTML = html;
+        }
 
+        function afficherTableauMois() {
+            const { totalParCat } = donneesPeriode;
+
+            let html = `<table class="recap"><thead><tr>
+                <th>Catégorie</th>
+                <th>Commandés (100%)</th>
+                <th>Annulés (50%)</th>
+                <th class="col-total">Net servi</th>
+                <th class="col-total">Équivalent facturation</th>
+            </tr></thead><tbody>`;
+
+            html += '<tr class="section-header"><td colspan="5">👤 Adultes</td></tr>';
+            let sumAdultesCmd = 0, sumAdultesAnn = 0;
+            for (const cat of CATEGORIES.filter(c => c.code.startsWith('adulte'))) {
+                const cmd = totalParCat[cat.code].cmd;
+                const ann = totalParCat[cat.code].ann;
+                const net = cmd - ann;
+                const facto = cmd - ann * 0.5;
+                sumAdultesCmd += cmd;
+                sumAdultesAnn += ann;
+                html += `<tr>
+                    <td>${cat.label.replace('Adulte — ', '')}</td>
+                    <td>${cmd || ''}</td>
+                    <td class="cell-annulation">${ann || ''}</td>
+                    <td class="col-total">${net}</td>
+                    <td class="col-total">${facto.toFixed(1)}</td>
+                </tr>`;
+            }
+            html += `<tr class="total-row">
+                <td>SOUS-TOTAL ADULTES</td>
+                <td>${sumAdultesCmd}</td>
+                <td>${sumAdultesAnn}</td>
+                <td class="col-total">${sumAdultesCmd - sumAdultesAnn}</td>
+                <td class="col-total">${(sumAdultesCmd - sumAdultesAnn * 0.5).toFixed(1)}</td>
+            </tr>`;
+
+            html += '<tr class="section-header"><td colspan="5">🧒 Enfants</td></tr>';
+            let sumEnfantsCmd = 0, sumEnfantsAnn = 0;
+            for (const cat of CATEGORIES.filter(c => c.code.startsWith('enfant'))) {
+                const cmd = totalParCat[cat.code].cmd;
+                const ann = totalParCat[cat.code].ann;
+                const net = cmd - ann;
+                const facto = cmd - ann * 0.5;
+                sumEnfantsCmd += cmd;
+                sumEnfantsAnn += ann;
+                html += `<tr>
+                    <td>${cat.label.replace('Enfant — ', '')}</td>
+                    <td>${cmd || ''}</td>
+                    <td class="cell-annulation">${ann || ''}</td>
+                    <td class="col-total">${net}</td>
+                    <td class="col-total">${facto.toFixed(1)}</td>
+                </tr>`;
+            }
+            html += `<tr class="total-row">
+                <td>SOUS-TOTAL ENFANTS</td>
+                <td>${sumEnfantsCmd}</td>
+                <td>${sumEnfantsAnn}</td>
+                <td class="col-total">${sumEnfantsCmd - sumEnfantsAnn}</td>
+                <td class="col-total">${(sumEnfantsCmd - sumEnfantsAnn * 0.5).toFixed(1)}</td>
+            </tr>`;
+
+            html += `<tr class="total-general">
+                <td>TOTAL GÉNÉRAL</td>
+                <td>${sumAdultesCmd + sumEnfantsCmd}</td>
+                <td>${sumAdultesAnn + sumEnfantsAnn}</td>
+                <td>${(sumAdultesCmd + sumEnfantsCmd) - (sumAdultesAnn + sumEnfantsAnn)}</td>
+                <td>${((sumAdultesCmd + sumEnfantsCmd) - (sumAdultesAnn + sumEnfantsAnn) * 0.5).toFixed(1)}</td>
+            </tr>`;
+
+            html += '</tbody></table>';
             document.getElementById('contenu').innerHTML = html;
         }
 
         // ===== EXPORTS =====
 
-        function genererDonneesExport() {
-            const { jours, cmdMap, annMap } = donneesSemaine;
+        function genererDonneesExportSemaine() {
+            const { jours, cmdMap, annMap } = donneesPeriode;
             const rows = [];
-
-            // En-tête
             const enTete = ['Type', 'Catégorie'];
             for (const j of jours) {
                 const d = new Date(j + 'T00:00:00');
                 enTete.push(d.toLocaleDateString('fr-FR'));
             }
-            enTete.push('Total semaine');
+            enTete.push('Total');
             rows.push(enTete);
 
-            // Commandes
             for (const cat of CATEGORIES) {
                 const ligne = ['Commande', cat.label];
                 let total = 0;
@@ -311,8 +461,6 @@
                 ligne.push(total);
                 rows.push(ligne);
             }
-
-            // Annulations
             for (const cat of CATEGORIES) {
                 const ligne = ['Annulation', cat.label];
                 let total = 0;
@@ -324,24 +472,42 @@
                 ligne.push(total);
                 rows.push(ligne);
             }
+            return rows;
+        }
 
+        function genererDonneesExportMois() {
+            const { totalParCat, titre } = donneesPeriode;
+            const rows = [];
+            rows.push([titre]);
+            rows.push([]);
+            rows.push(['Catégorie', 'Commandés (100%)', 'Annulés (50%)', 'Net servi', 'Équivalent facturation']);
+            for (const cat of CATEGORIES) {
+                const cmd = totalParCat[cat.code].cmd;
+                const ann = totalParCat[cat.code].ann;
+                rows.push([cat.label, cmd, ann, cmd - ann, (cmd - ann * 0.5).toFixed(1)]);
+            }
+            const totCmd = CATEGORIES.reduce((s, c) => s + totalParCat[c.code].cmd, 0);
+            const totAnn = CATEGORIES.reduce((s, c) => s + totalParCat[c.code].ann, 0);
+            rows.push([]);
+            rows.push(['TOTAL', totCmd, totAnn, totCmd - totAnn, (totCmd - totAnn * 0.5).toFixed(1)]);
             return rows;
         }
 
         function exporterCSV() {
-            const rows = genererDonneesExport();
-            // Conversion en CSV (séparateur ;)
+            const rows = (mode === 'semaine') ? genererDonneesExportSemaine() : genererDonneesExportMois();
             const csv = rows.map(r => r.map(v => `"${String(v).replace(/"/g, '""')}"`).join(';')).join('\n');
             const blob = new Blob(['\uFEFF' + csv], { type: 'text/csv;charset=utf-8;' });
-            telecharger(blob, `recap-ejc-${donneesSemaine.jours[0]}.csv`);
+            const suffixe = (mode === 'semaine') ? donneesPeriode.jours[0] : moisCourant.toISOString().slice(0, 7);
+            telecharger(blob, `recap-ejc-${mode}-${suffixe}.csv`);
         }
 
         function exporterExcel() {
-            const rows = genererDonneesExport();
+            const rows = (mode === 'semaine') ? genererDonneesExportSemaine() : genererDonneesExportMois();
             const ws = XLSX.utils.aoa_to_sheet(rows);
             const wb = XLSX.utils.book_new();
-            XLSX.utils.book_append_sheet(wb, ws, 'Récap EJC');
-            XLSX.writeFile(wb, `recap-ejc-${donneesSemaine.jours[0]}.xlsx`);
+            XLSX.utils.book_append_sheet(wb, ws, mode === 'semaine' ? 'Récap semaine' : 'Récap mois');
+            const suffixe = (mode === 'semaine') ? donneesPeriode.jours[0] : moisCourant.toISOString().slice(0, 7);
+            XLSX.writeFile(wb, `recap-ejc-${mode}-${suffixe}.xlsx`);
         }
 
         function telecharger(blob, nomFichier) {
@@ -355,7 +521,6 @@
             URL.revokeObjectURL(url);
         }
 
-        // Démarrage protégé par auth (admin uniquement)
         (async () => {
             const auth = await verifierAuthEtRole(['admin']);
             if (!auth) return;
