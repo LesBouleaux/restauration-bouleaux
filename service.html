@@ -1,0 +1,94 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Service du jour - Restauration Les Bouleaux</title>
+    <link rel="stylesheet" href="shared.css">
+</head>
+<body>
+    <h1>🍽️ Restauration Les Bouleaux</h1>
+    <div id="menu"></div>
+
+    <h2>Liste de service J-0</h2>
+    <p class="no-print">Liste nominative des résidents présents à servir, avec leurs spécificités.</p>
+
+    <div class="toolbar no-print">
+        <label><strong>Date :</strong></label>
+        <input type="date" id="date-srv">
+        <label><strong>Repas :</strong></label>
+        <select id="repas-srv">
+            <option value="petit_dej">🥐 Petit-déjeuner</option>
+            <option value="dejeuner" selected>🍽️ Déjeuner</option>
+            <option value="diner">🌙 Dîner</option>
+        </select>
+        <button class="btn-primary" onclick="genererService()">🔄 Générer</button>
+        <button class="btn-print" onclick="window.print()">🖨️ Imprimer</button>
+    </div>
+
+    <div id="contenu" class="print-area">
+        <p class="info-msg">Choisissez une date et un repas, puis cliquez "Générer".</p>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="shared.js"></script>
+    <script>
+        afficherMenu('service');
+
+        document.getElementById('date-srv').value = aujourdhui();
+
+        async function genererService() {
+            const date = document.getElementById('date-srv').value;
+            const repas = document.getElementById('repas-srv').value;
+            const contenu = document.getElementById('contenu');
+            contenu.innerHTML = '<p class="loading">⏳ Chargement...</p>';
+
+            const residents = await chargerResidentsActifs();
+            const { data: presences } = await supaClient
+                .from(TABLE_PRESENCES).select('*').eq('date', date).eq('repas', repas);
+
+            const presents = residents.filter(r => {
+                const p = (presences || []).find(x => x.resident_id === r.id);
+                return p ? p.present : true;
+            });
+            const absents = residents.filter(r => {
+                const p = (presences || []).find(x => x.resident_id === r.id);
+                return p && !p.present;
+            });
+
+            let html = `
+                <h2>Service — ${dateFr(date)}</h2>
+                <h3>${libelleRepas(repas)}</h3>
+                <p><strong>${presents.length}</strong> résident(s) à servir`;
+            if (absents.length) html += ` — <strong>${absents.length}</strong> absent(s)`;
+            html += '</p>';
+
+            html += '<div class="print-section"><h3>✅ Résidents présents</h3>';
+            if (!presents.length) {
+                html += '<p><em>Aucun.</em></p>';
+            } else {
+                html += '<ul class="print-list">';
+                for (const r of presents) {
+                    const tags = [];
+                    if (r.allergies) tags.push(`<span class="tag tag-allergie">⚠️ ${r.allergies}</span>`);
+                    if (r.intolerances) tags.push(`<span class="tag tag-intolerance">🚫 ${r.intolerances}</span>`);
+                    if (r.aversions) tags.push(`<span class="tag tag-aversion">N'aime pas : ${r.aversions}</span>`);
+                    html += `<li><strong>${r.prenom} ${r.nom}</strong> ${tags.join(' ')}</li>`;
+                }
+                html += '</ul>';
+            }
+            html += '</div>';
+
+            if (absents.length) {
+                html += '<div class="print-section"><h3>❌ Absents</h3><ul class="print-list">';
+                for (const r of absents) html += `<li>${r.prenom} ${r.nom}</li>`;
+                html += '</ul></div>';
+            }
+
+            contenu.innerHTML = html;
+        }
+
+        genererService();
+    </script>
+</body>
+</html>

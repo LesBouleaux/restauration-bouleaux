@@ -1,0 +1,84 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Production J-1 - Restauration Les Bouleaux</title>
+    <link rel="stylesheet" href="shared.css">
+</head>
+<body>
+    <h1>🍽️ Restauration Les Bouleaux</h1>
+    <div id="menu"></div>
+
+    <h2>Liste de production J-1</h2>
+    <p class="no-print">Cette liste sert à préparer les portions <strong>la veille</strong> du repas.</p>
+
+    <div class="toolbar no-print">
+        <label><strong>Date du repas :</strong></label>
+        <input type="date" id="date-prod">
+        <button class="btn-primary" onclick="genererListe()">🔄 Générer</button>
+        <button class="btn-print" onclick="window.print()">🖨️ Imprimer</button>
+    </div>
+
+    <div id="contenu" class="print-area">
+        <p class="info-msg">Choisissez une date et cliquez "Générer".</p>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="shared.js"></script>
+    <script>
+        afficherMenu('production');
+
+        // Par défaut : demain
+        document.getElementById('date-prod').value = demain();
+
+        async function genererListe() {
+            const date = document.getElementById('date-prod').value;
+            const contenu = document.getElementById('contenu');
+            contenu.innerHTML = '<p class="loading">⏳ Chargement...</p>';
+
+            const residents = await chargerResidentsActifs();
+            const { data: presences } = await supaClient
+                .from(TABLE_PRESENCES).select('*').eq('date', date);
+
+            const repas = ['petit_dej', 'dejeuner', 'diner'];
+            let html = `<h2>Production du ${dateFr(date)}</h2>`;
+
+            for (const codeRepas of repas) {
+                // Liste des résidents PRÉSENTS pour ce repas
+                // Règle : si pas de saisie → considéré présent par défaut
+                const presentsForRepas = residents.filter(r => {
+                    const p = (presences || []).find(x => x.resident_id === r.id && x.repas === codeRepas);
+                    return p ? p.present : true;
+                });
+
+                // Stats adaptations
+                const avecAllergie = presentsForRepas.filter(r => r.allergies);
+                const avecIntolerance = presentsForRepas.filter(r => r.intolerances);
+
+                html += `
+                    <div class="print-section">
+                        <h3>${libelleRepas(codeRepas)} — ${presentsForRepas.length} portion(s)</h3>`;
+
+                if (avecAllergie.length || avecIntolerance.length) {
+                    html += '<p><strong>Adaptations à prévoir :</strong></p><ul class="print-list">';
+                    for (const r of avecAllergie) {
+                        html += `<li>⚠️ <strong>${r.prenom} ${r.nom}</strong> — Allergie : ${r.allergies}</li>`;
+                    }
+                    for (const r of avecIntolerance) {
+                        html += `<li>🚫 <strong>${r.prenom} ${r.nom}</strong> — Intolérance : ${r.intolerances}</li>`;
+                    }
+                    html += '</ul>';
+                } else {
+                    html += '<p><em>Aucune adaptation particulière.</em></p>';
+                }
+                html += '</div>';
+            }
+
+            contenu.innerHTML = html;
+        }
+
+        genererListe();
+    </script>
+</body>
+</html>

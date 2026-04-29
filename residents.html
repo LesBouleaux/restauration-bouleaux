@@ -1,0 +1,165 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Résidents - Restauration Les Bouleaux</title>
+    <link rel="stylesheet" href="shared.css">
+</head>
+<body>
+    <h1>🍽️ Restauration Les Bouleaux</h1>
+    <div id="menu"></div>
+
+    <h2>Gestion des résidents</h2>
+
+    <div class="toolbar">
+        <input type="text" id="recherche" placeholder="🔍 Rechercher un résident...">
+        <button class="btn-primary" onclick="ouvrirFormulaire()">➕ Ajouter un résident</button>
+    </div>
+
+    <div id="contenu">
+        <p class="loading">⏳ Chargement...</p>
+    </div>
+
+    <div class="modal-overlay" id="modal">
+        <div class="modal">
+            <h2 id="modal-titre">Ajouter un résident</h2>
+            <form id="form-resident" onsubmit="sauvegarderResident(event)">
+                <input type="hidden" id="resident-id">
+                <div class="form-group">
+                    <label for="prenom">Prénom *</label>
+                    <input type="text" id="prenom" required>
+                </div>
+                <div class="form-group">
+                    <label for="nom">Nom *</label>
+                    <input type="text" id="nom" required>
+                </div>
+                <div class="form-group">
+                    <label for="gouts">Goûts</label>
+                    <textarea id="gouts"></textarea>
+                </div>
+                <div class="form-group">
+                    <label for="aversions">Aversions</label>
+                    <textarea id="aversions"></textarea>
+                </div>
+                <div class="form-group">
+                    <label for="allergies">Allergies</label>
+                    <textarea id="allergies"></textarea>
+                </div>
+                <div class="form-group">
+                    <label for="intolerances">Intolérances</label>
+                    <textarea id="intolerances"></textarea>
+                </div>
+                <div class="form-actions">
+                    <button type="button" class="btn-secondary" onclick="fermerFormulaire()">Annuler</button>
+                    <button type="submit" class="btn-primary">💾 Enregistrer</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="shared.js"></script>
+    <script>
+        afficherMenu('residents');
+
+        let tousLesResidents = [];
+
+        async function charger() {
+            tousLesResidents = await chargerResidentsActifs();
+            afficher(tousLesResidents);
+        }
+
+        function afficher(liste) {
+            const contenu = document.getElementById('contenu');
+            if (!liste.length) {
+                contenu.innerHTML = '<p class="info-msg">Aucun résident.</p>';
+                return;
+            }
+            let html = `<p><strong>${liste.length}</strong> résident(s)</p>`;
+            for (const r of liste) {
+                html += `
+                    <div class="resident">
+                        <h3>
+                            <span>${r.prenom} ${r.nom}</span>
+                            <span class="resident-actions">
+                                <button class="btn-edit" onclick="modifierResident(${r.id})">✏️ Modifier</button>
+                                <button class="btn-danger" onclick="archiverResident(${r.id}, '${r.prenom} ${r.nom}')">🗑️ Archiver</button>
+                            </span>
+                        </h3>
+                        <p class="info"><span class="label">Goûts :</span> ${r.gouts || '<span class="empty">non renseigné</span>'}</p>
+                        <p class="info"><span class="label">Aversions :</span> ${r.aversions || '<span class="empty">non renseigné</span>'}</p>
+                        <p class="info"><span class="label">Allergies :</span> ${r.allergies || '<span class="empty">aucune</span>'}</p>
+                        <p class="info"><span class="label">Intolérances :</span> ${r.intolerances || '<span class="empty">aucune</span>'}</p>
+                    </div>`;
+            }
+            contenu.innerHTML = html;
+        }
+
+        document.getElementById('recherche').addEventListener('input', (e) => {
+            const t = e.target.value.toLowerCase().trim();
+            if (!t) return afficher(tousLesResidents);
+            afficher(tousLesResidents.filter(r =>
+                (r.prenom||'').toLowerCase().includes(t) ||
+                (r.nom||'').toLowerCase().includes(t) ||
+                (r.allergies||'').toLowerCase().includes(t) ||
+                (r.intolerances||'').toLowerCase().includes(t)
+            ));
+        });
+
+        function ouvrirFormulaire() {
+            document.getElementById('modal-titre').textContent = 'Ajouter un résident';
+            document.getElementById('form-resident').reset();
+            document.getElementById('resident-id').value = '';
+            document.getElementById('modal').classList.add('active');
+        }
+
+        function modifierResident(id) {
+            const r = tousLesResidents.find(x => x.id === id);
+            if (!r) return;
+            document.getElementById('modal-titre').textContent = 'Modifier un résident';
+            document.getElementById('resident-id').value = r.id;
+            document.getElementById('prenom').value = r.prenom || '';
+            document.getElementById('nom').value = r.nom || '';
+            document.getElementById('gouts').value = r.gouts || '';
+            document.getElementById('aversions').value = r.aversions || '';
+            document.getElementById('allergies').value = r.allergies || '';
+            document.getElementById('intolerances').value = r.intolerances || '';
+            document.getElementById('modal').classList.add('active');
+        }
+
+        function fermerFormulaire() {
+            document.getElementById('modal').classList.remove('active');
+        }
+
+        async function sauvegarderResident(event) {
+            event.preventDefault();
+            const id = document.getElementById('resident-id').value;
+            const donnees = {
+                prenom: document.getElementById('prenom').value.trim(),
+                nom: document.getElementById('nom').value.trim(),
+                gouts: document.getElementById('gouts').value.trim() || null,
+                aversions: document.getElementById('aversions').value.trim() || null,
+                allergies: document.getElementById('allergies').value.trim() || null,
+                intolerances: document.getElementById('intolerances').value.trim() || null,
+                actif: true
+            };
+            let res;
+            if (id) res = await supaClient.from(TABLE_RESIDENTS).update(donnees).eq('id', id);
+            else res = await supaClient.from(TABLE_RESIDENTS).insert(donnees);
+            if (res.error) return alert('Erreur : ' + res.error.message);
+            fermerFormulaire();
+            charger();
+        }
+
+        async function archiverResident(id, nomComplet) {
+            if (!confirm(`Archiver ${nomComplet} ?`)) return;
+            const { error } = await supaClient.from(TABLE_RESIDENTS).update({ actif: false }).eq('id', id);
+            if (error) return alert('Erreur : ' + error.message);
+            charger();
+        }
+
+        charger();
+    </script>
+</body>
+</html>

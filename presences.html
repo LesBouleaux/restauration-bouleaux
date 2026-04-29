@@ -1,0 +1,128 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Présences - Restauration Les Bouleaux</title>
+    <link rel="stylesheet" href="shared.css">
+</head>
+<body>
+    <h1>🍽️ Restauration Les Bouleaux</h1>
+    <div id="menu"></div>
+
+    <h2>Saisie des présences</h2>
+
+    <div class="toolbar">
+        <label><strong>Date :</strong></label>
+        <input type="date" id="date-saisie">
+        <label><strong>Repas :</strong></label>
+        <select id="repas-saisie">
+            <option value="petit_dej">🥐 Petit-déjeuner</option>
+            <option value="dejeuner" selected>🍽️ Déjeuner</option>
+            <option value="diner">🌙 Dîner</option>
+        </select>
+        <button class="btn-primary" onclick="chargerPresences()">🔄 Charger</button>
+    </div>
+
+    <div id="message"></div>
+
+    <div id="contenu">
+        <p class="info-msg">Choisissez une date et un repas, puis cliquez "Charger".</p>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="shared.js"></script>
+    <script>
+        afficherMenu('presences');
+
+        // Date par défaut = aujourd'hui
+        document.getElementById('date-saisie').value = aujourdhui();
+
+        async function chargerPresences() {
+            const date = document.getElementById('date-saisie').value;
+            const repas = document.getElementById('repas-saisie').value;
+            const contenu = document.getElementById('contenu');
+            contenu.innerHTML = '<p class="loading">⏳ Chargement...</p>';
+
+            // 1. Charger résidents actifs
+            const residents = await chargerResidentsActifs();
+            if (!residents.length) {
+                contenu.innerHTML = '<p class="info-msg">Aucun résident.</p>';
+                return;
+            }
+
+            // 2. Charger présences déjà enregistrées pour cette date/repas
+            const { data: presences, error } = await supaClient
+                .from(TABLE_PRESENCES)
+                .select('*')
+                .eq('date', date)
+                .eq('repas', repas);
+            if (error) {
+                contenu.innerHTML = `<div class="error">Erreur : ${error.message}</div>`;
+                return;
+            }
+
+            // 3. Map { resident_id → present }
+            const map = {};
+            for (const p of (presences || [])) map[p.resident_id] = p.present;
+
+            // 4. Affichage tableau
+            let html = `
+                <p>${dateFr(date)} — ${libelleRepas(repas)}</p>
+                <table class="presences">
+                    <thead>
+                        <tr>
+                            <th>Résident</th>
+                            <th class="col-center">Présent</th>
+                            <th>Allergies / Intolérances</th>
+                        </tr>
+                    </thead>
+                    <tbody>`;
+            for (const r of residents) {
+                // Par défaut : présent (true) si pas encore saisi
+                const present = map[r.id] !== undefined ? map[r.id] : true;
+                const tags = [];
+                if (r.allergies) tags.push(`<span class="tag tag-allergie">⚠️ ${r.allergies}</span>`);
+                if (r.intolerances) tags.push(`<span class="tag tag-intolerance">🚫 ${r.intolerances}</span>`);
+                html += `
+                    <tr>
+                        <td><strong>${r.prenom} ${r.nom}</strong></td>
+                        <td class="col-center">
+                            <input type="checkbox"
+                                   data-resident-id="${r.id}"
+                                   ${present ? 'checked' : ''}
+                                   onchange="enregistrerPresence(${r.id}, this.checked)">
+                        </td>
+                        <td>${tags.join(' ') || '<span class="empty">—</span>'}</td>
+                    </tr>`;
+            }
+            html += '</tbody></table>';
+            contenu.innerHTML = html;
+        }
+
+        async function enregistrerPresence(residentId, present) {
+            const date = document.getElementById('date-saisie').value;
+            const repas = document.getElementById('repas-saisie').value;
+
+            // upsert : si la ligne existe (même resident_id+date+repas) on met à jour, sinon on insère
+            // Comme on n'a pas de contrainte unique, on fait à la main : delete puis insert
+            await supaClient.from(TABLE_PRESENCES).delete()
+                .eq('resident_id', residentId).eq('date', date).eq('repas', repas);
+
+            const { error } = await supaClient.from(TABLE_PRESENCES).insert({
+                resident_id: residentId, date, repas, present
+            });
+
+            const msg = document.getElementById('message');
+            if (error) {
+                msg.innerHTML = `<div class="error">Erreur : ${error.message}</div>`;
+            } else {
+                msg.innerHTML = `<div class="success">✓ Enregistré</div>`;
+                setTimeout(() => msg.innerHTML = '', 1500);
+            }
+        }
+
+        chargerPresences();
+    </script>
+</body>
+</html>
