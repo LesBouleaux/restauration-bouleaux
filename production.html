@@ -6,14 +6,431 @@
     <title>Production J-1 - Restauration Les Bouleaux</title>
     <link rel="stylesheet" href="shared.css">
     <style>
-        .ejc-cat-line {
-            padding: 6px 0;
-            border-bottom: 1px dotted #ddd;
+        /* ============================================================
+           FILTRES (zone toolbar étendue)
+           ============================================================ */
+        .filtres-zone {
+            background: white;
+            padding: 12px 16px;
+            border-radius: 8px;
+            margin: 10px 0;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.06);
+            display: flex;
+            flex-wrap: wrap;
+            gap: 20px;
+            align-items: center;
         }
-        .ejc-cat-allergenes {
+        .filtre-groupe {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            flex-wrap: wrap;
+        }
+        .filtre-titre {
+            font-weight: 700;
+            color: #2c5530;
+            font-size: 13px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+        .filtre-checkbox {
+            display: inline-flex;
+            align-items: center;
+            gap: 5px;
+            padding: 5px 10px;
+            background: #f5f5f5;
+            border-radius: 16px;
+            cursor: pointer;
+            font-size: 13px;
+            user-select: none;
+            transition: background 0.15s;
+        }
+        .filtre-checkbox:hover { background: #e8e8e8; }
+        .filtre-checkbox input { margin: 0; cursor: pointer; }
+        .filtre-checkbox.actif {
+            background: #d4e7d6;
+            color: #1f3a22;
+            font-weight: 600;
+        }
+        .btn-tout {
+            background: transparent;
+            border: 1px solid #2c5530;
+            color: #2c5530;
+            padding: 4px 10px;
+            border-radius: 4px;
             font-size: 12px;
+            cursor: pointer;
+        }
+        .btn-tout:hover { background: #f0f8f0; }
+
+        .filtre-info-vide {
+            background: #fff3cd;
             color: #856404;
+            padding: 14px 18px;
+            border-radius: 8px;
+            border-left: 4px solid #ffc107;
+            margin: 15px 0;
+            text-align: center;
+        }
+
+        /* ============================================================
+           STYLES ÉCRAN (consultation)
+           ============================================================ */
+        .prod-doc {
+            background: white;
+            padding: 25px;
+            border-radius: 10px;
+            box-shadow: 0 2px 6px rgba(0,0,0,0.08);
+            margin: 15px 0;
+        }
+        .prod-titre {
+            text-align: center;
+            margin: 0 0 5px 0;
+            font-size: 22px;
+            color: #2c5530;
+            border-bottom: 2px solid #2c5530;
+            padding-bottom: 8px;
+        }
+        .prod-soustitre {
+            text-align: center;
+            color: #666;
+            font-size: 13px;
+            margin-bottom: 20px;
+            font-style: italic;
+        }
+        .prod-filtres-rappel {
+            text-align: center;
+            color: #888;
+            font-size: 12px;
+            margin-bottom: 15px;
+            font-style: italic;
+        }
+
+        /* Bloc repas */
+        .repas-bloc {
+            border: 2px solid #2c5530;
+            border-radius: 8px;
+            margin: 14px 0;
+            overflow: hidden;
+        }
+        .repas-header {
+            background: #2c5530;
+            color: white;
+            padding: 8px 14px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 10px;
+            flex-wrap: wrap;
+        }
+        .repas-header .nom {
+            font-size: 17px;
+            font-weight: 700;
+        }
+        .repas-header .totaux {
+            display: flex;
+            gap: 14px;
+            align-items: center;
+        }
+        .repas-header .total-final {
+            background: white;
+            color: #2c5530;
+            padding: 4px 14px;
+            border-radius: 4px;
+            font-size: 22px;
+            font-weight: 800;
+            line-height: 1;
+        }
+        .repas-header .total-final small {
+            font-size: 11px;
+            font-weight: 600;
+            display: block;
+            text-align: center;
             margin-top: 2px;
+        }
+        .repas-header .total-detail {
+            font-size: 13px;
+            opacity: 0.95;
+        }
+
+        .repas-body {
+            padding: 10px 14px;
+        }
+
+        /* Tableau EJC */
+        .ejc-tableau {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 6px 0 10px 0;
+            font-size: 13px;
+            border: 1px solid #b8d4ba;
+            background: #f5faf5;
+        }
+        .ejc-tableau th {
+            background: #d4e7d6;
+            color: #1f3a22;
+            padding: 5px 8px;
+            text-align: left;
+            font-size: 12px;
+            text-transform: uppercase;
+            letter-spacing: 0.3px;
+        }
+        .ejc-tableau td {
+            padding: 5px 8px;
+            border-top: 1px solid #c8dccb;
+        }
+        .ejc-tableau .qte {
+            font-size: 17px;
+            font-weight: 800;
+            text-align: center;
+            color: #2c5530;
+            width: 50px;
+        }
+        .ejc-tableau .cat-nom {
+            font-weight: 700;
+            font-size: 14px;
+        }
+        .ejc-tableau .cat-allergenes {
+            font-size: 11px;
+            color: #856404;
+        }
+        .ejc-tableau .ann-info {
+            font-size: 11px;
+            color: #888;
+            font-style: italic;
+        }
+        .ejc-section-titre {
+            font-size: 13px;
+            font-weight: 700;
+            color: #2c5530;
+            margin: 4px 0 2px 0;
+            text-transform: uppercase;
+            letter-spacing: 0.3px;
+        }
+
+        /* Section adaptations résidents */
+        .adapt-titre {
+            font-size: 13px;
+            font-weight: 700;
+            color: #333;
+            margin: 8px 0 4px 0;
+            text-transform: uppercase;
+            letter-spacing: 0.3px;
+            border-bottom: 1px solid #ddd;
+            padding-bottom: 3px;
+        }
+        .adapt-liste {
+            list-style: none;
+            padding: 0;
+            margin: 0;
+        }
+        .adapt-item {
+            padding: 4px 8px;
+            margin: 3px 0;
+            border-radius: 4px;
+            font-size: 13px;
+            line-height: 1.35;
+        }
+        .adapt-allergie {
+            background: #ffe4e4;
+            border-left: 4px solid #c0392b;
+            color: #7a1f17;
+            font-weight: 600;
+        }
+        .adapt-allergie .badge {
+            display: inline-block;
+            background: #c0392b;
+            color: white;
+            padding: 1px 7px;
+            border-radius: 3px;
+            font-size: 11px;
+            font-weight: 800;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            margin-right: 6px;
+        }
+        .adapt-intolerance {
+            background: #fff3e0;
+            border-left: 4px solid #e67e22;
+            color: #6b3a0c;
+        }
+        .adapt-intolerance .badge {
+            display: inline-block;
+            background: #e67e22;
+            color: white;
+            padding: 1px 7px;
+            border-radius: 3px;
+            font-size: 11px;
+            font-weight: 800;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            margin-right: 6px;
+        }
+        .adapt-nongout {
+            background: #f5f5f5;
+            border-left: 3px solid #999;
+            color: #555;
+            font-size: 12px;
+        }
+        .adapt-nongout .badge {
+            display: inline-block;
+            background: #888;
+            color: white;
+            padding: 1px 6px;
+            border-radius: 3px;
+            font-size: 10px;
+            font-weight: 700;
+            text-transform: uppercase;
+            margin-right: 6px;
+        }
+        .adapt-rien {
+            color: #999;
+            font-style: italic;
+            font-size: 12px;
+            padding: 4px 0;
+        }
+
+        .pied-page {
+            text-align: center;
+            color: #888;
+            font-size: 11px;
+            margin-top: 12px;
+            padding-top: 8px;
+            border-top: 1px solid #ddd;
+        }
+
+        /* ============================================================
+           STYLES IMPRESSION — optimisés pour tenir sur 1 A4
+           ============================================================ */
+        @media print {
+            @page {
+                size: A4 portrait;
+                margin: 8mm 10mm;
+            }
+            body {
+                background: white !important;
+                padding: 0 !important;
+                margin: 0 !important;
+                font-size: 11pt;
+            }
+            #app-header, #menu, h1, h2.page-title, .toolbar, .filtres-zone, .no-print {
+                display: none !important;
+            }
+            .prod-doc {
+                box-shadow: none;
+                padding: 0;
+                margin: 0;
+                border-radius: 0;
+            }
+            .prod-titre {
+                font-size: 16pt;
+                margin-bottom: 2pt;
+                padding-bottom: 4pt;
+                color: black;
+                border-color: black;
+            }
+            .prod-soustitre {
+                font-size: 9pt;
+                margin-bottom: 4pt;
+                color: #444;
+            }
+            .prod-filtres-rappel {
+                font-size: 9pt;
+                margin-bottom: 8pt;
+                color: #444;
+            }
+
+            .repas-bloc {
+                border: 1.5pt solid black;
+                page-break-inside: avoid;
+                margin: 6pt 0;
+            }
+            .repas-header {
+                background: black !important;
+                color: white !important;
+                -webkit-print-color-adjust: exact;
+                print-color-adjust: exact;
+                padding: 4pt 8pt;
+            }
+            .repas-header .nom { font-size: 12pt; }
+            .repas-header .total-final {
+                font-size: 16pt;
+                padding: 2pt 8pt;
+                background: white !important;
+                color: black !important;
+            }
+            .repas-header .total-final small { font-size: 8pt; }
+            .repas-header .total-detail { font-size: 9pt; }
+            .repas-body { padding: 5pt 8pt; }
+
+            .ejc-tableau {
+                font-size: 9pt;
+                background: white !important;
+                border-color: black;
+            }
+            .ejc-tableau th {
+                background: #ddd !important;
+                color: black !important;
+                -webkit-print-color-adjust: exact;
+                print-color-adjust: exact;
+                padding: 2pt 4pt;
+            }
+            .ejc-tableau td { padding: 2pt 4pt; }
+            .ejc-tableau .qte { font-size: 12pt; }
+            .ejc-tableau .cat-nom { font-size: 10pt; }
+            .ejc-tableau .cat-allergenes { font-size: 8pt; }
+            .ejc-section-titre { font-size: 9pt; margin: 2pt 0; }
+
+            .adapt-titre {
+                font-size: 9pt;
+                margin: 4pt 0 2pt 0;
+            }
+            .adapt-item {
+                padding: 2pt 5pt;
+                margin: 1.5pt 0;
+                font-size: 10pt;
+            }
+
+            .adapt-allergie {
+                background: #ffd0d0 !important;
+                border-left: 3pt solid #a00 !important;
+                color: #500 !important;
+                -webkit-print-color-adjust: exact;
+                print-color-adjust: exact;
+            }
+            .adapt-allergie .badge {
+                background: #a00 !important;
+                color: white !important;
+                -webkit-print-color-adjust: exact;
+                print-color-adjust: exact;
+            }
+            .adapt-intolerance {
+                background: #ffe6c8 !important;
+                border-left: 3pt solid #c66 !important;
+                color: #533 !important;
+                -webkit-print-color-adjust: exact;
+                print-color-adjust: exact;
+            }
+            .adapt-intolerance .badge {
+                background: #c60 !important;
+                color: white !important;
+                -webkit-print-color-adjust: exact;
+                print-color-adjust: exact;
+            }
+            .adapt-nongout {
+                background: white !important;
+                border-left: 1pt solid #888 !important;
+                color: #444 !important;
+                font-size: 9pt;
+            }
+            .adapt-nongout .badge {
+                background: #888 !important;
+                color: white !important;
+                -webkit-print-color-adjust: exact;
+                print-color-adjust: exact;
+            }
+
+            .pied-page { font-size: 8pt; margin-top: 5pt; }
         }
     </style>
 </head>
@@ -22,7 +439,7 @@
     <h1>🍽️ Restauration Les Bouleaux</h1>
     <div id="menu"></div>
 
-    <h2>Liste de production J-1</h2>
+    <h2 class="page-title">Liste de production J-1</h2>
     <p class="no-print">Cette liste sert à préparer les portions <strong>la veille</strong> du repas.</p>
 
     <div class="toolbar no-print">
@@ -32,7 +449,26 @@
         <button class="btn-print" onclick="window.print()">🖨️ Imprimer</button>
     </div>
 
-    <div id="contenu" class="print-area">
+    <!-- Zone des filtres -->
+    <div class="filtres-zone no-print">
+        <div class="filtre-groupe">
+            <span class="filtre-titre">🍴 Repas :</span>
+            <label class="filtre-checkbox"><input type="checkbox" class="filtre-repas" value="petit_dej" checked onchange="genererListe()"> 🥐 Petit-déj</label>
+            <label class="filtre-checkbox"><input type="checkbox" class="filtre-repas" value="dejeuner" checked onchange="genererListe()"> 🍽️ Déjeuner</label>
+            <label class="filtre-checkbox"><input type="checkbox" class="filtre-repas" value="diner" checked onchange="genererListe()"> 🌙 Dîner</label>
+            <button class="btn-tout" onclick="toutCocher('repas', true)">Tout</button>
+            <button class="btn-tout" onclick="toutCocher('repas', false)">Rien</button>
+        </div>
+        <div class="filtre-groupe">
+            <span class="filtre-titre">👥 Public :</span>
+            <label class="filtre-checkbox"><input type="checkbox" class="filtre-public" value="residents" checked onchange="genererListe()"> 🏠 Résidents</label>
+            <label class="filtre-checkbox"><input type="checkbox" class="filtre-public" value="ejc" checked onchange="genererListe()"> 🍴 EJC</label>
+            <button class="btn-tout" onclick="toutCocher('public', true)">Tout</button>
+            <button class="btn-tout" onclick="toutCocher('public', false)">Rien</button>
+        </div>
+    </div>
+
+    <div id="contenu">
         <p class="info-msg">Choisissez une date et cliquez "Générer".</p>
     </div>
 
@@ -48,43 +484,115 @@
             return `${yyyy}-${mm}-${dd}`;
         }
 
+        function heureMaintenant() {
+            return new Date().toLocaleString('fr-FR', {
+                day: '2-digit', month: '2-digit', year: 'numeric',
+                hour: '2-digit', minute: '2-digit'
+            });
+        }
+
+        // ===== GESTION DES FILTRES =====
+        function toutCocher(type, valeur) {
+            const selector = type === 'repas' ? '.filtre-repas' : '.filtre-public';
+            document.querySelectorAll(selector).forEach(cb => cb.checked = valeur);
+            genererListe();
+        }
+
+        function repasSelectionnes() {
+            return Array.from(document.querySelectorAll('.filtre-repas:checked')).map(cb => cb.value);
+        }
+
+        function publicSelectionne() {
+            return Array.from(document.querySelectorAll('.filtre-public:checked')).map(cb => cb.value);
+        }
+
+        function texteRappelFiltres() {
+            const repas = repasSelectionnes();
+            const pub = publicSelectionne();
+            const labelsRepas = { petit_dej: 'Petit-déjeuner', dejeuner: 'Déjeuner', diner: 'Dîner' };
+            const labelsPub = { residents: 'Résidents', ejc: 'EJC' };
+            const r = repas.length === 3 ? 'Tous les repas' : repas.map(x => labelsRepas[x]).join(', ');
+            const p = pub.length === 2 ? 'résidents + EJC' : pub.map(x => labelsPub[x]).join(' + ');
+            return `Filtres : ${r} — ${p}`;
+        }
+
         async function genererListe() {
             const date = document.getElementById('date-prod').value;
             const contenu = document.getElementById('contenu');
+
+            const repasFiltres = repasSelectionnes();
+            const publicFiltres = publicSelectionne();
+
+            // Cas vide : aucun filtre
+            if (repasFiltres.length === 0 || publicFiltres.length === 0) {
+                contenu.innerHTML = `<div class="filtre-info-vide">
+                    ⚠️ <strong>Aucun élément à afficher</strong><br>
+                    Sélectionne au moins un repas et au moins un public (résidents et/ou EJC).
+                </div>`;
+                return;
+            }
+
             contenu.innerHTML = '<p class="loading">⏳ Chargement...</p>';
 
-            const residents = await chargerResidentsActifs();
-            const { data: presences } = await supaClient
-                .from(TABLE_PRESENCES).select('*').eq('date', date);
+            const inclureResidents = publicFiltres.includes('residents');
+            const inclureEjc = publicFiltres.includes('ejc');
 
-            const categoriesEjc = await chargerCategoriesEjc(false);
+            // Charger les données nécessaires uniquement
+            let residents = [];
+            let presences = [];
+            if (inclureResidents) {
+                residents = await chargerResidentsActifs();
+                const res = await supaClient
+                    .from(TABLE_PRESENCES).select('*').eq('date', date);
+                presences = res.data || [];
+            }
 
-            const { data: cmdEjcArr } = await supaClient
-                .from(TABLE_COMMANDES_EJC).select('*').eq('date', date);
-            const { data: annEjcArr } = await supaClient
-                .from(TABLE_ANNULATIONS_EJC).select('*').eq('date', date);
+            let categoriesEjc = [];
+            let cmdMap = {};
+            let annMap = {};
+            if (inclureEjc) {
+                categoriesEjc = await chargerCategoriesEjc(false);
+                const { data: cmdEjcArr } = await supaClient
+                    .from(TABLE_COMMANDES_EJC).select('*').eq('date', date);
+                const { data: annEjcArr } = await supaClient
+                    .from(TABLE_ANNULATIONS_EJC).select('*').eq('date', date);
+                for (const c of (cmdEjcArr || [])) cmdMap[c.categorie_id] = c.quantite;
+                for (const a of (annEjcArr || [])) annMap[a.categorie_id] = a.quantite;
+            }
 
-            const cmdMap = {};
-            for (const c of (cmdEjcArr || [])) cmdMap[c.categorie_id] = c.quantite;
-            const annMap = {};
-            for (const a of (annEjcArr || [])) annMap[a.categorie_id] = a.quantite;
+            const repasInfos = [
+                { code: 'petit_dej', nom: '🥐 PETIT-DÉJEUNER' },
+                { code: 'dejeuner',  nom: '🍽️ DÉJEUNER' },
+                { code: 'diner',     nom: '🌙 DÎNER' }
+            ].filter(r => repasFiltres.includes(r.code));
 
-            const repas = ['petit_dej', 'dejeuner', 'diner'];
-            let html = `<h2>Production du ${dateFr(date)}</h2>`;
+            let html = `<div class="prod-doc">
+                <h2 class="prod-titre">Production du ${dateFr(date)}</h2>
+                <p class="prod-soustitre">Document de travail à préparer la veille du service</p>
+                <p class="prod-filtres-rappel">${texteRappelFiltres()}</p>`;
 
-            for (const codeRepas of repas) {
-                const presentsForRepas = residents.filter(r => {
-                    const p = (presences || []).find(x => x.resident_id === r.id && x.repas === codeRepas);
-                    return p ? p.present : true;
-                });
+            let blocsAffiches = 0;
+
+            for (const ri of repasInfos) {
+                const codeRepas = ri.code;
+
+                // Calculer les résidents présents (uniquement si le filtre est actif)
+                let presentsForRepas = [];
+                if (inclureResidents) {
+                    presentsForRepas = residents.filter(r => {
+                        const p = presences.find(x => x.resident_id === r.id && x.repas === codeRepas);
+                        return p ? p.present : true;
+                    });
+                }
 
                 const avecAllergie = presentsForRepas.filter(r => r.allergies);
                 const avecIntolerance = presentsForRepas.filter(r => r.intolerances);
+                const avecNonGout = presentsForRepas.filter(r => r.aversions);
 
+                // Calculer EJC (uniquement si filtre actif ET déjeuner)
                 let totalEjc = 0;
-                let detailEjc = '';
-                if (codeRepas === 'dejeuner') {
-                    const lignes = [];
+                let lignesEjc = [];
+                if (inclureEjc && codeRepas === 'dejeuner') {
                     const catsTriees = [...categoriesEjc].sort((a, b) => a.ordre - b.ordre);
                     for (const cat of catsTriees) {
                         const cmd = cmdMap[cat.id] || 0;
@@ -92,49 +600,112 @@
                         const net = cmd - ann;
                         if (cmd > 0 || ann > 0) {
                             totalEjc += net;
-                            let allergenesTxt = '';
-                            if (cat.allergenes && cat.allergenes.length) {
-                                const list = cat.allergenes.map(a => nomAllergene(a)).join(' · ');
-                                allergenesTxt = `<div class="ejc-cat-allergenes">🚫 Sans : ${list}</div>`;
-                            }
-                            lignes.push(`<li class="ejc-cat-line">
-                                <strong>${cat.nom}</strong> : <strong>${net}</strong>
-                                <span style="color:#666;font-size:13px;">(commandé ${cmd}${ann ? `, annulé ${ann}` : ''})</span>
-                                ${allergenesTxt}
-                            </li>`);
+                            lignesEjc.push({ cat, cmd, ann, net });
                         }
                     }
-                    if (lignes.length) {
-                        detailEjc = `<p><strong>🍴 EJC Péry — ${totalEjc} portion(s) :</strong></p><ul class="print-list">${lignes.join('')}</ul>`;
+                }
+
+                // Si ce repas n'a aucun contenu après filtrage → on le saute
+                const aDuContenu = (inclureResidents && presentsForRepas.length > 0) || (inclureEjc && lignesEjc.length > 0);
+                if (!aDuContenu) continue;
+
+                // Calculer le total selon les filtres actifs
+                const totalGeneral = (inclureResidents ? presentsForRepas.length : 0) + totalEjc;
+
+                // Construire le détail texte selon ce qui est actif
+                const detailParts = [];
+                if (inclureResidents) detailParts.push(`${presentsForRepas.length} résident${presentsForRepas.length > 1 ? 's' : ''}`);
+                if (inclureEjc && totalEjc > 0) detailParts.push(`${totalEjc} EJC`);
+                const detailTxt = detailParts.join(' + ');
+
+                // ===== EN-TÊTE DU REPAS =====
+                html += `<div class="repas-bloc">
+                    <div class="repas-header">
+                        <div class="nom">${ri.nom}</div>
+                        <div class="totaux">
+                            <div class="total-detail">${detailTxt}</div>
+                            <div class="total-final">
+                                ${totalGeneral}
+                                <small>À PRÉPARER</small>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="repas-body">`;
+
+                // ===== TABLEAU EJC =====
+                if (lignesEjc.length > 0) {
+                    html += `<div class="ejc-section-titre">🍴 EJC Péry — ${totalEjc} portions</div>
+                    <table class="ejc-tableau">
+                        <thead>
+                            <tr>
+                                <th style="width:50px;">Qté</th>
+                                <th>Catégorie</th>
+                                <th>Sans (allergènes)</th>
+                            </tr>
+                        </thead>
+                        <tbody>`;
+                    for (const l of lignesEjc) {
+                        const allergenesTxt = (l.cat.allergenes && l.cat.allergenes.length)
+                            ? l.cat.allergenes.map(a => nomAllergene(a)).join(' · ')
+                            : '<span style="color:#999;">—</span>';
+                        const annInfo = l.ann > 0
+                            ? `<div class="ann-info">commandé ${l.cmd}, annulé ${l.ann}</div>`
+                            : '';
+                        html += `<tr>
+                            <td class="qte">${l.net}</td>
+                            <td>
+                                <div class="cat-nom">${l.cat.nom}</div>
+                                ${annInfo}
+                            </td>
+                            <td class="cat-allergenes">${allergenesTxt}</td>
+                        </tr>`;
+                    }
+                    html += `</tbody></table>`;
+                }
+
+                // ===== ADAPTATIONS RÉSIDENTS =====
+                if (inclureResidents) {
+                    const aDesAdaptations = avecAllergie.length || avecIntolerance.length || avecNonGout.length;
+                    if (aDesAdaptations) {
+                        html += `<div class="adapt-titre">⚠️ Adaptations résidents</div>
+                        <ul class="adapt-liste">`;
+                        for (const r of avecAllergie) {
+                            html += `<li class="adapt-item adapt-allergie">
+                                <span class="badge">⚠ ALLERGIE</span>
+                                <strong>${r.prenom} ${r.nom}</strong> — ${r.allergies}
+                            </li>`;
+                        }
+                        for (const r of avecIntolerance) {
+                            html += `<li class="adapt-item adapt-intolerance">
+                                <span class="badge">⚠ Intolérance</span>
+                                <strong>${r.prenom} ${r.nom}</strong> — ${r.intolerances}
+                            </li>`;
+                        }
+                        for (const r of avecNonGout) {
+                            html += `<li class="adapt-item adapt-nongout">
+                                <span class="badge">Non-goûts</span>
+                                ${r.prenom} ${r.nom} — ${r.aversions}
+                            </li>`;
+                        }
+                        html += `</ul>`;
+                    } else if (lignesEjc.length === 0) {
+                        html += `<div class="adapt-rien">Aucune adaptation particulière à prévoir.</div>`;
                     }
                 }
 
-                const totalGeneral = presentsForRepas.length + totalEjc;
-                let titreSection = `${libelleRepas(codeRepas)} — ${presentsForRepas.length} portion(s)`;
-                if (totalEjc > 0) {
-                    titreSection = `${libelleRepas(codeRepas)} — ${totalGeneral} portion(s) au total (${presentsForRepas.length} résidents + ${totalEjc} EJC)`;
-                }
-
-                html += `
-                    <div class="print-section">
-                        <h3>${titreSection}</h3>`;
-
-                if (detailEjc) html += detailEjc;
-
-                if (avecAllergie.length || avecIntolerance.length) {
-                    html += '<p><strong>Adaptations résidents :</strong></p><ul class="print-list">';
-                    for (const r of avecAllergie) {
-                        html += `<li>⚠️ <strong>${r.prenom} ${r.nom}</strong> — Allergie : ${r.allergies}</li>`;
-                    }
-                    for (const r of avecIntolerance) {
-                        html += `<li>🚫 <strong>${r.prenom} ${r.nom}</strong> — Intolérance : ${r.intolerances}</li>`;
-                    }
-                    html += '</ul>';
-                } else if (!detailEjc) {
-                    html += '<p><em>Aucune adaptation particulière.</em></p>';
-                }
-                html += '</div>';
+                html += `</div></div>`; // /repas-body /repas-bloc
+                blocsAffiches++;
             }
+
+            // Aucun repas n'a de contenu après filtrage
+            if (blocsAffiches === 0) {
+                html += `<div class="filtre-info-vide">
+                    Aucune donnée à afficher pour les filtres sélectionnés à cette date.
+                </div>`;
+            }
+
+            html += `<div class="pied-page">Document généré le ${heureMaintenant()} — Restauration Les Bouleaux, Corgémont</div>
+            </div>`;
 
             contenu.innerHTML = html;
         }

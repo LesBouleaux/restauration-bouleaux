@@ -6,6 +6,71 @@
     <title>Service du jour - Restauration Les Bouleaux</title>
     <link rel="stylesheet" href="shared.css">
     <style>
+        /* ============================================================
+           ZONE DES FILTRES
+           ============================================================ */
+        .filtres-zone {
+            background: white;
+            padding: 12px 16px;
+            border-radius: 8px;
+            margin: 10px 0;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.06);
+            display: flex;
+            flex-wrap: wrap;
+            gap: 20px;
+            align-items: center;
+        }
+        .filtre-groupe {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            flex-wrap: wrap;
+        }
+        .filtre-titre {
+            font-weight: 700;
+            color: #2c5530;
+            font-size: 13px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+        .filtre-checkbox {
+            display: inline-flex;
+            align-items: center;
+            gap: 5px;
+            padding: 5px 10px;
+            background: #f5f5f5;
+            border-radius: 16px;
+            cursor: pointer;
+            font-size: 13px;
+            user-select: none;
+            transition: background 0.15s;
+        }
+        .filtre-checkbox:hover { background: #e8e8e8; }
+        .filtre-checkbox input { margin: 0; cursor: pointer; }
+        .btn-tout {
+            background: transparent;
+            border: 1px solid #2c5530;
+            color: #2c5530;
+            padding: 4px 10px;
+            border-radius: 4px;
+            font-size: 12px;
+            cursor: pointer;
+        }
+        .btn-tout:hover { background: #f0f8f0; }
+
+        .filtre-info-vide {
+            background: #fff3cd;
+            color: #856404;
+            padding: 14px 18px;
+            border-radius: 8px;
+            border-left: 4px solid #ffc107;
+            margin: 15px 0;
+            text-align: center;
+        }
+
+        /* ============================================================
+           STYLES SERVICE (existants + ajustements)
+           ============================================================ */
         .lieu-tag {
             display: inline-block;
             background: #2c5530;
@@ -65,12 +130,97 @@
             color: #856404;
             margin-top: 2px;
         }
+
+        /* Conteneur global doc */
+        .service-doc {
+            background: white;
+            padding: 20px;
+            border-radius: 10px;
+            box-shadow: 0 2px 6px rgba(0,0,0,0.08);
+            margin: 15px 0;
+        }
+        .service-titre {
+            text-align: center;
+            margin: 0 0 5px 0;
+            font-size: 22px;
+            color: #2c5530;
+            border-bottom: 2px solid #2c5530;
+            padding-bottom: 8px;
+        }
+        .service-soustitre {
+            text-align: center;
+            color: #666;
+            font-size: 13px;
+            margin-bottom: 8px;
+            font-style: italic;
+        }
+        .service-filtres-rappel {
+            text-align: center;
+            color: #888;
+            font-size: 12px;
+            margin-bottom: 15px;
+            font-style: italic;
+        }
+        .repas-section {
+            margin: 20px 0;
+            padding-top: 12px;
+            border-top: 3px solid #2c5530;
+        }
+        .repas-section:first-of-type {
+            border-top: none;
+            padding-top: 0;
+        }
+        .repas-section h2.titre-repas {
+            color: #2c5530;
+            margin: 0 0 4px 0;
+            font-size: 18px;
+        }
+        .repas-section .resume-repas {
+            color: #555;
+            font-size: 14px;
+            margin-bottom: 10px;
+        }
+
+        .pied-page {
+            text-align: center;
+            color: #888;
+            font-size: 11px;
+            margin-top: 15px;
+            padding-top: 8px;
+            border-top: 1px solid #ddd;
+        }
+
+        /* ============================================================
+           IMPRESSION
+           ============================================================ */
         @media print {
+            @page {
+                size: A4 portrait;
+                margin: 10mm;
+            }
+            body {
+                background: white !important;
+                padding: 0 !important;
+                margin: 0 !important;
+            }
+            #app-header, #menu, h1, h2.page-title, .toolbar, .filtres-zone, .no-print {
+                display: none !important;
+            }
+            .service-doc {
+                box-shadow: none;
+                padding: 0;
+                margin: 0;
+                border-radius: 0;
+            }
             .lieu-section {
                 page-break-inside: avoid;
                 background: white;
                 border-left: 3px solid #000;
             }
+            .repas-section {
+                page-break-inside: avoid;
+            }
+            .pied-page { font-size: 9pt; }
         }
     </style>
 </head>
@@ -79,18 +229,12 @@
     <h1>🍽️ Restauration Les Bouleaux</h1>
     <div id="menu"></div>
 
-    <h2>Liste de service J-0</h2>
+    <h2 class="page-title">Liste de service J-0</h2>
     <p class="no-print">Liste nominative des résidents présents à servir, avec leurs spécificités.</p>
 
     <div class="toolbar no-print">
         <label><strong>Date :</strong></label>
         <input type="date" id="date-srv">
-        <label><strong>Repas :</strong></label>
-        <select id="repas-srv">
-            <option value="petit_dej">🥐 Petit-déjeuner</option>
-            <option value="dejeuner" selected>🍽️ Déjeuner</option>
-            <option value="diner">🌙 Dîner</option>
-        </select>
         <label><strong>Vue :</strong></label>
         <div class="vue-toggle">
             <button id="btn-vue-liste" class="active" onclick="changerVue('liste')">📋 Liste</button>
@@ -100,8 +244,27 @@
         <button class="btn-print" onclick="window.print()">🖨️ Imprimer</button>
     </div>
 
-    <div id="contenu" class="print-area">
-        <p class="info-msg">Choisissez une date et un repas, puis cliquez "Générer".</p>
+    <!-- Zone filtres -->
+    <div class="filtres-zone no-print">
+        <div class="filtre-groupe">
+            <span class="filtre-titre">🍴 Repas :</span>
+            <label class="filtre-checkbox"><input type="checkbox" class="filtre-repas" value="petit_dej" checked onchange="genererService()"> 🥐 Petit-déj</label>
+            <label class="filtre-checkbox"><input type="checkbox" class="filtre-repas" value="dejeuner" checked onchange="genererService()"> 🍽️ Déjeuner</label>
+            <label class="filtre-checkbox"><input type="checkbox" class="filtre-repas" value="diner" checked onchange="genererService()"> 🌙 Dîner</label>
+            <button class="btn-tout" onclick="toutCocher('repas', true)">Tout</button>
+            <button class="btn-tout" onclick="toutCocher('repas', false)">Rien</button>
+        </div>
+        <div class="filtre-groupe">
+            <span class="filtre-titre">👥 Public :</span>
+            <label class="filtre-checkbox"><input type="checkbox" class="filtre-public" value="residents" checked onchange="genererService()"> 🏠 Résidents</label>
+            <label class="filtre-checkbox"><input type="checkbox" class="filtre-public" value="ejc" checked onchange="genererService()"> 🍴 EJC</label>
+            <button class="btn-tout" onclick="toutCocher('public', true)">Tout</button>
+            <button class="btn-tout" onclick="toutCocher('public', false)">Rien</button>
+        </div>
+    </div>
+
+    <div id="contenu">
+        <p class="info-msg">Choisissez une date et cliquez "Générer".</p>
     </div>
 
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
@@ -110,6 +273,14 @@
         let vueActuelle = 'liste';
         let donneesServiceCache = null;
         let lieuxDisponibles = [];
+
+        // ===== UTILITAIRES =====
+        function heureMaintenant() {
+            return new Date().toLocaleString('fr-FR', {
+                day: '2-digit', month: '2-digit', year: 'numeric',
+                hour: '2-digit', minute: '2-digit'
+            });
+        }
 
         async function chargerLieux() {
             const { data, error } = await supaClient
@@ -148,147 +319,251 @@
             return tags.join(' ');
         }
 
+        // ===== FILTRES =====
+        function toutCocher(type, valeur) {
+            const selector = type === 'repas' ? '.filtre-repas' : '.filtre-public';
+            document.querySelectorAll(selector).forEach(cb => cb.checked = valeur);
+            genererService();
+        }
+
+        function repasSelectionnes() {
+            return Array.from(document.querySelectorAll('.filtre-repas:checked')).map(cb => cb.value);
+        }
+
+        function publicSelectionne() {
+            return Array.from(document.querySelectorAll('.filtre-public:checked')).map(cb => cb.value);
+        }
+
+        function texteRappelFiltres() {
+            const repas = repasSelectionnes();
+            const pub = publicSelectionne();
+            const labelsRepas = { petit_dej: 'Petit-déjeuner', dejeuner: 'Déjeuner', diner: 'Dîner' };
+            const labelsPub = { residents: 'Résidents', ejc: 'EJC' };
+            const r = repas.length === 3 ? 'Tous les repas' : repas.map(x => labelsRepas[x]).join(', ');
+            const p = pub.length === 2 ? 'résidents + EJC' : pub.map(x => labelsPub[x]).join(' + ');
+            const v = vueActuelle === 'lieu' ? 'Vue par lieu' : 'Vue liste';
+            return `Filtres : ${r} — ${p} — ${v}`;
+        }
+
+        // ===== CHARGEMENT DES DONNÉES =====
         async function genererService() {
             const date = document.getElementById('date-srv').value;
-            const repas = document.getElementById('repas-srv').value;
             const contenu = document.getElementById('contenu');
-            contenu.innerHTML = '<p class="loading">⏳ Chargement...</p>';
 
-            await chargerLieux();
-            const residents = await chargerResidentsActifs();
-            const { data: presences } = await supaClient
-                .from(TABLE_PRESENCES).select('*').eq('date', date).eq('repas', repas);
+            const repasFiltres = repasSelectionnes();
+            const publicFiltres = publicSelectionne();
 
-            const presents = [];
-            const absents = [];
-            for (const r of residents) {
-                const p = (presences || []).find(x => x.resident_id === r.id);
-                const estPresent = p ? p.present : true;
-                if (estPresent) {
-                    const lieuDefautRepas = lieuDefautPourRepas(r, repas);
-                    const lieuEffectifId = (p && p.lieu_id != null) ? p.lieu_id : lieuDefautRepas;
-                    presents.push({ ...r, lieu_effectif_id: lieuEffectifId });
-                } else {
-                    absents.push(r);
-                }
+            // Garde-fou : aucune sélection
+            if (repasFiltres.length === 0 || publicFiltres.length === 0) {
+                contenu.innerHTML = `<div class="filtre-info-vide">
+                    ⚠️ <strong>Aucun élément à afficher</strong><br>
+                    Sélectionne au moins un repas et au moins un public (résidents et/ou EJC).
+                </div>`;
+                donneesServiceCache = null;
+                return;
             }
 
-            // EJC pour le déjeuner — version dynamique
-            let detailEjc = '';
-            let totalEjcNet = 0;
-            if (repas === 'dejeuner') {
-                const categoriesEjc = await chargerCategoriesEjc(false);
+            contenu.innerHTML = '<p class="loading">⏳ Chargement...</p>';
+            await chargerLieux();
+
+            const inclureResidents = publicFiltres.includes('residents');
+            const inclureEjc = publicFiltres.includes('ejc');
+
+            // Charger les résidents et présences (uniquement si nécessaire)
+            let residents = [];
+            let toutesPresences = [];
+            if (inclureResidents) {
+                residents = await chargerResidentsActifs();
+                const { data: presences } = await supaClient
+                    .from(TABLE_PRESENCES).select('*').eq('date', date);
+                toutesPresences = presences || [];
+            }
+
+            // Charger EJC (uniquement si nécessaire)
+            let categoriesEjc = [];
+            let cmdMap = {};
+            let annMap = {};
+            if (inclureEjc) {
+                categoriesEjc = await chargerCategoriesEjc(false);
                 const { data: cmdArr } = await supaClient
                     .from(TABLE_COMMANDES_EJC).select('*').eq('date', date);
                 const { data: annArr } = await supaClient
                     .from(TABLE_ANNULATIONS_EJC).select('*').eq('date', date);
-
-                const cmdMap = {};
                 for (const c of (cmdArr || [])) cmdMap[c.categorie_id] = c.quantite;
-                const annMap = {};
                 for (const a of (annArr || [])) annMap[a.categorie_id] = a.quantite;
-
-                const lignes = [];
-                const catsTriees = [...categoriesEjc].sort((a, b) => a.ordre - b.ordre);
-                for (const cat of catsTriees) {
-                    const cmd = cmdMap[cat.id] || 0;
-                    const ann = annMap[cat.id] || 0;
-                    const net = cmd - ann;
-                    if (net > 0) {
-                        totalEjcNet += net;
-                        let allergenesTxt = '';
-                        if (cat.allergenes && cat.allergenes.length) {
-                            const list = cat.allergenes.map(a => nomAllergene(a)).join(' · ');
-                            allergenesTxt = `<div class="ejc-cat-allergenes">🚫 Sans : ${list}</div>`;
-                        }
-                        lignes.push(`<li class="ejc-cat-line">
-                            <strong>${cat.nom}</strong> : <strong>${net}</strong> portion(s)
-                            ${allergenesTxt}
-                        </li>`);
-                    }
-                }
-                if (lignes.length) {
-                    detailEjc = `<div class="print-section"><h3>🍴 EJC Péry — ${totalEjcNet} portion(s)</h3><ul class="print-list">${lignes.join('')}</ul></div>`;
-                }
             }
 
-            donneesServiceCache = { date, repas, presents, absents, detailEjc, totalEjcNet };
+            // Construire les données par repas
+            const donneesParRepas = [];
+            for (const repas of repasFiltres) {
+                const dataRepas = {
+                    code: repas,
+                    libelle: libelleRepas(repas),
+                    presents: [],
+                    absents: [],
+                    detailEjc: '',
+                    totalEjcNet: 0
+                };
+
+                if (inclureResidents) {
+                    const presencesRepas = toutesPresences.filter(p => p.repas === repas);
+                    for (const r of residents) {
+                        const p = presencesRepas.find(x => x.resident_id === r.id);
+                        const estPresent = p ? p.present : true;
+                        if (estPresent) {
+                            const lieuDefautRepas = lieuDefautPourRepas(r, repas);
+                            const lieuEffectifId = (p && p.lieu_id != null) ? p.lieu_id : lieuDefautRepas;
+                            dataRepas.presents.push({ ...r, lieu_effectif_id: lieuEffectifId });
+                        } else {
+                            dataRepas.absents.push(r);
+                        }
+                    }
+                }
+
+                // EJC uniquement pour le déjeuner
+                if (inclureEjc && repas === 'dejeuner') {
+                    const lignes = [];
+                    const catsTriees = [...categoriesEjc].sort((a, b) => a.ordre - b.ordre);
+                    for (const cat of catsTriees) {
+                        const cmd = cmdMap[cat.id] || 0;
+                        const ann = annMap[cat.id] || 0;
+                        const net = cmd - ann;
+                        if (net > 0) {
+                            dataRepas.totalEjcNet += net;
+                            let allergenesTxt = '';
+                            if (cat.allergenes && cat.allergenes.length) {
+                                const list = cat.allergenes.map(a => nomAllergene(a)).join(' · ');
+                                allergenesTxt = `<div class="ejc-cat-allergenes">🚫 Sans : ${list}</div>`;
+                            }
+                            lignes.push(`<li class="ejc-cat-line">
+                                <strong>${cat.nom}</strong> : <strong>${net}</strong> portion(s)
+                                ${allergenesTxt}
+                            </li>`);
+                        }
+                    }
+                    if (lignes.length) {
+                        dataRepas.detailEjc = `<div class="print-section"><h3>🍴 EJC Péry — ${dataRepas.totalEjcNet} portion(s)</h3><ul class="print-list">${lignes.join('')}</ul></div>`;
+                    }
+                }
+
+                donneesParRepas.push(dataRepas);
+            }
+
+            donneesServiceCache = { date, donneesParRepas, inclureResidents, inclureEjc };
             afficherService();
         }
 
+        // ===== AFFICHAGE =====
         function afficherService() {
             const contenu = document.getElementById('contenu');
-            const { date, repas, presents, absents, detailEjc, totalEjcNet } = donneesServiceCache;
+            const { date, donneesParRepas, inclureResidents, inclureEjc } = donneesServiceCache;
 
-            let html = `
-                <h2>Service — ${dateFr(date)}</h2>
-                <h3>${libelleRepas(repas)}</h3>
-                <p><strong>${presents.length}</strong> résident(s) à servir`;
-            if (totalEjcNet > 0) html += ` + <strong>${totalEjcNet}</strong> EJC Péry`;
-            if (absents.length) html += ` — <strong>${absents.length}</strong> absent(s)`;
-            html += '</p>';
+            let html = `<div class="service-doc">
+                <h2 class="service-titre">Service du ${dateFr(date)}</h2>
+                <p class="service-soustitre">Liste nominative à utiliser pendant le service</p>
+                <p class="service-filtres-rappel">${texteRappelFiltres()}</p>`;
 
-            if (vueActuelle === 'liste') {
-                html += '<div class="print-section"><h3>✅ Résidents présents</h3>';
-                if (!presents.length) {
-                    html += '<p><em>Aucun.</em></p>';
-                } else {
-                    html += '<ul class="print-list">';
-                    for (const r of presents) {
-                        const lieu = nomLieu(r.lieu_effectif_id);
-                        const lieuTag = lieu
-                            ? `<span class="lieu-tag">📍 ${lieu}</span>`
-                            : `<span class="lieu-tag-aucun">📍 Lieu non défini</span>`;
-                        html += `<li><strong>${r.prenom} ${r.nom}</strong> ${lieuTag} ${tagsResident(r)}</li>`;
-                    }
-                    html += '</ul>';
-                }
-                html += '</div>';
-            } else {
-                const groupes = {};
-                const sansLieu = [];
-                for (const r of presents) {
-                    if (r.lieu_effectif_id) {
-                        if (!groupes[r.lieu_effectif_id]) groupes[r.lieu_effectif_id] = [];
-                        groupes[r.lieu_effectif_id].push(r);
+            let blocsAffiches = 0;
+
+            for (const dr of donneesParRepas) {
+                const aDuContenu = (inclureResidents && (dr.presents.length > 0 || dr.absents.length > 0))
+                                 || (inclureEjc && dr.totalEjcNet > 0);
+                if (!aDuContenu) continue;
+
+                blocsAffiches++;
+
+                // En-tête du repas
+                html += `<div class="repas-section">
+                    <h2 class="titre-repas">${dr.libelle}</h2>
+                    <p class="resume-repas">`;
+                const partsResume = [];
+                if (inclureResidents) partsResume.push(`<strong>${dr.presents.length}</strong> résident(s) à servir`);
+                if (inclureEjc && dr.totalEjcNet > 0) partsResume.push(`<strong>${dr.totalEjcNet}</strong> EJC Péry`);
+                if (inclureResidents && dr.absents.length > 0) partsResume.push(`<strong>${dr.absents.length}</strong> absent(s)`);
+                html += partsResume.join(' · ') + '</p>';
+
+                // ===== AFFICHAGE DES RÉSIDENTS =====
+                if (inclureResidents) {
+                    if (vueActuelle === 'liste') {
+                        html += '<div class="print-section"><h3>✅ Résidents présents</h3>';
+                        if (!dr.presents.length) {
+                            html += '<p><em>Aucun.</em></p>';
+                        } else {
+                            html += '<ul class="print-list">';
+                            for (const r of dr.presents) {
+                                const lieu = nomLieu(r.lieu_effectif_id);
+                                const lieuTag = lieu
+                                    ? `<span class="lieu-tag">📍 ${lieu}</span>`
+                                    : `<span class="lieu-tag-aucun">📍 Lieu non défini</span>`;
+                                html += `<li><strong>${r.prenom} ${r.nom}</strong> ${lieuTag} ${tagsResident(r)}</li>`;
+                            }
+                            html += '</ul>';
+                        }
+                        html += '</div>';
                     } else {
-                        sansLieu.push(r);
+                        // Vue par lieu
+                        const groupes = {};
+                        const sansLieu = [];
+                        for (const r of dr.presents) {
+                            if (r.lieu_effectif_id) {
+                                if (!groupes[r.lieu_effectif_id]) groupes[r.lieu_effectif_id] = [];
+                                groupes[r.lieu_effectif_id].push(r);
+                            } else {
+                                sansLieu.push(r);
+                            }
+                        }
+
+                        if (!dr.presents.length) {
+                            html += '<div class="print-section"><h3>✅ Résidents présents</h3><p><em>Aucun.</em></p></div>';
+                        } else {
+                            for (const lieu of lieuxDisponibles) {
+                                const liste = groupes[lieu.id];
+                                if (!liste || !liste.length) continue;
+                                html += `<div class="lieu-section print-section">`;
+                                html += `<h3>📍 ${lieu.nom} — ${liste.length} résident(s)</h3>`;
+                                html += '<ul class="print-list">';
+                                for (const r of liste) {
+                                    html += `<li><strong>${r.prenom} ${r.nom}</strong> ${tagsResident(r)}</li>`;
+                                }
+                                html += '</ul></div>';
+                            }
+                            if (sansLieu.length) {
+                                html += `<div class="lieu-section print-section" style="background:#fffaf0;border-left-color:#999;">`;
+                                html += `<h3>❓ Lieu non défini — ${sansLieu.length} résident(s)</h3>`;
+                                html += '<ul class="print-list">';
+                                for (const r of sansLieu) {
+                                    html += `<li><strong>${r.prenom} ${r.nom}</strong> ${tagsResident(r)}</li>`;
+                                }
+                                html += '</ul></div>';
+                            }
+                        }
                     }
                 }
 
-                if (!presents.length) {
-                    html += '<div class="print-section"><h3>✅ Résidents présents</h3><p><em>Aucun.</em></p></div>';
-                } else {
-                    for (const lieu of lieuxDisponibles) {
-                        const liste = groupes[lieu.id];
-                        if (!liste || !liste.length) continue;
-                        html += `<div class="lieu-section print-section">`;
-                        html += `<h3>📍 ${lieu.nom} — ${liste.length} résident(s)</h3>`;
-                        html += '<ul class="print-list">';
-                        for (const r of liste) {
-                            html += `<li><strong>${r.prenom} ${r.nom}</strong> ${tagsResident(r)}</li>`;
-                        }
-                        html += '</ul></div>';
-                    }
-                    if (sansLieu.length) {
-                        html += `<div class="lieu-section print-section" style="background:#fffaf0;border-left-color:#999;">`;
-                        html += `<h3>❓ Lieu non défini — ${sansLieu.length} résident(s)</h3>`;
-                        html += '<ul class="print-list">';
-                        for (const r of sansLieu) {
-                            html += `<li><strong>${r.prenom} ${r.nom}</strong> ${tagsResident(r)}</li>`;
-                        }
-                        html += '</ul></div>';
-                    }
+                // ===== EJC =====
+                if (inclureEjc && dr.detailEjc) {
+                    html += dr.detailEjc;
                 }
+
+                // ===== ABSENTS =====
+                if (inclureResidents && dr.absents.length) {
+                    html += '<div class="print-section"><h3>❌ Absents</h3><ul class="print-list">';
+                    for (const r of dr.absents) html += `<li>${r.prenom} ${r.nom}</li>`;
+                    html += '</ul></div>';
+                }
+
+                html += '</div>'; // /repas-section
             }
 
-            if (detailEjc) html += detailEjc;
-
-            if (absents.length) {
-                html += '<div class="print-section"><h3>❌ Absents</h3><ul class="print-list">';
-                for (const r of absents) html += `<li>${r.prenom} ${r.nom}</li>`;
-                html += '</ul></div>';
+            // Aucun bloc affiché
+            if (blocsAffiches === 0) {
+                html += `<div class="filtre-info-vide">
+                    Aucune donnée à afficher pour les filtres sélectionnés à cette date.
+                </div>`;
             }
+
+            html += `<div class="pied-page">Document généré le ${heureMaintenant()} — Restauration Les Bouleaux, Corgémont</div>`;
+            html += '</div>'; // /service-doc
 
             contenu.innerHTML = html;
         }
