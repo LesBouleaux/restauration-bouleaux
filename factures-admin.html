@@ -1,0 +1,374 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Factures EJC - Restauration Les Bouleaux</title>
+    <link rel="stylesheet" href="shared.css">
+    <style>
+        .facture-card {
+            background: white;
+            padding: 15px 20px;
+            border-radius: 8px;
+            margin-bottom: 12px;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.08);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: 15px;
+            flex-wrap: wrap;
+        }
+        .facture-info { flex: 1; min-width: 250px; }
+        .facture-numero { font-size: 18px; font-weight: bold; color: #2c5530; }
+        .facture-meta { color: #666; font-size: 14px; margin-top: 4px; }
+        .facture-meta strong { color: #333; }
+        .facture-actions { display: flex; gap: 8px; flex-wrap: wrap; }
+        .montant {
+            font-size: 22px;
+            font-weight: bold;
+            color: #2c5530;
+            white-space: nowrap;
+        }
+        .statut {
+            display: inline-block;
+            padding: 3px 12px;
+            border-radius: 12px;
+            font-size: 13px;
+            font-weight: bold;
+            margin-left: 8px;
+        }
+        .statut-attente { background: #fff3cd; color: #856404; }
+        .statut-payee { background: #d4edda; color: #155724; }
+        .pdf-zone {
+            border: 2px dashed #ccc;
+            padding: 20px;
+            border-radius: 8px;
+            text-align: center;
+            background: #fafafa;
+            margin-top: 10px;
+        }
+        .pdf-zone.has-file {
+            border-color: #2c5530;
+            background: #f0f8f0;
+        }
+    </style>
+</head>
+<body>
+    <h1>🍽️ Restauration Les Bouleaux</h1>
+    <div id="menu"></div>
+
+    <h2>🧾 Factures EJC Péry</h2>
+
+    <div class="toolbar">
+        <label><strong>Année :</strong></label>
+        <select id="filtre-annee" onchange="charger()">
+            <option value="">Toutes</option>
+        </select>
+        <button class="btn-primary" onclick="ouvrirFormulaire()">➕ Téléverser une facture</button>
+    </div>
+
+    <div id="contenu">
+        <p class="loading">⏳ Chargement...</p>
+    </div>
+
+    <!-- Modal téléversement -->
+    <div class="modal-overlay" id="modal">
+        <div class="modal">
+            <h2 id="modal-titre">Téléverser une facture</h2>
+            <form id="form-facture" onsubmit="sauvegarderFacture(event)">
+                <input type="hidden" id="facture-id">
+                <input type="hidden" id="facture-fichier-actuel">
+
+                <div class="form-group">
+                    <label for="numero">Numéro de facture *</label>
+                    <input type="text" id="numero" required placeholder="Ex: 2026-001">
+                </div>
+
+                <div class="form-group">
+                    <label for="date_facture">Date de la facture *</label>
+                    <input type="date" id="date_facture" required>
+                </div>
+
+                <div class="form-group">
+                    <label for="montant">Montant (CHF) *</label>
+                    <input type="number" id="montant" required step="0.05" min="0" placeholder="Ex: 1245.50">
+                </div>
+
+                <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;">
+                    <div class="form-group">
+                        <label for="periode_debut">Période du</label>
+                        <input type="date" id="periode_debut">
+                    </div>
+                    <div class="form-group">
+                        <label for="periode_fin">Période au</label>
+                        <input type="date" id="periode_fin">
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label for="statut">Statut</label>
+                    <select id="statut">
+                        <option value="en_attente">⏳ En attente de paiement</option>
+                        <option value="payee">✅ Payée</option>
+                    </select>
+                </div>
+
+                <div class="form-group">
+                    <label for="notes">Notes (optionnel)</label>
+                    <textarea id="notes" placeholder="Commentaire interne..."></textarea>
+                </div>
+
+                <div class="form-group">
+                    <label>📄 Fichier PDF *</label>
+                    <div id="zone-pdf" class="pdf-zone">
+                        <div style="font-size:36px;">📎</div>
+                        <p>Glisse-dépose un PDF ici ou clique pour choisir</p>
+                        <p style="color:#888;font-size:13px;">Format : PDF (max 10 MB)</p>
+                        <button type="button" class="btn-primary" onclick="document.getElementById('input-pdf').click()">📤 Choisir un fichier</button>
+                        <input type="file" id="input-pdf" accept="application/pdf" style="display:none" onchange="changerFichier(event)">
+                    </div>
+                </div>
+
+                <div class="form-actions">
+                    <button type="button" class="btn-secondary" onclick="fermerFormulaire()">Annuler</button>
+                    <button type="submit" class="btn-primary">💾 Enregistrer</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="shared.js"></script>
+    <script>
+        const BUCKET_FACTURES = 'factures-ejc';
+        let toutesFactures = [];
+        let nouveauFichier = null;
+
+        async function charger() {
+            const annee = document.getElementById('filtre-annee').value;
+            let query = supaClient.from('factures_ejc').select('*').order('date_facture', { ascending: false });
+            if (annee) {
+                query = query.gte('date_facture', `${annee}-01-01`).lte('date_facture', `${annee}-12-31`);
+            }
+            const { data, error } = await query;
+            if (error) {
+                document.getElementById('contenu').innerHTML = `<div class="error">Erreur : ${error.message}</div>`;
+                return;
+            }
+            toutesFactures = data || [];
+            remplirAnnees();
+            afficher();
+        }
+
+        function remplirAnnees() {
+            // Récupérer toutes les années distinctes
+            const annees = new Set();
+            for (const f of toutesFactures) {
+                annees.add(f.date_facture.substring(0, 4));
+            }
+            // Ajouter l'année courante au cas où
+            annees.add(new Date().getFullYear().toString());
+            const sel = document.getElementById('filtre-annee');
+            const valActu = sel.value;
+            const liste = [...annees].sort().reverse();
+            sel.innerHTML = '<option value="">Toutes</option>';
+            for (const a of liste) sel.innerHTML += `<option value="${a}">${a}</option>`;
+            sel.value = valActu;
+        }
+
+        function afficher() {
+            const contenu = document.getElementById('contenu');
+            if (!toutesFactures.length) {
+                contenu.innerHTML = '<p class="info-msg">Aucune facture pour cette période.</p>';
+                return;
+            }
+            // Stats
+            const total = toutesFactures.reduce((s, f) => s + parseFloat(f.montant), 0);
+            const enAttente = toutesFactures.filter(f => f.statut === 'en_attente').reduce((s, f) => s + parseFloat(f.montant), 0);
+            let html = `<p>
+                <strong>${toutesFactures.length}</strong> facture(s) ·
+                Total : <strong>${total.toFixed(2)} CHF</strong> ·
+                En attente : <strong style="color:#856404;">${enAttente.toFixed(2)} CHF</strong>
+            </p>`;
+            for (const f of toutesFactures) {
+                const statutBadge = f.statut === 'payee'
+                    ? '<span class="statut statut-payee">✅ Payée</span>'
+                    : '<span class="statut statut-attente">⏳ En attente</span>';
+                let periode = '';
+                if (f.periode_debut && f.periode_fin) {
+                    periode = ` · Période : ${dateFr(f.periode_debut)} → ${dateFr(f.periode_fin)}`;
+                }
+                html += `
+                    <div class="facture-card">
+                        <div class="facture-info">
+                            <div class="facture-numero">📄 N° ${f.numero} ${statutBadge}</div>
+                            <div class="facture-meta">
+                                <strong>${dateFr(f.date_facture)}</strong>${periode}
+                                ${f.notes ? `<br><em>${f.notes}</em>` : ''}
+                            </div>
+                        </div>
+                        <div class="montant">${parseFloat(f.montant).toFixed(2)} CHF</div>
+                        <div class="facture-actions">
+                            <button class="btn-print" onclick="voirFacture(${f.id})">👁️ Voir PDF</button>
+                            <button class="btn-edit" onclick="modifierFacture(${f.id})">✏️ Modifier</button>
+                            <button class="btn-danger" onclick="supprimerFacture(${f.id})">🗑️ Supprimer</button>
+                        </div>
+                    </div>`;
+            }
+            contenu.innerHTML = html;
+        }
+
+        function ouvrirFormulaire() {
+            document.getElementById('modal-titre').textContent = 'Téléverser une facture';
+            document.getElementById('form-facture').reset();
+            document.getElementById('facture-id').value = '';
+            document.getElementById('facture-fichier-actuel').value = '';
+            document.getElementById('date_facture').value = aujourdhui();
+            nouveauFichier = null;
+            resetZonePdf();
+            document.getElementById('modal').classList.add('active');
+        }
+
+        function modifierFacture(id) {
+            const f = toutesFactures.find(x => x.id === id);
+            if (!f) return;
+            document.getElementById('modal-titre').textContent = 'Modifier la facture';
+            document.getElementById('facture-id').value = f.id;
+            document.getElementById('facture-fichier-actuel').value = f.fichier_pdf;
+            document.getElementById('numero').value = f.numero;
+            document.getElementById('date_facture').value = f.date_facture;
+            document.getElementById('montant').value = f.montant;
+            document.getElementById('periode_debut').value = f.periode_debut || '';
+            document.getElementById('periode_fin').value = f.periode_fin || '';
+            document.getElementById('statut').value = f.statut;
+            document.getElementById('notes').value = f.notes || '';
+            nouveauFichier = null;
+            // Affichage zone : fichier déjà existant
+            const zone = document.getElementById('zone-pdf');
+            zone.className = 'pdf-zone has-file';
+            zone.innerHTML = `
+                <div style="font-size:36px;">📄</div>
+                <p><strong>Un PDF est déjà attaché à cette facture.</strong></p>
+                <p style="color:#888;font-size:13px;">Tu peux choisir un nouveau fichier pour le remplacer (optionnel).</p>
+                <button type="button" class="btn-edit" onclick="document.getElementById('input-pdf').click()">🔄 Remplacer le PDF</button>
+                <input type="file" id="input-pdf" accept="application/pdf" style="display:none" onchange="changerFichier(event)">
+            `;
+            document.getElementById('modal').classList.add('active');
+        }
+
+        function fermerFormulaire() {
+            document.getElementById('modal').classList.remove('active');
+        }
+
+        function changerFichier(event) {
+            const f = event.target.files[0];
+            if (!f) return;
+            if (f.type !== 'application/pdf') return alert('❌ Seuls les PDF sont acceptés.');
+            if (f.size > 10 * 1024 * 1024) return alert('❌ Le fichier dépasse 10 MB.');
+            nouveauFichier = f;
+            const zone = document.getElementById('zone-pdf');
+            zone.className = 'pdf-zone has-file';
+            zone.innerHTML = `
+                <div style="font-size:36px;">📄</div>
+                <p><strong>${f.name}</strong></p>
+                <p style="color:#888;font-size:13px;">${(f.size/1024).toFixed(0)} KB</p>
+                <button type="button" class="btn-edit" onclick="document.getElementById('input-pdf').click()">🔄 Changer de fichier</button>
+                <input type="file" id="input-pdf" accept="application/pdf" style="display:none" onchange="changerFichier(event)">
+            `;
+        }
+
+        function resetZonePdf() {
+            const zone = document.getElementById('zone-pdf');
+            zone.className = 'pdf-zone';
+            zone.innerHTML = `
+                <div style="font-size:36px;">📎</div>
+                <p>Glisse-dépose un PDF ici ou clique pour choisir</p>
+                <p style="color:#888;font-size:13px;">Format : PDF (max 10 MB)</p>
+                <button type="button" class="btn-primary" onclick="document.getElementById('input-pdf').click()">📤 Choisir un fichier</button>
+                <input type="file" id="input-pdf" accept="application/pdf" style="display:none" onchange="changerFichier(event)">
+            `;
+        }
+
+        async function sauvegarderFacture(event) {
+            event.preventDefault();
+            const id = document.getElementById('facture-id').value;
+            const fichierActuel = document.getElementById('facture-fichier-actuel').value;
+
+            // Validation : si nouvelle facture, le fichier est obligatoire
+            if (!id && !nouveauFichier) {
+                alert('❌ Tu dois choisir un fichier PDF.');
+                return;
+            }
+
+            let cheminFichier = fichierActuel;
+
+            // Upload si nouveau fichier
+            if (nouveauFichier) {
+                // Si on remplace, supprimer l'ancien
+                if (fichierActuel) {
+                    await supaClient.storage.from(BUCKET_FACTURES).remove([fichierActuel]);
+                }
+                cheminFichier = `facture_${Date.now()}_${nouveauFichier.name.replace(/[^a-zA-Z0-9.-]/g, '_')}`;
+                const { error: errUp } = await supaClient.storage
+                    .from(BUCKET_FACTURES)
+                    .upload(cheminFichier, nouveauFichier, { contentType: 'application/pdf', upsert: false });
+                if (errUp) return alert('❌ Erreur upload : ' + errUp.message);
+            }
+
+            const donnees = {
+                numero: document.getElementById('numero').value.trim(),
+                date_facture: document.getElementById('date_facture').value,
+                montant: parseFloat(document.getElementById('montant').value),
+                periode_debut: document.getElementById('periode_debut').value || null,
+                periode_fin: document.getElementById('periode_fin').value || null,
+                statut: document.getElementById('statut').value,
+                notes: document.getElementById('notes').value.trim() || null,
+                fichier_pdf: cheminFichier,
+                updated_at: new Date().toISOString()
+            };
+
+            let res;
+            if (id) {
+                res = await supaClient.from('factures_ejc').update(donnees).eq('id', id);
+            } else {
+                res = await supaClient.from('factures_ejc').insert(donnees);
+            }
+            if (res.error) return alert('❌ Erreur : ' + res.error.message);
+
+            fermerFormulaire();
+            charger();
+        }
+
+        async function voirFacture(id) {
+            const f = toutesFactures.find(x => x.id === id);
+            if (!f) return;
+            const { data, error } = await supaClient.storage
+                .from(BUCKET_FACTURES)
+                .createSignedUrl(f.fichier_pdf, 60);
+            if (error) return alert('❌ Erreur : ' + error.message);
+            window.open(data.signedUrl, '_blank');
+        }
+
+        async function supprimerFacture(id) {
+            const f = toutesFactures.find(x => x.id === id);
+            if (!f) return;
+            if (!confirm(`Supprimer la facture N° ${f.numero} ?\n\nLe PDF sera également supprimé.`)) return;
+
+            // Supprimer le PDF
+            await supaClient.storage.from(BUCKET_FACTURES).remove([f.fichier_pdf]);
+            // Supprimer la ligne
+            const { error } = await supaClient.from('factures_ejc').delete().eq('id', id);
+            if (error) return alert('❌ Erreur : ' + error.message);
+            charger();
+        }
+
+        // Démarrage admin uniquement
+        (async () => {
+            const auth = await verifierAuthEtRole(['admin']);
+            if (!auth) return;
+            afficherMenuComplet('factures-admin', auth.user.email, auth.profil.role, auth.profil.nom_affiche);
+            charger();
+        })();
+    </script>
+</body>
+</html>

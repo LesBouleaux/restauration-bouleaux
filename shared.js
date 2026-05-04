@@ -165,11 +165,13 @@ function genererMenuOnglets(pageActive, role) {
         { id: 'production', titre: '📋 Production J-1', url: 'production.html' },
         { id: 'service', titre: '🍽️ Service du jour', url: 'service.html' },
         { id: 'recap-ejc', titre: '🍴 EJC Péry', url: 'recap-ejc.html' },
+        { id: 'factures-admin', titre: '🧾 Factures EJC', url: 'factures-admin.html' },
         { id: 'stats', titre: '📊 Statistiques', url: 'stats.html' }
     ];
 
     const ongletsEjc = [
-        { id: 'commande-ejc', titre: '🍽️ Saisie repas EJC Péry', url: 'commande-ejc.html' }
+        { id: 'commande-ejc', titre: '🍽️ Saisie repas', url: 'commande-ejc.html' },
+        { id: 'factures-ejc', titre: '🧾 Mes factures', url: 'factures-ejc.html' }
     ];
 
     const onglets = role === 'client_ejc' ? ongletsEjc : ongletsAdmin;

@@ -1,0 +1,153 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Mes factures - EJC Péry</title>
+    <link rel="stylesheet" href="shared.css">
+    <style>
+        .facture-card {
+            background: white;
+            padding: 15px 20px;
+            border-radius: 8px;
+            margin-bottom: 12px;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.08);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: 15px;
+            flex-wrap: wrap;
+        }
+        .facture-info { flex: 1; min-width: 250px; }
+        .facture-numero { font-size: 18px; font-weight: bold; color: #2c5530; }
+        .facture-meta { color: #666; font-size: 14px; margin-top: 4px; }
+        .montant {
+            font-size: 22px;
+            font-weight: bold;
+            color: #2c5530;
+            white-space: nowrap;
+        }
+        .statut {
+            display: inline-block;
+            padding: 3px 12px;
+            border-radius: 12px;
+            font-size: 13px;
+            font-weight: bold;
+            margin-left: 8px;
+        }
+        .statut-attente { background: #fff3cd; color: #856404; }
+        .statut-payee { background: #d4edda; color: #155724; }
+    </style>
+</head>
+<body>
+    <h1>🍽️ Restauration Les Bouleaux</h1>
+    <div id="menu"></div>
+
+    <h2>🧾 Mes factures</h2>
+    <p class="info-msg" style="text-align:left;background:#e8f4ff;color:#0066cc;border-left:4px solid #0066cc;padding:12px;">
+        ℹ️ Vous trouverez ici toutes vos factures de restauration. Cliquez sur "Télécharger" pour récupérer le PDF.
+    </p>
+
+    <div class="toolbar">
+        <label><strong>Année :</strong></label>
+        <select id="filtre-annee" onchange="charger()">
+            <option value="">Toutes</option>
+        </select>
+    </div>
+
+    <div id="contenu">
+        <p class="loading">⏳ Chargement...</p>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="shared.js"></script>
+    <script>
+        const BUCKET_FACTURES = 'factures-ejc';
+        let toutesFactures = [];
+
+        async function charger() {
+            const annee = document.getElementById('filtre-annee').value;
+            let query = supaClient.from('factures_ejc').select('*').order('date_facture', { ascending: false });
+            if (annee) {
+                query = query.gte('date_facture', `${annee}-01-01`).lte('date_facture', `${annee}-12-31`);
+            }
+            const { data, error } = await query;
+            if (error) {
+                document.getElementById('contenu').innerHTML = `<div class="error">Erreur : ${error.message}</div>`;
+                return;
+            }
+            toutesFactures = data || [];
+            remplirAnnees();
+            afficher();
+        }
+
+        function remplirAnnees() {
+            const annees = new Set();
+            for (const f of toutesFactures) annees.add(f.date_facture.substring(0, 4));
+            annees.add(new Date().getFullYear().toString());
+            const sel = document.getElementById('filtre-annee');
+            const valActu = sel.value;
+            const liste = [...annees].sort().reverse();
+            sel.innerHTML = '<option value="">Toutes</option>';
+            for (const a of liste) sel.innerHTML += `<option value="${a}">${a}</option>`;
+            sel.value = valActu;
+        }
+
+        function afficher() {
+            const contenu = document.getElementById('contenu');
+            if (!toutesFactures.length) {
+                contenu.innerHTML = '<p class="info-msg">Aucune facture disponible pour cette période.</p>';
+                return;
+            }
+            const total = toutesFactures.reduce((s, f) => s + parseFloat(f.montant), 0);
+            const enAttente = toutesFactures.filter(f => f.statut === 'en_attente').reduce((s, f) => s + parseFloat(f.montant), 0);
+            let html = `<p>
+                <strong>${toutesFactures.length}</strong> facture(s) ·
+                Total : <strong>${total.toFixed(2)} CHF</strong>
+                ${enAttente > 0 ? ` · En attente : <strong style="color:#856404;">${enAttente.toFixed(2)} CHF</strong>` : ''}
+            </p>`;
+            for (const f of toutesFactures) {
+                const statutBadge = f.statut === 'payee'
+                    ? '<span class="statut statut-payee">✅ Payée</span>'
+                    : '<span class="statut statut-attente">⏳ En attente</span>';
+                let periode = '';
+                if (f.periode_debut && f.periode_fin) {
+                    periode = ` · Période : ${dateFr(f.periode_debut)} → ${dateFr(f.periode_fin)}`;
+                }
+                html += `
+                    <div class="facture-card">
+                        <div class="facture-info">
+                            <div class="facture-numero">📄 N° ${f.numero} ${statutBadge}</div>
+                            <div class="facture-meta">
+                                <strong>${dateFr(f.date_facture)}</strong>${periode}
+                            </div>
+                        </div>
+                        <div class="montant">${parseFloat(f.montant).toFixed(2)} CHF</div>
+                        <div>
+                            <button class="btn-primary" onclick="telechargerFacture(${f.id})">⬇️ Télécharger PDF</button>
+                        </div>
+                    </div>`;
+            }
+            contenu.innerHTML = html;
+        }
+
+        async function telechargerFacture(id) {
+            const f = toutesFactures.find(x => x.id === id);
+            if (!f) return;
+            const { data, error } = await supaClient.storage
+                .from(BUCKET_FACTURES)
+                .createSignedUrl(f.fichier_pdf, 60);
+            if (error) return alert('❌ Erreur : ' + error.message);
+            window.open(data.signedUrl, '_blank');
+        }
+
+        // Démarrage EJC uniquement
+        (async () => {
+            const auth = await verifierAuthEtRole(['client_ejc']);
+            if (!auth) return;
+            afficherMenuComplet('factures-ejc', auth.user.email, auth.profil.role, auth.profil.nom_affiche);
+            charger();
+        })();
+    </script>
+</body>
+</html>
