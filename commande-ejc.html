@@ -102,9 +102,11 @@
             font-weight: bold;
             display: none;
             z-index: 200;
+            max-width: 400px;
         }
         .save-status.success { background: #28a745; display: block; }
         .save-status.error { background: #dc3545; display: block; }
+        .save-status.warning { background: #ffc107; color: #333; display: block; }
         .empty-cats {
             background: white;
             padding: 40px;
@@ -167,6 +169,14 @@
             document.getElementById('btn-mode-commande').className = (mode === 'commande') ? 'btn-primary' : 'btn-secondary';
             document.getElementById('btn-mode-annulation').className = (mode === 'annulation') ? 'btn-edit' : 'btn-secondary';
             charger();
+        }
+
+        // Affiche un message dans le bandeau flottant en haut à droite
+        function afficherStatus(type, message, dureeMs = 1500) {
+            const status = document.getElementById('save-status');
+            status.className = 'save-status ' + type;
+            status.textContent = message;
+            setTimeout(() => status.style.display = 'none', dureeMs);
         }
 
         async function charger() {
@@ -260,6 +270,7 @@
                         <input type="number" min="0" value="${valeur}"
                             ${editable ? '' : 'disabled'}
                             data-date="${j}" data-cat="${cat.id}"
+                            data-ancienne-valeur="${valeur}"
                             onchange="enregistrer(this)">
                     </td>`;
                 }
@@ -290,6 +301,37 @@
             const date = input.dataset.date;
             const categorieId = parseInt(input.dataset.cat);
             const valeur = parseInt(input.value, 10) || 0;
+            const ancienneValeur = parseInt(input.dataset.ancienneValeur, 10) || 0;
+
+            // 🛡️ VALIDATION : annulations ≤ commandes pour cette date + catégorie
+            // On lit les deux quantités fraîches en base (pas le cmdMap qui peut être périmé)
+            const { data: cmdRow } = await supaClient
+                .from(TABLE_COMMANDES_EJC).select('quantite')
+                .eq('date', date).eq('categorie_id', categorieId).maybeSingle();
+            const { data: annRow } = await supaClient
+                .from(TABLE_ANNULATIONS_EJC).select('quantite')
+                .eq('date', date).eq('categorie_id', categorieId).maybeSingle();
+
+            const qteCommande = cmdRow ? cmdRow.quantite : 0;
+            const qteAnnulation = annRow ? annRow.quantite : 0;
+
+            if (mode === 'annulation' && valeur > qteCommande) {
+                // Tentative d'annuler plus que ce qui est commandé
+                input.value = ancienneValeur; // on remet la valeur précédente
+                afficherStatus('error',
+                    `❌ Impossible : tu essaies d'annuler ${valeur} repas alors qu'il n'y en a que ${qteCommande} de commandé(s) pour cette date.`,
+                    4000);
+                return;
+            }
+
+            if (mode === 'commande' && valeur < qteAnnulation) {
+                // Tentative de réduire la commande sous le nombre d'annulations existant
+                input.value = ancienneValeur;
+                afficherStatus('error',
+                    `❌ Impossible : tu ne peux pas descendre la commande à ${valeur} car ${qteAnnulation} annulation(s) sont déjà enregistrée(s) pour cette date.`,
+                    4000);
+                return;
+            }
 
             const table = (mode === 'commande') ? TABLE_COMMANDES_EJC : TABLE_ANNULATIONS_EJC;
 
@@ -307,17 +349,16 @@
                     .insert({ date, categorie_id: categorieId, quantite: valeur });
             }
 
-            const status = document.getElementById('save-status');
             if (res.error) {
-                status.className = 'save-status error';
-                status.textContent = '❌ Erreur : ' + res.error.message;
+                input.value = ancienneValeur;
+                afficherStatus('error', '❌ Erreur : ' + res.error.message, 3000);
                 console.error(res.error);
             } else {
-                status.className = 'save-status success';
-                status.textContent = '✓ Enregistré';
+                // Mise à jour de la "valeur de référence" pour le prochain check
+                input.dataset.ancienneValeur = valeur;
+                afficherStatus('success', '✓ Enregistré');
                 recalculerTotaux();
             }
-            setTimeout(() => status.style.display = 'none', 1500);
         }
 
         function recalculerTotaux() {
