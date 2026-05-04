@@ -144,7 +144,7 @@
             const tags = [];
             if (r.allergies) tags.push(`<span class="tag tag-allergie">⚠️ ${r.allergies}</span>`);
             if (r.intolerances) tags.push(`<span class="tag tag-intolerance">🚫 ${r.intolerances}</span>`);
-            if (r.aversions) tags.push(`<span class="tag tag-aversion">N'aime pas : ${r.aversions}</span>`);
+            if (r.aversions) tags.push(`<span class="tag tag-aversion">Non-goûts : ${r.aversions}</span>`);
             return tags.join(' ');
         }
 

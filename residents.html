@@ -137,11 +137,11 @@
                 </div>
 
                 <div class="form-group">
-                    <label for="gouts">Goûts</label>
+                    <label for="gouts">Souhaits particuliers</label>
                     <textarea id="gouts"></textarea>
                 </div>
                 <div class="form-group">
-                    <label for="aversions">Aversions</label>
+                    <label for="aversions">Non-goûts</label>
                     <textarea id="aversions"></textarea>
                 </div>
                 <div class="form-group">
@@ -243,8 +243,8 @@
                             </span>
                         </h3>
                         ${lieuxRecap}
-                        <p class="info"><span class="label">Goûts :</span> ${r.gouts || '<span class="empty">non renseigné</span>'}</p>
-                        <p class="info"><span class="label">Aversions :</span> ${r.aversions || '<span class="empty">non renseigné</span>'}</p>
+                        <p class="info"><span class="label">Souhaits particuliers :</span> ${r.gouts || '<span class="empty">non renseigné</span>'}</p>
+                        <p class="info"><span class="label">Non-goûts :</span> ${r.aversions || '<span class="empty">non renseigné</span>'}</p>
                         <p class="info"><span class="label">Allergies :</span> ${r.allergies || '<span class="empty">aucune</span>'}</p>
                         <p class="info"><span class="label">Intolérances :</span> ${r.intolerances || '<span class="empty">aucune</span>'}</p>
                     </div>`;
