@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+ <!DOCTYPE html>
 <html lang="fr">
 <head>
     <meta charset="UTF-8">
@@ -72,8 +72,6 @@
             border-left: 4px solid #1976d2;
             margin: 15px 0;
         }
-
-        /* Checkboxes allergènes dans le formulaire */
         .allergenes-grid {
             display: grid;
             grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
@@ -165,30 +163,8 @@
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script src="shared.js"></script>
     <script>
-        // Liste des 14 allergènes majeurs réglementaires (UE)
-        const ALLERGENES_LISTE = [
-            { code: 'gluten',        nom: 'Gluten',        emoji: '🌾' },
-            { code: 'crustaces',     nom: 'Crustacés',     emoji: '🦐' },
-            { code: 'oeufs',         nom: 'Œufs',          emoji: '🥚' },
-            { code: 'poissons',      nom: 'Poissons',      emoji: '🐟' },
-            { code: 'arachides',     nom: 'Arachides',     emoji: '🥜' },
-            { code: 'soja',          nom: 'Soja',          emoji: '🌱' },
-            { code: 'lait',          nom: 'Lait',          emoji: '🥛' },
-            { code: 'fruits_a_coque',nom: 'Fruits à coque',emoji: '🌰' },
-            { code: 'celeri',        nom: 'Céleri',        emoji: '🥬' },
-            { code: 'moutarde',      nom: 'Moutarde',      emoji: '🟡' },
-            { code: 'sesame',        nom: 'Graines de sésame',emoji:'🌻' },
-            { code: 'sulfites',      nom: 'Sulfites',      emoji: '🧪' },
-            { code: 'lupin',         nom: 'Lupin',         emoji: '🌿' },
-            { code: 'mollusques',    nom: 'Mollusques',    emoji: '🦪' }
-        ];
-
+        // ALLERGENES_LISTE et nomAllergene() viennent de shared.js
         let toutesCats = [];
-
-        function nomAllergene(code) {
-            const a = ALLERGENES_LISTE.find(x => x.code === code);
-            return a ? `${a.emoji} ${a.nom}` : code;
-        }
 
         async function charger() {
             const { data, error } = await supaClient
@@ -257,7 +233,8 @@
             contenu.innerHTML = html;
         }
 
-        function genererGrilleAllergenes(coches = []) {
+        function genererGrilleAllergenes(coches) {
+            coches = coches || [];
             const grid = document.getElementById('allergenes-grid');
             grid.innerHTML = '';
             for (const a of ALLERGENES_LISTE) {
@@ -301,7 +278,6 @@
             const nom = document.getElementById('nom').value.trim();
             const ordre = parseInt(document.getElementById('ordre').value) || 0;
 
-            // Récupérer les allergènes cochés
             const allergenes = [];
             for (const a of ALLERGENES_LISTE) {
                 const cb = document.getElementById('all_' + a.code);
