@@ -1,0 +1,640 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Statistiques - Restauration Les Bouleaux</title>
+    <link rel="stylesheet" href="shared.css">
+    <style>
+        .stats-toolbar {
+            display: flex;
+            gap: 15px;
+            flex-wrap: wrap;
+            align-items: center;
+            background: white;
+            padding: 15px;
+            border-radius: 8px;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.08);
+            margin-bottom: 20px;
+        }
+        .stats-toolbar label {
+            font-weight: bold;
+            margin-right: 4px;
+        }
+        .stats-toolbar input, .stats-toolbar select {
+            padding: 6px 10px;
+            border: 1px solid #ccc;
+            border-radius: 6px;
+            font-size: 14px;
+        }
+        .periode-rapide {
+            display: inline-flex;
+            gap: 4px;
+            flex-wrap: wrap;
+        }
+        .periode-rapide button {
+            background: white;
+            border: 1px solid #2c5530;
+            color: #2c5530;
+            padding: 4px 10px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 13px;
+        }
+        .periode-rapide button:hover {
+            background: #f0f8f0;
+        }
+
+        .stats-cards {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+            gap: 15px;
+            margin-bottom: 25px;
+        }
+        .stat-card {
+            background: white;
+            padding: 18px;
+            border-radius: 8px;
+            text-align: center;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.06);
+            border-top: 4px solid #2c5530;
+        }
+        .stat-card .label {
+            color: #666;
+            font-size: 13px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+        .stat-card .valeur {
+            font-size: 32px;
+            font-weight: bold;
+            color: #2c5530;
+            margin: 8px 0 0 0;
+        }
+        .stat-card .sub {
+            color: #888;
+            font-size: 12px;
+            margin-top: 4px;
+        }
+
+        .section-stats {
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.06);
+        }
+        .section-stats h3 {
+            color: #2c5530;
+            border-bottom: 2px solid #e0e8e0;
+            padding-bottom: 10px;
+            margin-top: 0;
+        }
+
+        .barre-container {
+            background: #f0f0f0;
+            border-radius: 6px;
+            height: 28px;
+            overflow: hidden;
+            display: flex;
+            margin: 6px 0;
+        }
+        .barre-segment {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-weight: bold;
+            font-size: 12px;
+            min-width: 30px;
+            transition: width 0.3s;
+        }
+        .barre-restaurant { background: #2c5530; }
+        .barre-chambre { background: #d4825a; }
+        .barre-aucun { background: #999; }
+        .barre-present { background: #2c5530; }
+        .barre-absent { background: #c44; }
+
+        table.stats {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 10px;
+        }
+        table.stats th {
+            background: #2c5530;
+            color: white;
+            padding: 10px;
+            text-align: left;
+        }
+        table.stats td {
+            padding: 8px 10px;
+            border-bottom: 1px solid #eee;
+        }
+        table.stats tr:hover {
+            background: #f9faf9;
+        }
+        .pourcent {
+            font-weight: bold;
+            color: #2c5530;
+        }
+
+        .legende {
+            display: flex;
+            gap: 15px;
+            flex-wrap: wrap;
+            font-size: 13px;
+            margin-top: 10px;
+            color: #555;
+        }
+        .legende-item {
+            display: inline-flex;
+            align-items: center;
+            gap: 5px;
+        }
+        .legende-puce {
+            display: inline-block;
+            width: 14px;
+            height: 14px;
+            border-radius: 3px;
+        }
+    </style>
+</head>
+<body>
+    <h1>🍽️ Restauration Les Bouleaux</h1>
+    <div id="menu"></div>
+
+    <h2>📊 Statistiques</h2>
+
+    <div class="stats-toolbar">
+        <div>
+            <label>Vue :</label>
+            <select id="vue-mode" onchange="changerVue()">
+                <option value="ensemble">Tous les résidents</option>
+                <option value="resident">Un résident en particulier</option>
+            </select>
+        </div>
+        <div id="select-resident-zone" style="display:none;">
+            <label>Résident :</label>
+            <select id="select-resident" onchange="genererStats()">
+                <option value="">— Choisir —</option>
+            </select>
+        </div>
+        <div>
+            <label>Du :</label>
+            <input type="date" id="date-debut" onchange="genererStats()">
+        </div>
+        <div>
+            <label>Au :</label>
+            <input type="date" id="date-fin" onchange="genererStats()">
+        </div>
+        <div class="periode-rapide">
+            <button onclick="periodePredefinie('7j')">7 jours</button>
+            <button onclick="periodePredefinie('30j')">30 jours</button>
+            <button onclick="periodePredefinie('mois')">Ce mois</button>
+            <button onclick="periodePredefinie('mois-prec')">Mois précédent</button>
+        </div>
+        <button class="btn-primary" onclick="genererStats()">🔄 Actualiser</button>
+        <button class="btn-print" onclick="window.print()">🖨️ Imprimer</button>
+    </div>
+
+    <div id="contenu">
+        <p class="info-msg">Choisis une période et clique sur "Actualiser".</p>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="shared.js"></script>
+    <script>
+        let lieuxDisponibles = [];
+        let tousResidents = [];
+
+        async function chargerInitial() {
+            // Charger lieux
+            const { data: lieux } = await supaClient
+                .from('lieux_repas')
+                .select('*')
+                .order('ordre', { ascending: true });
+            lieuxDisponibles = lieux || [];
+
+            // Charger résidents
+            tousResidents = await chargerResidentsActifs();
+
+            // Remplir select résidents
+            const sel = document.getElementById('select-resident');
+            sel.innerHTML = '<option value="">— Choisir —</option>';
+            for (const r of tousResidents) {
+                sel.innerHTML += `<option value="${r.id}">${r.prenom} ${r.nom}</option>`;
+            }
+
+            // Période par défaut : ce mois
+            periodePredefinie('mois');
+        }
+
+        function changerVue() {
+            const vue = document.getElementById('vue-mode').value;
+            document.getElementById('select-resident-zone').style.display =
+                vue === 'resident' ? 'block' : 'none';
+            genererStats();
+        }
+
+        function periodePredefinie(type) {
+            const today = new Date();
+            let debut, fin;
+            if (type === '7j') {
+                fin = today;
+                debut = new Date(today);
+                debut.setDate(debut.getDate() - 6);
+            } else if (type === '30j') {
+                fin = today;
+                debut = new Date(today);
+                debut.setDate(debut.getDate() - 29);
+            } else if (type === 'mois') {
+                debut = new Date(today.getFullYear(), today.getMonth(), 1);
+                fin = today;
+            } else if (type === 'mois-prec') {
+                debut = new Date(today.getFullYear(), today.getMonth() - 1, 1);
+                fin = new Date(today.getFullYear(), today.getMonth(), 0);
+            }
+            document.getElementById('date-debut').value = isoDate(debut);
+            document.getElementById('date-fin').value = isoDate(fin);
+            genererStats();
+        }
+
+        function isoDate(d) {
+            const yyyy = d.getFullYear();
+            const mm = String(d.getMonth() + 1).padStart(2, '0');
+            const dd = String(d.getDate()).padStart(2, '0');
+            return `${yyyy}-${mm}-${dd}`;
+        }
+
+        function lieuDefautPourRepas(resident, repas) {
+            if (repas === 'petit_dej') return resident.lieu_defaut_petit_dej_id || null;
+            if (repas === 'dejeuner') return resident.lieu_defaut_dejeuner_id || null;
+            if (repas === 'diner') return resident.lieu_defaut_diner_id || null;
+            return null;
+        }
+
+        function nomLieu(id) {
+            if (!id) return '— Non défini —';
+            const l = lieuxDisponibles.find(x => x.id === id);
+            return l ? l.nom : '— Inconnu —';
+        }
+
+        async function genererStats() {
+            const dateDebut = document.getElementById('date-debut').value;
+            const dateFin = document.getElementById('date-fin').value;
+            const vue = document.getElementById('vue-mode').value;
+            const residentId = document.getElementById('select-resident').value;
+
+            if (!dateDebut || !dateFin) {
+                document.getElementById('contenu').innerHTML =
+                    '<p class="info-msg">Choisis une période valide.</p>';
+                return;
+            }
+            if (dateDebut > dateFin) {
+                document.getElementById('contenu').innerHTML =
+                    '<div class="error">La date de début doit être avant la date de fin.</div>';
+                return;
+            }
+
+            const contenu = document.getElementById('contenu');
+            contenu.innerHTML = '<p class="loading">⏳ Calcul des statistiques...</p>';
+
+            // Récupérer les présences sur la période
+            const { data: presences, error } = await supaClient
+                .from(TABLE_PRESENCES)
+                .select('*')
+                .gte('date', dateDebut)
+                .lte('date', dateFin);
+
+            if (error) {
+                contenu.innerHTML = `<div class="error">Erreur : ${error.message}</div>`;
+                return;
+            }
+
+            // Récupérer EJC
+            const { data: ejcCmd } = await supaClient
+                .from(TABLE_COMMANDES_EJC)
+                .select('*')
+                .gte('date', dateDebut)
+                .lte('date', dateFin);
+            const { data: ejcAnn } = await supaClient
+                .from(TABLE_ANNULATIONS_EJC)
+                .select('*')
+                .gte('date', dateDebut)
+                .lte('date', dateFin);
+
+            // Calculer le nombre de jours dans la période
+            const jours = nbJoursEntre(dateDebut, dateFin);
+
+            // Filtrer si vue résident
+            const residentsConcernes = (vue === 'resident' && residentId)
+                ? tousResidents.filter(r => r.id === parseInt(residentId))
+                : tousResidents;
+
+            if (vue === 'resident' && !residentId) {
+                contenu.innerHTML = '<p class="info-msg">Sélectionne un résident pour voir ses statistiques.</p>';
+                return;
+            }
+
+            afficherStats({
+                dateDebut, dateFin, jours,
+                presences: presences || [],
+                ejcCmd: ejcCmd || [],
+                ejcAnn: ejcAnn || [],
+                residents: residentsConcernes,
+                vueGlobale: vue === 'ensemble'
+            });
+        }
+
+        function nbJoursEntre(d1, d2) {
+            const date1 = new Date(d1);
+            const date2 = new Date(d2);
+            return Math.round((date2 - date1) / (1000 * 60 * 60 * 24)) + 1;
+        }
+
+        function afficherStats(ctx) {
+            const { dateDebut, dateFin, jours, presences, ejcCmd, ejcAnn, residents, vueGlobale } = ctx;
+            const repasPossibles = ['petit_dej', 'dejeuner', 'diner'];
+
+            // ========================================
+            // CALCUL DES STATS PAR RÉSIDENT
+            // ========================================
+            // Pour chaque résident, on parcourt chaque jour x chaque repas
+            // - S'il y a une présence enregistrée et present=false → absent
+            // - Sinon → présent (+ on compte le lieu)
+
+            // Map d'accès rapide aux présences : key = "residentId_date_repas"
+            const presMap = {};
+            for (const p of presences) {
+                presMap[`${p.resident_id}_${p.date}_${p.repas}`] = p;
+            }
+
+            // Liste des dates de la période
+            const datesPeriode = [];
+            const dCur = new Date(dateDebut);
+            const dEnd = new Date(dateFin);
+            while (dCur <= dEnd) {
+                datesPeriode.push(isoDate(dCur));
+                dCur.setDate(dCur.getDate() + 1);
+            }
+
+            // Stats par résident
+            const statsResidents = [];
+            for (const r of residents) {
+                const stats = {
+                    resident: r,
+                    nbPresent: 0,
+                    nbAbsent: 0,
+                    parLieu: {}, // lieu_id → count
+                    aucunLieu: 0
+                };
+                for (const d of datesPeriode) {
+                    for (const repas of repasPossibles) {
+                        const p = presMap[`${r.id}_${d}_${repas}`];
+                        if (p && !p.present) {
+                            stats.nbAbsent++;
+                        } else {
+                            stats.nbPresent++;
+                            // Calcul du lieu effectif
+                            const lieuEnregistre = p && p.lieu_id != null ? p.lieu_id : null;
+                            const lieuDef = lieuDefautPourRepas(r, repas);
+                            const lieuEffectif = lieuEnregistre || lieuDef;
+                            if (lieuEffectif) {
+                                stats.parLieu[lieuEffectif] = (stats.parLieu[lieuEffectif] || 0) + 1;
+                            } else {
+                                stats.aucunLieu++;
+                            }
+                        }
+                    }
+                }
+                stats.total = stats.nbPresent + stats.nbAbsent;
+                statsResidents.push(stats);
+            }
+
+            // ========================================
+            // STATS GLOBALES
+            // ========================================
+            const totalPresent = statsResidents.reduce((s, x) => s + x.nbPresent, 0);
+            const totalAbsent = statsResidents.reduce((s, x) => s + x.nbAbsent, 0);
+            const totalRepasResidents = totalPresent + totalAbsent;
+            const tauxPresence = totalRepasResidents > 0
+                ? Math.round((totalPresent / totalRepasResidents) * 100) : 0;
+
+            // Répartition globale par lieu
+            const globalParLieu = {};
+            let globalAucunLieu = 0;
+            for (const s of statsResidents) {
+                for (const [lieuId, n] of Object.entries(s.parLieu)) {
+                    globalParLieu[lieuId] = (globalParLieu[lieuId] || 0) + n;
+                }
+                globalAucunLieu += s.aucunLieu;
+            }
+            const totalAvecLieu = Object.values(globalParLieu).reduce((s, x) => s + x, 0) + globalAucunLieu;
+
+            // EJC : total net portions sur la période
+            let totalEjc = 0;
+            const categories = [
+                'adulte_normal', 'adulte_sans_lactose', 'adulte_sans_porc', 'adulte_vegetarien', 'adulte_sans_proteine_lactique',
+                'enfant_normal', 'enfant_sans_lactose', 'enfant_sans_porc', 'enfant_vegetarien', 'enfant_sans_proteine_lactique'
+            ];
+            for (const c of ejcCmd) {
+                const ann = ejcAnn.find(a => a.date === c.date);
+                for (const cat of categories) {
+                    const nbCmd = c[cat] || 0;
+                    const nbAnn = (ann && ann[cat]) || 0;
+                    totalEjc += Math.max(0, nbCmd - nbAnn);
+                }
+            }
+
+            // ========================================
+            // RENDU HTML
+            // ========================================
+            const contenu = document.getElementById('contenu');
+            let html = `
+                <h3 style="margin-top:0;">Période : ${dateFr(dateDebut)} → ${dateFr(dateFin)} <span style="color:#888;font-weight:normal;">(${jours} jour${jours>1?'s':''})</span></h3>
+            `;
+
+            // === CARTES STATS GLOBALES ===
+            html += `
+                <div class="stats-cards">
+                    <div class="stat-card">
+                        <div class="label">Repas servis (résidents)</div>
+                        <div class="valeur">${totalPresent}</div>
+                        <div class="sub">${residents.length} résident(s)</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="label">Taux de présence</div>
+                        <div class="valeur">${tauxPresence}%</div>
+                        <div class="sub">${totalAbsent} absence(s)</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="label">Repas EJC Péry</div>
+                        <div class="valeur">${totalEjc}</div>
+                        <div class="sub">portions nettes</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="label">Total repas servis</div>
+                        <div class="valeur">${totalPresent + totalEjc}</div>
+                        <div class="sub">résidents + EJC</div>
+                    </div>
+                </div>
+            `;
+
+            // === RÉPARTITION GLOBALE PAR LIEU ===
+            if (vueGlobale && totalAvecLieu > 0) {
+                html += `<div class="section-stats">
+                    <h3>📍 Répartition par lieu (vue d'ensemble)</h3>`;
+                html += renderBarreLieux(globalParLieu, globalAucunLieu, totalAvecLieu);
+
+                // Tableau détaillé
+                html += `<table class="stats" style="margin-top:15px;">
+                    <thead><tr><th>Lieu</th><th style="text-align:right;">Repas</th><th style="text-align:right;">%</th></tr></thead>
+                    <tbody>`;
+                // Trier par count décroissant
+                const trie = lieuxDisponibles
+                    .map(l => ({ lieu: l, n: globalParLieu[l.id] || 0 }))
+                    .filter(x => x.n > 0)
+                    .sort((a, b) => b.n - a.n);
+                for (const x of trie) {
+                    const pct = Math.round((x.n / totalAvecLieu) * 100);
+                    html += `<tr><td>📍 ${x.lieu.nom}</td><td style="text-align:right;">${x.n}</td><td style="text-align:right;" class="pourcent">${pct}%</td></tr>`;
+                }
+                if (globalAucunLieu > 0) {
+                    const pct = Math.round((globalAucunLieu / totalAvecLieu) * 100);
+                    html += `<tr><td>❓ Lieu non défini</td><td style="text-align:right;">${globalAucunLieu}</td><td style="text-align:right;" class="pourcent">${pct}%</td></tr>`;
+                }
+                html += `</tbody></table></div>`;
+            }
+
+            // === DÉTAIL PAR RÉSIDENT ===
+            html += `<div class="section-stats">
+                <h3>👥 Détail par résident</h3>`;
+
+            if (!statsResidents.length) {
+                html += `<p>Aucun résident à analyser.</p>`;
+            } else {
+                html += `<table class="stats">
+                    <thead>
+                        <tr>
+                            <th>Résident</th>
+                            <th style="text-align:right;">Présents</th>
+                            <th style="text-align:right;">Absents</th>
+                            <th style="text-align:right;">Présence</th>
+                            <th>Répartition lieux</th>
+                        </tr>
+                    </thead>
+                    <tbody>`;
+                // Tri par nb de présents décroissant
+                const trie = [...statsResidents].sort((a, b) => b.nbPresent - a.nbPresent);
+                for (const s of trie) {
+                    const tx = s.total > 0 ? Math.round((s.nbPresent / s.total) * 100) : 0;
+                    const totalLieu = Object.values(s.parLieu).reduce((sum, x) => sum + x, 0) + s.aucunLieu;
+                    let detailLieux = '<span style="color:#999;">—</span>';
+                    if (totalLieu > 0) {
+                        const parts = [];
+                        for (const lieu of lieuxDisponibles) {
+                            const n = s.parLieu[lieu.id] || 0;
+                            if (n > 0) {
+                                const pct = Math.round((n / totalLieu) * 100);
+                                parts.push(`<strong>${lieu.nom}</strong> : ${pct}%`);
+                            }
+                        }
+                        if (s.aucunLieu > 0) {
+                            const pct = Math.round((s.aucunLieu / totalLieu) * 100);
+                            parts.push(`<span style="color:#999;">Non défini : ${pct}%</span>`);
+                        }
+                        detailLieux = parts.join(' · ');
+                    }
+                    html += `<tr>
+                        <td><strong>${s.resident.prenom} ${s.resident.nom}</strong></td>
+                        <td style="text-align:right;">${s.nbPresent}</td>
+                        <td style="text-align:right;">${s.nbAbsent}</td>
+                        <td style="text-align:right;" class="pourcent">${tx}%</td>
+                        <td>${detailLieux}</td>
+                    </tr>`;
+                }
+                html += `</tbody></table>`;
+            }
+            html += `</div>`;
+
+            // === ZOOM RÉSIDENT (si vue par résident) ===
+            if (!vueGlobale && statsResidents.length === 1) {
+                const s = statsResidents[0];
+                const totalLieu = Object.values(s.parLieu).reduce((sum, x) => sum + x, 0) + s.aucunLieu;
+
+                html += `<div class="section-stats">
+                    <h3>📍 Répartition des lieux pour ${s.resident.prenom} ${s.resident.nom}</h3>`;
+                if (totalLieu > 0) {
+                    html += renderBarreLieux(s.parLieu, s.aucunLieu, totalLieu);
+                } else {
+                    html += '<p>Aucune présence enregistrée sur cette période.</p>';
+                }
+                html += `</div>`;
+
+                // Bloc présence/absence
+                html += `<div class="section-stats">
+                    <h3>✅ Présence vs absence</h3>`;
+                if (s.total > 0) {
+                    const pctP = Math.round((s.nbPresent / s.total) * 100);
+                    const pctA = 100 - pctP;
+                    html += `<div class="barre-container">
+                        <div class="barre-segment barre-present" style="width:${pctP}%;" title="${s.nbPresent} présent">${pctP > 8 ? pctP + '%' : ''}</div>
+                        <div class="barre-segment barre-absent" style="width:${pctA}%;" title="${s.nbAbsent} absent">${pctA > 8 ? pctA + '%' : ''}</div>
+                    </div>
+                    <div class="legende">
+                        <div class="legende-item"><span class="legende-puce" style="background:#2c5530;"></span>Présent (${s.nbPresent})</div>
+                        <div class="legende-item"><span class="legende-puce" style="background:#c44;"></span>Absent (${s.nbAbsent})</div>
+                    </div>`;
+                } else {
+                    html += '<p>Aucune donnée pour cette période.</p>';
+                }
+                html += `</div>`;
+            }
+
+            contenu.innerHTML = html;
+        }
+
+        // Génère une barre empilée pour les lieux
+        function renderBarreLieux(parLieu, aucunLieu, total) {
+            if (total === 0) return '<p>Aucune donnée.</p>';
+            let html = '<div class="barre-container">';
+            const couleurs = ['barre-restaurant', 'barre-chambre'];
+            const items = [];
+            let i = 0;
+            for (const lieu of lieuxDisponibles) {
+                const n = parLieu[lieu.id] || 0;
+                if (n > 0) {
+                    const pct = (n / total) * 100;
+                    const cls = couleurs[i % couleurs.length];
+                    html += `<div class="barre-segment ${cls}" style="width:${pct}%;" title="${lieu.nom} : ${n}">${pct > 8 ? Math.round(pct)+'%' : ''}</div>`;
+                    items.push({ nom: lieu.nom, n, cls });
+                    i++;
+                }
+            }
+            if (aucunLieu > 0) {
+                const pct = (aucunLieu / total) * 100;
+                html += `<div class="barre-segment barre-aucun" style="width:${pct}%;" title="Non défini : ${aucunLieu}">${pct > 8 ? Math.round(pct)+'%' : ''}</div>`;
+                items.push({ nom: 'Non défini', n: aucunLieu, cls: 'barre-aucun' });
+            }
+            html += '</div>';
+
+            // Légende
+            html += '<div class="legende">';
+            const couleursHex = { 'barre-restaurant': '#2c5530', 'barre-chambre': '#d4825a', 'barre-aucun': '#999' };
+            for (const it of items) {
+                html += `<div class="legende-item"><span class="legende-puce" style="background:${couleursHex[it.cls]};"></span>${it.nom} (${it.n})</div>`;
+            }
+            html += '</div>';
+            return html;
+        }
+
+        // Démarrage protégé par auth (admin uniquement)
+        (async () => {
+            const auth = await verifierAuthEtRole(['admin']);
+            if (!auth) return;
+            afficherMenuComplet('stats', auth.user.email, auth.profil.role, auth.profil.nom_affiche);
+            await chargerInitial();
+        })();
+    </script>
+</body>
+</html>
