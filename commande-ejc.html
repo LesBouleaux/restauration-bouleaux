@@ -123,9 +123,10 @@
     <script>
         // État global
         let monProfil = null;
+        // lundiCourant est une CHAÎNE ISO "YYYY-MM-DD" (la fonction lundiDeLaSemaine retourne un string)
         let lundiCourant = lundiDeLaSemaine(new Date());
         // On commence à la semaine prochaine par défaut
-        lundiCourant.setDate(lundiCourant.getDate() + 7);
+        lundiCourant = decalerJoursIso(lundiCourant, 7);
         let mode = 'commande'; // 'commande' ou 'annulation'
 
         const CATEGORIES = [
@@ -141,8 +142,18 @@
             { code: 'enfant_sans_proteine_lactique',  label: 'Enfant — Sans protéine lactique' }
         ];
 
+        // Décale une date ISO (YYYY-MM-DD) de N jours et retourne une nouvelle chaîne ISO
+        function decalerJoursIso(iso, nbJours) {
+            const d = new Date(iso + 'T00:00:00');
+            d.setDate(d.getDate() + nbJours);
+            const yyyy = d.getFullYear();
+            const mm = String(d.getMonth() + 1).padStart(2, '0');
+            const dd = String(d.getDate()).padStart(2, '0');
+            return `${yyyy}-${mm}-${dd}`;
+        }
+
         function changerSemaine(delta) {
-            lundiCourant.setDate(lundiCourant.getDate() + delta * 7);
+            lundiCourant = decalerJoursIso(lundiCourant, delta * 7);
             charger();
         }
 
@@ -157,7 +168,8 @@
             const contenu = document.getElementById('contenu');
             contenu.innerHTML = '<p class="loading">⏳ Chargement...</p>';
 
-            const jours = joursOuvresSemaine(lundiCourant);
+            // Utiliser joursOuvres (nom correct de la fonction dans shared.js)
+            const jours = joursOuvres(lundiCourant);
             const titre = `Semaine du ${dateFr(jours[0])} au ${dateFr(jours[4])}`;
             document.getElementById('titre-semaine').textContent = titre;
 
@@ -320,7 +332,7 @@
             const auth = await verifierAuthEtRole(['client_ejc', 'admin']);
             if (!auth) return;
             monProfil = auth.profil;
-            afficherMenuComplet('commande_ejc', auth.user.email, auth.profil.role, auth.profil.nom_affiche);
+            afficherMenuComplet('commande-ejc', auth.user.email, auth.profil.role, auth.profil.nom_affiche);
             charger();
         })();
     </script>
