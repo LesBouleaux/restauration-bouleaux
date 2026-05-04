@@ -4,9 +4,18 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Restauration Les Bouleaux</title>
-    <meta http-equiv="refresh" content="0; url=login.html">
+    <link rel="stylesheet" href="shared.css">
+    <script>
+        // Redirection immédiate via JS (replace = ne pollue pas l'historique)
+        window.location.replace('login.html');
+    </script>
 </head>
 <body>
-    <p>Redirection vers <a href="login.html">la page de connexion</a>...</p>
+    <!-- Affiché uniquement si JavaScript est désactivé -->
+    <noscript>
+        <p style="text-align:center; padding:30px; font-family:sans-serif;">
+            JavaScript est désactivé. <a href="login.html">Cliquez ici pour accéder à la connexion</a>.
+        </p>
+    </noscript>
 </body>
 </html>
