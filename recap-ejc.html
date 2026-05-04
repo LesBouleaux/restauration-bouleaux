@@ -6,43 +6,28 @@
     <title>Récap EJC Péry - Restauration Les Bouleaux</title>
     <link rel="stylesheet" href="shared.css">
     <style>
-        .periode-nav {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            background: white;
-            padding: 15px 20px;
-            border-radius: 8px;
-            margin: 15px 0;
-            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-            flex-wrap: wrap;
-            gap: 10px;
-        }
-        .periode-nav h2 { margin: 0; font-size: 18px; flex: 1; text-align: center; min-width: 200px; }
-
-        .mode-switch {
+        .vue-toggle {
             display: inline-flex;
-            background: #e8e8e8;
-            border-radius: 8px;
+            border: 2px solid #2c5530;
+            border-radius: 6px;
             overflow: hidden;
-            margin: 10px 0;
         }
-        .mode-switch button {
-            background: transparent;
+        .vue-toggle button {
+            background: white;
+            color: #2c5530;
             border: none;
-            padding: 10px 20px;
+            padding: 8px 16px;
             cursor: pointer;
+            font-size: 14px;
             font-weight: bold;
-            color: #555;
         }
-        .mode-switch button.active {
+        .vue-toggle button.active {
             background: #2c5530;
             color: white;
         }
-
-        .stats-grid {
+        .stats-cards {
             display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
             gap: 15px;
             margin: 20px 0;
         }
@@ -50,25 +35,30 @@
             background: white;
             padding: 18px;
             border-radius: 8px;
-            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-            border-left: 4px solid #2c5530;
+            text-align: center;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.06);
+            border-top: 4px solid #2c5530;
         }
-        .stat-card.warning { border-left-color: #f0ad4e; }
-        .stat-card.danger { border-left-color: #c0392b; }
-        .stat-label {
+        .stat-card .label {
             color: #666;
             font-size: 13px;
             text-transform: uppercase;
-            margin-bottom: 5px;
+            letter-spacing: 0.5px;
         }
-        .stat-value {
+        .stat-card .valeur {
             font-size: 28px;
             font-weight: bold;
             color: #2c5530;
+            margin-top: 6px;
         }
-        .stat-card.warning .stat-value { color: #c8862e; }
-        .stat-card.danger .stat-value { color: #c0392b; }
-        .stat-detail { font-size: 12px; color: #888; margin-top: 5px; }
+        .stat-card .sub {
+            color: #888;
+            font-size: 12px;
+        }
+        .stat-card.commande { border-top-color: #2c5530; }
+        .stat-card.annulation { border-top-color: #f0ad4e; }
+        .stat-card.net { border-top-color: #3498db; }
+        .stat-card.facturation { border-top-color: #28a745; }
 
         table.recap {
             width: 100%;
@@ -78,46 +68,36 @@
             overflow: hidden;
             box-shadow: 0 2px 4px rgba(0,0,0,0.1);
             margin: 15px 0;
-            font-size: 13px;
+            font-size: 14px;
         }
         table.recap th, table.recap td {
-            padding: 8px 6px;
+            padding: 8px 10px;
             text-align: center;
             border-bottom: 1px solid #eee;
         }
-        table.recap th { background: #2c5530; color: white; font-size: 12px; }
+        table.recap th {
+            background: #2c5530;
+            color: white;
+        }
         table.recap th:first-child, table.recap td:first-child {
             text-align: left;
             background: #f5f5f5;
             font-weight: bold;
-            min-width: 180px;
-            font-size: 13px;
+            min-width: 200px;
         }
-        table.recap .col-total { background: #f0f8f0; font-weight: bold; color: #2c5530; }
-        table.recap tr.section-header td {
-            background: #e8e8e8;
+        table.recap .ligne-total {
+            background: #f0f8f0;
             font-weight: bold;
-            text-align: left;
-            font-size: 14px;
-            color: #2c5530;
         }
-        /* Cellule annulation isolée (vue mois) — texte rouge italique */
-        table.recap td.cell-annulation {
-            color: #c0392b;
-            font-style: italic;
-        }
-        /* Vue semaine : toute la ligne annulation en rouge SAUF la 1ère colonne ET la colonne total */
-        table.recap tr.row-annulation td:not(:first-child):not(.col-total) {
-            color: #c0392b;
-            font-style: italic;
-        }
-        table.recap tr.total-row { background: #d4edda; font-weight: bold; color: #155724; }
-        table.recap tr.total-row td { color: #155724; }
-        table.recap tr.total-general td {
-            background: #2c5530 !important;
-            color: white !important;
-            font-weight: bold;
-            font-size: 15px;
+        .num-cmd { color: #2c5530; }
+        .num-ann { color: #c0392b; }
+        .num-net { color: #2980b9; font-weight: bold; }
+        .empty-cats {
+            background: white;
+            padding: 40px;
+            border-radius: 8px;
+            text-align: center;
+            color: #888;
         }
     </style>
 </head>
@@ -125,406 +105,353 @@
     <h1>🍽️ Restauration Les Bouleaux</h1>
     <div id="menu"></div>
 
-    <h2>📊 Récap EJC Péry</h2>
+    <h2>🍴 Récapitulatif EJC Péry</h2>
 
     <div class="toolbar no-print">
-        <div class="mode-switch">
-            <button id="btn-mode-semaine" class="active" onclick="changerMode('semaine')">📅 Vue Semaine</button>
-            <button id="btn-mode-mois" onclick="changerMode('mois')">🗓️ Vue Mois</button>
+        <label><strong>Vue :</strong></label>
+        <div class="vue-toggle">
+            <button id="btn-vue-semaine" class="active" onclick="changerVue('semaine')">📅 Semaine</button>
+            <button id="btn-vue-mois" onclick="changerVue('mois')">🗓️ Mois</button>
         </div>
+
+        <span id="zone-semaine">
+            <button class="btn-secondary" onclick="changerSemaine(-1)">◀</button>
+            <span id="label-semaine" style="font-weight:bold;">...</span>
+            <button class="btn-secondary" onclick="changerSemaine(1)">▶</button>
+        </span>
+
+        <span id="zone-mois" style="display:none;">
+            <input type="month" id="input-mois" onchange="charger()">
+        </span>
+
+        <button class="btn-primary" onclick="charger()">🔄 Actualiser</button>
+        <button class="btn-print" onclick="window.print()">🖨️ Imprimer</button>
+        <button class="btn-edit" onclick="exporterCSV()">📊 Export CSV</button>
+        <button class="btn-edit" onclick="exporterExcel()">📈 Export Excel</button>
     </div>
 
-    <div class="periode-nav no-print">
-        <button class="btn-secondary" onclick="changerPeriode(-1)">◀ Précédent</button>
-        <h2 id="titre-periode">Chargement...</h2>
-        <button class="btn-secondary" onclick="changerPeriode(1)">Suivant ▶</button>
-    </div>
-
-    <div class="toolbar no-print">
-        <button class="btn-print" onclick="exporterCSV()">📥 Export CSV</button>
-        <button class="btn-print" onclick="exporterExcel()">📊 Export Excel</button>
-        <button class="btn-print" onclick="window.print()">🖨️ Imprimer / PDF</button>
-    </div>
-
-    <div id="stats"></div>
-    <div id="contenu">
+    <div id="contenu" class="print-area">
         <p class="loading">⏳ Chargement...</p>
     </div>
 
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-    <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+    <script src="https://cdn.sheetjs.com/xlsx-0.18.5/package/dist/xlsx.full.min.js"></script>
     <script src="shared.js"></script>
     <script>
-        let mode = 'semaine'; // 'semaine' ou 'mois'
+        let vueActuelle = 'semaine';
         let lundiCourant = lundiDeLaSemaine(new Date());
-        let moisCourant = new Date();
-        moisCourant.setDate(1);
-        let donneesPeriode = null;
+        let categoriesAll = []; // toutes (actives + désactivées) car on peut avoir des données historiques
+        let donneesCache = null;
 
-        const CATEGORIES = [
-            { code: 'adulte_normal',                  label: 'Adulte — Normal' },
-            { code: 'adulte_sans_lactose',            label: 'Adulte — Sans lactose' },
-            { code: 'adulte_sans_porc',               label: 'Adulte — Sans porc' },
-            { code: 'adulte_vegetarien',              label: 'Adulte — Végétarien' },
-            { code: 'adulte_sans_proteine_lactique',  label: 'Adulte — Sans protéine lactique' },
-            { code: 'enfant_normal',                  label: 'Enfant — Normal' },
-            { code: 'enfant_sans_lactose',            label: 'Enfant — Sans lactose' },
-            { code: 'enfant_sans_porc',               label: 'Enfant — Sans porc' },
-            { code: 'enfant_vegetarien',              label: 'Enfant — Végétarien' },
-            { code: 'enfant_sans_proteine_lactique',  label: 'Enfant — Sans protéine lactique' }
-        ];
+        function decalerJoursIso(iso, nbJours) {
+            const d = new Date(iso + 'T00:00:00');
+            d.setDate(d.getDate() + nbJours);
+            const yyyy = d.getFullYear();
+            const mm = String(d.getMonth() + 1).padStart(2, '0');
+            const dd = String(d.getDate()).padStart(2, '0');
+            return `${yyyy}-${mm}-${dd}`;
+        }
 
-        function changerMode(nouveauMode) {
-            mode = nouveauMode;
-            document.getElementById('btn-mode-semaine').className = (mode === 'semaine') ? 'active' : '';
-            document.getElementById('btn-mode-mois').className = (mode === 'mois') ? 'active' : '';
+        function changerVue(v) {
+            vueActuelle = v;
+            document.getElementById('btn-vue-semaine').classList.toggle('active', v === 'semaine');
+            document.getElementById('btn-vue-mois').classList.toggle('active', v === 'mois');
+            document.getElementById('zone-semaine').style.display = (v === 'semaine') ? 'inline-flex' : 'none';
+            document.getElementById('zone-mois').style.display = (v === 'mois') ? 'inline' : 'none';
             charger();
         }
 
-        function changerPeriode(delta) {
-            if (mode === 'semaine') {
-                lundiCourant.setDate(lundiCourant.getDate() + delta * 7);
-            } else {
-                moisCourant.setMonth(moisCourant.getMonth() + delta);
-            }
+        function changerSemaine(delta) {
+            lundiCourant = decalerJoursIso(lundiCourant, delta * 7);
             charger();
         }
 
-        function joursOuvresMois(date) {
-            const annee = date.getFullYear();
-            const mois = date.getMonth();
-            const jours = [];
-            const d = new Date(annee, mois, 1);
-            while (d.getMonth() === mois) {
-                const jourSem = d.getDay();
-                if (jourSem !== 0 && jourSem !== 6) {
-                    jours.push(dateISO(d));
-                }
-                d.setDate(d.getDate() + 1);
-            }
-            return jours;
+        function nbJoursMois(annee, mois) {
+            return new Date(annee, mois, 0).getDate();
+        }
+
+        function moisIso() {
+            const v = document.getElementById('input-mois').value;
+            return v || `${new Date().getFullYear()}-${String(new Date().getMonth()+1).padStart(2,'0')}`;
         }
 
         async function charger() {
             const contenu = document.getElementById('contenu');
             contenu.innerHTML = '<p class="loading">⏳ Chargement...</p>';
 
-            let jours;
-            let titre;
+            // Charger toutes les catégories (actives + inactives) car données historiques possibles
+            categoriesAll = await chargerCategoriesEjc(false);
 
-            if (mode === 'semaine') {
-                jours = joursOuvresSemaine(lundiCourant);
-                titre = `Semaine du ${dateFr(jours[0])} au ${dateFr(jours[jours.length-1])}`;
+            let dateDebut, dateFin, jours;
+            if (vueActuelle === 'semaine') {
+                jours = joursOuvres(lundiCourant);
+                dateDebut = jours[0];
+                dateFin = jours[4];
+                document.getElementById('label-semaine').textContent =
+                    `Semaine du ${dateFr(jours[0])} au ${dateFr(jours[4])}`;
             } else {
-                jours = joursOuvresMois(moisCourant);
-                const nomMois = moisCourant.toLocaleDateString('fr-FR', { month: 'long', year: 'numeric' });
-                titre = `Mois de ${nomMois.charAt(0).toUpperCase() + nomMois.slice(1)}`;
+                const m = moisIso();
+                const [annee, moisNum] = m.split('-');
+                const an = parseInt(annee), mo = parseInt(moisNum);
+                const nbJ = nbJoursMois(an, mo);
+                dateDebut = `${annee}-${moisNum}-01`;
+                dateFin = `${annee}-${moisNum}-${String(nbJ).padStart(2,'0')}`;
+                jours = [];
+                for (let j = 1; j <= nbJ; j++) {
+                    const d = new Date(an, mo-1, j);
+                    if (d.getDay() !== 0 && d.getDay() !== 6) {
+                        jours.push(`${annee}-${moisNum}-${String(j).padStart(2,'0')}`);
+                    }
+                }
             }
-            document.getElementById('titre-periode').textContent = titre;
 
-            if (jours.length === 0) {
-                contenu.innerHTML = '<p class="info-msg">Aucun jour ouvré dans cette période.</p>';
-                document.getElementById('stats').innerHTML = '';
+            const { data: cmds } = await supaClient
+                .from(TABLE_COMMANDES_EJC).select('*')
+                .gte('date', dateDebut).lte('date', dateFin);
+            const { data: anns } = await supaClient
+                .from(TABLE_ANNULATIONS_EJC).select('*')
+                .gte('date', dateDebut).lte('date', dateFin);
+
+            donneesCache = {
+                jours, cmds: cmds || [], anns: anns || [],
+                dateDebut, dateFin
+            };
+            afficher();
+        }
+
+        function afficher() {
+            const { jours, cmds, anns, dateDebut, dateFin } = donneesCache;
+            const contenu = document.getElementById('contenu');
+
+            // Filtrer les catégories qui ont au moins 1 enregistrement OU qui sont actives
+            const idsAvecData = new Set();
+            for (const c of cmds) idsAvecData.add(c.categorie_id);
+            for (const a of anns) idsAvecData.add(a.categorie_id);
+            const catsAffichees = categoriesAll.filter(c => c.actif || idsAvecData.has(c.id));
+
+            if (!catsAffichees.length) {
+                contenu.innerHTML = `<div class="empty-cats">
+                    <div style="font-size:48px;">🏷️</div>
+                    <p><strong>Aucune catégorie configurée.</strong></p>
+                    <p>Va dans l'onglet "Catégories EJC" pour en créer.</p>
+                </div>`;
                 return;
             }
 
-            const { data: commandes } = await supaClient
-                .from(TABLE_COMMANDES_EJC).select('*').in('date', jours);
-            const { data: annulations } = await supaClient
-                .from(TABLE_ANNULATIONS_EJC).select('*').in('date', jours);
-
+            // Maps : key = "date_categorieId" → quantite
             const cmdMap = {};
-            for (const c of (commandes || [])) cmdMap[c.date] = c;
+            for (const c of cmds) cmdMap[`${c.date}_${c.categorie_id}`] = c.quantite;
             const annMap = {};
-            for (const a of (annulations || [])) annMap[a.date] = a;
+            for (const a of anns) annMap[`${a.date}_${a.categorie_id}`] = a.quantite;
 
-            let totalCommande = 0;
-            let totalAnnulation = 0;
-            const totalParCat = {};
-            for (const cat of CATEGORIES) totalParCat[cat.code] = { cmd: 0, ann: 0 };
+            // Calculer totaux globaux
+            let totalCmd = 0, totalAnn = 0;
+            for (const c of cmds) totalCmd += c.quantite;
+            for (const a of anns) totalAnn += a.quantite;
+            const totalNet = totalCmd - totalAnn;
+            const equivFact = totalCmd - (totalAnn * 0.5);
 
-            for (const j of jours) {
-                for (const cat of CATEGORIES) {
-                    const cmd = (cmdMap[j] && cmdMap[j][cat.code]) || 0;
-                    const ann = (annMap[j] && annMap[j][cat.code]) || 0;
-                    totalCommande += cmd;
-                    totalAnnulation += ann;
-                    totalParCat[cat.code].cmd += cmd;
-                    totalParCat[cat.code].ann += ann;
-                }
-            }
-            const totalNet = totalCommande - totalAnnulation;
+            // Cartes stats
+            let html = `
+                <h3 style="margin-top:0;">${vueActuelle === 'semaine'
+                    ? `Semaine du ${dateFr(dateDebut)} au ${dateFr(dateFin)}`
+                    : `Mois : ${dateFr(dateDebut)} → ${dateFr(dateFin)}`}</h3>
+                <div class="stats-cards">
+                    <div class="stat-card commande">
+                        <div class="label">Commandés</div>
+                        <div class="valeur">${totalCmd}</div>
+                        <div class="sub">100% facturé</div>
+                    </div>
+                    <div class="stat-card annulation">
+                        <div class="label">Annulés</div>
+                        <div class="valeur">${totalAnn}</div>
+                        <div class="sub">50% facturé</div>
+                    </div>
+                    <div class="stat-card net">
+                        <div class="label">Net servi</div>
+                        <div class="valeur">${totalNet}</div>
+                        <div class="sub">commandés − annulés</div>
+                    </div>
+                    <div class="stat-card facturation">
+                        <div class="label">Équivalent facturation</div>
+                        <div class="valeur">${equivFact.toFixed(1)}</div>
+                        <div class="sub">cmd − (ann × 0.5)</div>
+                    </div>
+                </div>`;
 
-            donneesPeriode = { jours, cmdMap, annMap, totalCommande, totalAnnulation, totalNet, totalParCat, titre };
-
-            afficherStats();
-            if (mode === 'semaine') {
-                afficherTableauSemaine();
+            // Tableau
+            if (vueActuelle === 'semaine') {
+                html += renduTableauSemaine(jours, catsAffichees, cmdMap, annMap);
             } else {
-                afficherTableauMois();
+                html += renduTableauMois(jours, catsAffichees, cmdMap, annMap);
             }
+
+            contenu.innerHTML = html;
         }
 
-        function afficherStats() {
-            const { totalCommande, totalAnnulation, totalNet } = donneesPeriode;
-            document.getElementById('stats').innerHTML = `
-                <div class="stats-grid">
-                    <div class="stat-card">
-                        <div class="stat-label">Repas commandés</div>
-                        <div class="stat-value">${totalCommande}</div>
-                        <div class="stat-detail">Facturés à 100%</div>
-                    </div>
-                    <div class="stat-card warning">
-                        <div class="stat-label">Annulations tardives</div>
-                        <div class="stat-value">${totalAnnulation}</div>
-                        <div class="stat-detail">Facturées à 50%</div>
-                    </div>
-                    <div class="stat-card">
-                        <div class="stat-label">Repas servis (net)</div>
-                        <div class="stat-value">${totalNet}</div>
-                        <div class="stat-detail">Commandes - Annulations</div>
-                    </div>
-                    <div class="stat-card danger">
-                        <div class="stat-label">Équivalent facturation</div>
-                        <div class="stat-value">${(totalCommande - totalAnnulation * 0.5).toFixed(1)}</div>
-                        <div class="stat-detail">${totalCommande} pleins + ${totalAnnulation} × 50%</div>
-                    </div>
-                </div>
-            `;
-        }
-
-        function afficherTableauSemaine() {
-            const { jours, cmdMap, annMap } = donneesPeriode;
-
+        function renduTableauSemaine(jours, cats, cmdMap, annMap) {
+            // 1 colonne par jour, lignes : pour chaque catégorie 3 lignes (commandes / annulations / net)
             let html = '<table class="recap"><thead><tr><th>Catégorie</th>';
             for (const j of jours) {
                 const d = new Date(j + 'T00:00:00');
-                html += `<th>${d.toLocaleDateString('fr-FR', { weekday: 'short', day: 'numeric', month: 'numeric' })}</th>`;
+                html += `<th>${d.toLocaleDateString('fr-FR', { weekday: 'short', day: 'numeric' })}</th>`;
             }
-            html += '<th class="col-total">Total</th></tr></thead><tbody>';
+            html += '<th>Total</th></tr></thead><tbody>';
 
-            html += '<tr class="section-header"><td colspan="' + (jours.length + 2) + '">📝 Commandes (facturées 100%)</td></tr>';
-            for (const cat of CATEGORIES) {
-                html += `<tr><td>${cat.label}</td>`;
-                let total = 0;
+            for (const cat of cats) {
+                let totalCmd = 0, totalAnn = 0;
+                let lCmd = `<tr><td>${cat.nom}<br><small style="color:#888;">Commandés</small></td>`;
+                let lAnn = `<tr><td><small style="color:#888;">Annulés</small></td>`;
+                let lNet = `<tr><td><small style="color:#888;font-weight:bold;">Net</small></td>`;
                 for (const j of jours) {
-                    const v = (cmdMap[j] && cmdMap[j][cat.code]) || 0;
-                    total += v;
-                    html += `<td>${v || ''}</td>`;
+                    const c = cmdMap[`${j}_${cat.id}`] || 0;
+                    const a = annMap[`${j}_${cat.id}`] || 0;
+                    const n = c - a;
+                    totalCmd += c; totalAnn += a;
+                    lCmd += `<td class="num-cmd">${c || ''}</td>`;
+                    lAnn += `<td class="num-ann">${a || ''}</td>`;
+                    lNet += `<td class="num-net">${n || ''}</td>`;
                 }
-                html += `<td class="col-total">${total}</td></tr>`;
+                lCmd += `<td class="num-cmd"><strong>${totalCmd}</strong></td></tr>`;
+                lAnn += `<td class="num-ann"><strong>${totalAnn}</strong></td></tr>`;
+                lNet += `<td class="num-net"><strong>${totalCmd - totalAnn}</strong></td></tr>`;
+                html += lCmd + lAnn + lNet;
             }
 
-            html += '<tr class="total-row"><td>TOTAL COMMANDES</td>';
-            let totalCmdSem = 0;
+            // Total journée (net)
+            html += '<tr class="ligne-total"><td>TOTAL JOURNÉE (net)</td>';
+            let grandTotalNet = 0;
             for (const j of jours) {
-                let totalJ = 0;
-                for (const cat of CATEGORIES) totalJ += (cmdMap[j] && cmdMap[j][cat.code]) || 0;
-                totalCmdSem += totalJ;
-                html += `<td>${totalJ || ''}</td>`;
-            }
-            html += `<td class="col-total">${totalCmdSem}</td></tr>`;
-
-            html += '<tr class="section-header"><td colspan="' + (jours.length + 2) + '">⚠️ Annulations tardives (facturées 50%)</td></tr>';
-            for (const cat of CATEGORIES) {
-                html += `<tr class="row-annulation"><td>${cat.label}</td>`;
-                let total = 0;
-                for (const j of jours) {
-                    const v = (annMap[j] && annMap[j][cat.code]) || 0;
-                    total += v;
-                    html += `<td>${v || ''}</td>`;
+                let tNet = 0;
+                for (const cat of cats) {
+                    tNet += (cmdMap[`${j}_${cat.id}`] || 0) - (annMap[`${j}_${cat.id}`] || 0);
                 }
-                html += `<td class="col-total">${total}</td></tr>`;
+                grandTotalNet += tNet;
+                html += `<td>${tNet}</td>`;
             }
-
-            html += '<tr class="total-row"><td>TOTAL ANNULATIONS</td>';
-            let totalAnnSem = 0;
-            for (const j of jours) {
-                let totalJ = 0;
-                for (const cat of CATEGORIES) totalJ += (cmdMap[j] && cmdMap[j][cat.code]) || 0;
-                totalAnnSem += totalJ;
-                html += `<td>${totalJ || ''}</td>`;
-            }
-            html += `<td class="col-total">${totalAnnSem}</td></tr>`;
-
-            html += '<tr class="section-header"><td colspan="' + (jours.length + 2) + '">✅ Repas servis (net)</td></tr>';
-            html += '<tr class="total-row"><td>TOTAL NET</td>';
-            let totalNetSem = 0;
-            for (const j of jours) {
-                let totalJ = 0;
-                for (const cat of CATEGORIES) {
-                    totalJ += ((cmdMap[j] && cmdMap[j][cat.code]) || 0) - ((annMap[j] && annMap[j][cat.code]) || 0);
-                }
-                totalNetSem += totalJ;
-                html += `<td>${totalJ || ''}</td>`;
-            }
-            html += `<td class="col-total">${totalNetSem}</td></tr>`;
-
+            html += `<td>${grandTotalNet}</td></tr>`;
             html += '</tbody></table>';
-            document.getElementById('contenu').innerHTML = html;
+            return html;
         }
 
-        function afficherTableauMois() {
-            const { totalParCat } = donneesPeriode;
+        function renduTableauMois(jours, cats, cmdMap, annMap) {
+            // En mode mois, on agrège par catégorie : 1 ligne par catégorie avec totaux
+            let html = '<table class="recap"><thead><tr><th>Catégorie</th>';
+            html += '<th>Commandés</th><th>Annulés</th><th>Net servi</th><th>Équiv. facturation</th>';
+            html += '</tr></thead><tbody>';
 
-            let html = `<table class="recap"><thead><tr>
-                <th>Catégorie</th>
-                <th>Commandés (100%)</th>
-                <th>Annulés (50%)</th>
-                <th class="col-total">Net servi</th>
-                <th class="col-total">Équivalent facturation</th>
-            </tr></thead><tbody>`;
-
-            html += '<tr class="section-header"><td colspan="5">👤 Adultes</td></tr>';
-            let sumAdultesCmd = 0, sumAdultesAnn = 0;
-            for (const cat of CATEGORIES.filter(c => c.code.startsWith('adulte'))) {
-                const cmd = totalParCat[cat.code].cmd;
-                const ann = totalParCat[cat.code].ann;
-                const net = cmd - ann;
-                const facto = cmd - ann * 0.5;
-                sumAdultesCmd += cmd;
-                sumAdultesAnn += ann;
+            let gtCmd = 0, gtAnn = 0;
+            for (const cat of cats) {
+                let cCmd = 0, cAnn = 0;
+                for (const j of jours) {
+                    cCmd += cmdMap[`${j}_${cat.id}`] || 0;
+                    cAnn += annMap[`${j}_${cat.id}`] || 0;
+                }
+                if (cCmd === 0 && cAnn === 0) continue; // ne pas afficher les lignes vides
+                gtCmd += cCmd; gtAnn += cAnn;
+                const cNet = cCmd - cAnn;
+                const cEq = cCmd - (cAnn * 0.5);
                 html += `<tr>
-                    <td>${cat.label.replace('Adulte — ', '')}</td>
-                    <td>${cmd || ''}</td>
-                    <td class="cell-annulation">${ann || ''}</td>
-                    <td class="col-total">${net}</td>
-                    <td class="col-total">${facto.toFixed(1)}</td>
+                    <td>${cat.nom}${cat.actif ? '' : ' <small style="color:#999;">(inactif)</small>'}</td>
+                    <td class="num-cmd">${cCmd}</td>
+                    <td class="num-ann">${cAnn}</td>
+                    <td class="num-net">${cNet}</td>
+                    <td><strong>${cEq.toFixed(1)}</strong></td>
                 </tr>`;
             }
-            html += `<tr class="total-row">
-                <td>SOUS-TOTAL ADULTES</td>
-                <td>${sumAdultesCmd}</td>
-                <td>${sumAdultesAnn}</td>
-                <td class="col-total">${sumAdultesCmd - sumAdultesAnn}</td>
-                <td class="col-total">${(sumAdultesCmd - sumAdultesAnn * 0.5).toFixed(1)}</td>
-            </tr>`;
 
-            html += '<tr class="section-header"><td colspan="5">🧒 Enfants</td></tr>';
-            let sumEnfantsCmd = 0, sumEnfantsAnn = 0;
-            for (const cat of CATEGORIES.filter(c => c.code.startsWith('enfant'))) {
-                const cmd = totalParCat[cat.code].cmd;
-                const ann = totalParCat[cat.code].ann;
-                const net = cmd - ann;
-                const facto = cmd - ann * 0.5;
-                sumEnfantsCmd += cmd;
-                sumEnfantsAnn += ann;
-                html += `<tr>
-                    <td>${cat.label.replace('Enfant — ', '')}</td>
-                    <td>${cmd || ''}</td>
-                    <td class="cell-annulation">${ann || ''}</td>
-                    <td class="col-total">${net}</td>
-                    <td class="col-total">${facto.toFixed(1)}</td>
-                </tr>`;
-            }
-            html += `<tr class="total-row">
-                <td>SOUS-TOTAL ENFANTS</td>
-                <td>${sumEnfantsCmd}</td>
-                <td>${sumEnfantsAnn}</td>
-                <td class="col-total">${sumEnfantsCmd - sumEnfantsAnn}</td>
-                <td class="col-total">${(sumEnfantsCmd - sumEnfantsAnn * 0.5).toFixed(1)}</td>
+            const gtNet = gtCmd - gtAnn;
+            const gtEq = gtCmd - (gtAnn * 0.5);
+            html += `<tr class="ligne-total">
+                <td>TOTAL</td>
+                <td>${gtCmd}</td>
+                <td>${gtAnn}</td>
+                <td>${gtNet}</td>
+                <td>${gtEq.toFixed(1)}</td>
             </tr>`;
-
-            html += `<tr class="total-general">
-                <td>TOTAL GÉNÉRAL</td>
-                <td>${sumAdultesCmd + sumEnfantsCmd}</td>
-                <td>${sumAdultesAnn + sumEnfantsAnn}</td>
-                <td>${(sumAdultesCmd + sumEnfantsCmd) - (sumAdultesAnn + sumEnfantsAnn)}</td>
-                <td>${((sumAdultesCmd + sumEnfantsCmd) - (sumAdultesAnn + sumEnfantsAnn) * 0.5).toFixed(1)}</td>
-            </tr>`;
-
             html += '</tbody></table>';
-            document.getElementById('contenu').innerHTML = html;
+            return html;
         }
 
-        // ===== EXPORTS =====
-
-        function genererDonneesExportSemaine() {
-            const { jours, cmdMap, annMap } = donneesPeriode;
-            const rows = [];
-            const enTete = ['Type', 'Catégorie'];
-            for (const j of jours) {
-                const d = new Date(j + 'T00:00:00');
-                enTete.push(d.toLocaleDateString('fr-FR'));
-            }
-            enTete.push('Total');
-            rows.push(enTete);
-
-            for (const cat of CATEGORIES) {
-                const ligne = ['Commande', cat.label];
-                let total = 0;
-                for (const j of jours) {
-                    const v = (cmdMap[j] && cmdMap[j][cat.code]) || 0;
-                    total += v;
-                    ligne.push(v);
-                }
-                ligne.push(total);
-                rows.push(ligne);
-            }
-            for (const cat of CATEGORIES) {
-                const ligne = ['Annulation', cat.label];
-                let total = 0;
-                for (const j of jours) {
-                    const v = (annMap[j] && annMap[j][cat.code]) || 0;
-                    total += v;
-                    ligne.push(v);
-                }
-                ligne.push(total);
-                rows.push(ligne);
-            }
-            return rows;
-        }
-
-        function genererDonneesExportMois() {
-            const { totalParCat, titre } = donneesPeriode;
-            const rows = [];
-            rows.push([titre]);
-            rows.push([]);
-            rows.push(['Catégorie', 'Commandés (100%)', 'Annulés (50%)', 'Net servi', 'Équivalent facturation']);
-            for (const cat of CATEGORIES) {
-                const cmd = totalParCat[cat.code].cmd;
-                const ann = totalParCat[cat.code].ann;
-                rows.push([cat.label, cmd, ann, cmd - ann, (cmd - ann * 0.5).toFixed(1)]);
-            }
-            const totCmd = CATEGORIES.reduce((s, c) => s + totalParCat[c.code].cmd, 0);
-            const totAnn = CATEGORIES.reduce((s, c) => s + totalParCat[c.code].ann, 0);
-            rows.push([]);
-            rows.push(['TOTAL', totCmd, totAnn, totCmd - totAnn, (totCmd - totAnn * 0.5).toFixed(1)]);
-            return rows;
-        }
-
+        // === EXPORTS ===
         function exporterCSV() {
-            const rows = (mode === 'semaine') ? genererDonneesExportSemaine() : genererDonneesExportMois();
-            const csv = rows.map(r => r.map(v => `"${String(v).replace(/"/g, '""')}"`).join(';')).join('\n');
-            const blob = new Blob(['\uFEFF' + csv], { type: 'text/csv;charset=utf-8;' });
-            const suffixe = (mode === 'semaine') ? donneesPeriode.jours[0] : moisCourant.toISOString().slice(0, 7);
-            telecharger(blob, `recap-ejc-${mode}-${suffixe}.csv`);
+            if (!donneesCache) return;
+            const { jours, cmds, anns } = donneesCache;
+            const cmdMap = {}, annMap = {};
+            for (const c of cmds) cmdMap[`${c.date}_${c.categorie_id}`] = c.quantite;
+            for (const a of anns) annMap[`${a.date}_${a.categorie_id}`] = a.quantite;
+
+            const cats = categoriesAll;
+            let csv = 'Catégorie;Type;' + jours.join(';') + ';Total\n';
+            for (const cat of cats) {
+                let tCmd = 0, tAnn = 0;
+                let lCmd = `${cat.nom};Commandés`;
+                let lAnn = `${cat.nom};Annulés`;
+                for (const j of jours) {
+                    const c = cmdMap[`${j}_${cat.id}`] || 0;
+                    const a = annMap[`${j}_${cat.id}`] || 0;
+                    tCmd += c; tAnn += a;
+                    lCmd += `;${c}`;
+                    lAnn += `;${a}`;
+                }
+                lCmd += `;${tCmd}\n`;
+                lAnn += `;${tAnn}\n`;
+                if (tCmd > 0 || tAnn > 0) csv += lCmd + lAnn;
+            }
+            telecharger(csv, 'recap-ejc.csv', 'text/csv;charset=utf-8;');
         }
 
         function exporterExcel() {
-            const rows = (mode === 'semaine') ? genererDonneesExportSemaine() : genererDonneesExportMois();
+            if (!donneesCache) return;
+            const { jours, cmds, anns } = donneesCache;
+            const cmdMap = {}, annMap = {};
+            for (const c of cmds) cmdMap[`${c.date}_${c.categorie_id}`] = c.quantite;
+            for (const a of anns) annMap[`${a.date}_${a.categorie_id}`] = a.quantite;
+
+            const cats = categoriesAll;
+            const rows = [['Catégorie', 'Type', ...jours, 'Total']];
+            for (const cat of cats) {
+                let tCmd = 0, tAnn = 0;
+                const rowCmd = [cat.nom, 'Commandés'];
+                const rowAnn = [cat.nom, 'Annulés'];
+                for (const j of jours) {
+                    const c = cmdMap[`${j}_${cat.id}`] || 0;
+                    const a = annMap[`${j}_${cat.id}`] || 0;
+                    tCmd += c; tAnn += a;
+                    rowCmd.push(c);
+                    rowAnn.push(a);
+                }
+                rowCmd.push(tCmd);
+                rowAnn.push(tAnn);
+                if (tCmd > 0 || tAnn > 0) {
+                    rows.push(rowCmd);
+                    rows.push(rowAnn);
+                }
+            }
             const ws = XLSX.utils.aoa_to_sheet(rows);
             const wb = XLSX.utils.book_new();
-            XLSX.utils.book_append_sheet(wb, ws, mode === 'semaine' ? 'Récap semaine' : 'Récap mois');
-            const suffixe = (mode === 'semaine') ? donneesPeriode.jours[0] : moisCourant.toISOString().slice(0, 7);
-            XLSX.writeFile(wb, `recap-ejc-${mode}-${suffixe}.xlsx`);
+            XLSX.utils.book_append_sheet(wb, ws, 'Récap EJC');
+            XLSX.writeFile(wb, 'recap-ejc.xlsx');
         }
 
-        function telecharger(blob, nomFichier) {
+        function telecharger(contenu, nom, type) {
+            const blob = new Blob([contenu], { type });
             const url = URL.createObjectURL(blob);
             const a = document.createElement('a');
             a.href = url;
-            a.download = nomFichier;
-            document.body.appendChild(a);
+            a.download = nom;
             a.click();
-            document.body.removeChild(a);
             URL.revokeObjectURL(url);
         }
 
+        // Démarrage
         (async () => {
             const auth = await verifierAuthEtRole(['admin']);
             if (!auth) return;
-            afficherMenuComplet('recap_ejc', auth.user.email, auth.profil.role, auth.profil.nom_affiche);
+            afficherMenuComplet('recap-ejc', auth.user.email, auth.profil.role, auth.profil.nom_affiche);
+            // Initialiser le mois
+            const now = new Date();
+            document.getElementById('input-mois').value = `${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}`;
             charger();
         })();
     </script>

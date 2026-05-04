@@ -57,6 +57,14 @@
             border-bottom: 1px solid #c8d8c8;
             padding-bottom: 8px;
         }
+        .ejc-cat-line {
+            padding: 6px 0;
+        }
+        .ejc-cat-allergenes {
+            font-size: 12px;
+            color: #856404;
+            margin-top: 2px;
+        }
         @media print {
             .lieu-section {
                 page-break-inside: avoid;
@@ -117,7 +125,6 @@
             return l ? l.nom : null;
         }
 
-        // Récupère le lieu par défaut d'un résident pour le repas en cours
         function lieuDefautPourRepas(resident, repas) {
             if (repas === 'petit_dej') return resident.lieu_defaut_petit_dej_id || null;
             if (repas === 'dejeuner') return resident.lieu_defaut_dejeuner_id || null;
@@ -158,9 +165,7 @@
                 const p = (presences || []).find(x => x.resident_id === r.id);
                 const estPresent = p ? p.present : true;
                 if (estPresent) {
-                    // Lieu par défaut pour CE repas (petit-déj/déjeuner/dîner)
                     const lieuDefautRepas = lieuDefautPourRepas(r, repas);
-                    // Lieu effectif = lieu enregistré dans presences OU lieu par défaut du repas
                     const lieuEffectifId = (p && p.lieu_id != null) ? p.lieu_id : lieuDefautRepas;
                     presents.push({ ...r, lieu_effectif_id: lieuEffectifId });
                 } else {
@@ -168,47 +173,46 @@
                 }
             }
 
-            // EJC pour le déjeuner
+            // EJC pour le déjeuner — version dynamique
             let detailEjc = '';
             let totalEjcNet = 0;
             if (repas === 'dejeuner') {
+                const categoriesEjc = await chargerCategoriesEjc(false);
                 const { data: cmdArr } = await supaClient
                     .from(TABLE_COMMANDES_EJC).select('*').eq('date', date);
                 const { data: annArr } = await supaClient
                     .from(TABLE_ANNULATIONS_EJC).select('*').eq('date', date);
-                const cmd = (cmdArr && cmdArr[0]) || null;
-                const ann = (annArr && annArr[0]) || null;
 
-                if (cmd) {
-                    const categories = [
-                        { code: 'adulte_normal', label: 'Adulte normal' },
-                        { code: 'adulte_sans_lactose', label: 'Adulte sans lactose' },
-                        { code: 'adulte_sans_porc', label: 'Adulte sans porc' },
-                        { code: 'adulte_vegetarien', label: 'Adulte végétarien' },
-                        { code: 'adulte_sans_proteine_lactique', label: 'Adulte sans protéine lactique' },
-                        { code: 'enfant_normal', label: 'Enfant normal' },
-                        { code: 'enfant_sans_lactose', label: 'Enfant sans lactose' },
-                        { code: 'enfant_sans_porc', label: 'Enfant sans porc' },
-                        { code: 'enfant_vegetarien', label: 'Enfant végétarien' },
-                        { code: 'enfant_sans_proteine_lactique', label: 'Enfant sans protéine lactique' }
-                    ];
-                    const lignes = [];
-                    for (const c of categories) {
-                        const nbCmd = cmd[c.code] || 0;
-                        const nbAnn = (ann && ann[c.code]) || 0;
-                        const net = nbCmd - nbAnn;
-                        if (net > 0) {
-                            totalEjcNet += net;
-                            lignes.push(`<li>${c.label} : <strong>${net}</strong></li>`);
+                // Maps : categorie_id → quantite
+                const cmdMap = {};
+                for (const c of (cmdArr || [])) cmdMap[c.categorie_id] = c.quantite;
+                const annMap = {};
+                for (const a of (annArr || [])) annMap[a.categorie_id] = a.quantite;
+
+                const lignes = [];
+                const catsTriees = [...categoriesEjc].sort((a, b) => a.ordre - b.ordre);
+                for (const cat of catsTriees) {
+                    const cmd = cmdMap[cat.id] || 0;
+                    const ann = annMap[cat.id] || 0;
+                    const net = cmd - ann;
+                    if (net > 0) {
+                        totalEjcNet += net;
+                        let allergenesTxt = '';
+                        if (cat.allergenes && cat.allergenes.length) {
+                            const list = cat.allergenes.map(a => nomAllergene(a)).join(' · ');
+                            allergenesTxt = `<div class="ejc-cat-allergenes">🚫 Sans : ${list}</div>`;
                         }
+                        lignes.push(`<li class="ejc-cat-line">
+                            <strong>${cat.nom}</strong> : <strong>${net}</strong> portion(s)
+                            ${allergenesTxt}
+                        </li>`);
                     }
-                    if (lignes.length) {
-                        detailEjc = `<div class="print-section"><h3>🍴 EJC Péry — ${totalEjcNet} portion(s)</h3><ul class="print-list">${lignes.join('')}</ul></div>`;
-                    }
+                }
+                if (lignes.length) {
+                    detailEjc = `<div class="print-section"><h3>🍴 EJC Péry — ${totalEjcNet} portion(s)</h3><ul class="print-list">${lignes.join('')}</ul></div>`;
                 }
             }
 
-            // Mettre en cache
             donneesServiceCache = { date, repas, presents, absents, detailEjc, totalEjcNet };
             afficherService();
         }
@@ -225,10 +229,7 @@
             if (absents.length) html += ` — <strong>${absents.length}</strong> absent(s)`;
             html += '</p>';
 
-            // ===== AFFICHAGE SELON LA VUE =====
-
             if (vueActuelle === 'liste') {
-                // VUE LISTE : tous les résidents avec leur lieu à côté du nom
                 html += '<div class="print-section"><h3>✅ Résidents présents</h3>';
                 if (!presents.length) {
                     html += '<p><em>Aucun.</em></p>';
@@ -245,7 +246,6 @@
                 }
                 html += '</div>';
             } else {
-                // VUE PAR LIEU : groupé par lieu
                 const groupes = {};
                 const sansLieu = [];
                 for (const r of presents) {
@@ -260,7 +260,6 @@
                 if (!presents.length) {
                     html += '<div class="print-section"><h3>✅ Résidents présents</h3><p><em>Aucun.</em></p></div>';
                 } else {
-                    // Afficher chaque lieu dans l'ordre défini
                     for (const lieu of lieuxDisponibles) {
                         const liste = groupes[lieu.id];
                         if (!liste || !liste.length) continue;
@@ -272,7 +271,6 @@
                         }
                         html += '</ul></div>';
                     }
-                    // Sans lieu défini
                     if (sansLieu.length) {
                         html += `<div class="lieu-section print-section" style="background:#fffaf0;border-left-color:#999;">`;
                         html += `<h3>❓ Lieu non défini — ${sansLieu.length} résident(s)</h3>`;
@@ -285,10 +283,8 @@
                 }
             }
 
-            // Bloc EJC (toujours en bas)
             if (detailEjc) html += detailEjc;
 
-            // Absents (toujours en bas)
             if (absents.length) {
                 html += '<div class="print-section"><h3>❌ Absents</h3><ul class="print-list">';
                 for (const r of absents) html += `<li>${r.prenom} ${r.nom}</li>`;

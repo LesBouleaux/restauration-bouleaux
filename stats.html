@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+ <!DOCTYPE html>
 <html lang="fr">
 <head>
     <meta charset="UTF-8">
@@ -17,10 +17,7 @@
             box-shadow: 0 1px 3px rgba(0,0,0,0.08);
             margin-bottom: 20px;
         }
-        .stats-toolbar label {
-            font-weight: bold;
-            margin-right: 4px;
-        }
+        .stats-toolbar label { font-weight: bold; margin-right: 4px; }
         .stats-toolbar input, .stats-toolbar select {
             padding: 6px 10px;
             border: 1px solid #ccc;
@@ -41,9 +38,7 @@
             cursor: pointer;
             font-size: 13px;
         }
-        .periode-rapide button:hover {
-            background: #f0f8f0;
-        }
+        .periode-rapide button:hover { background: #f0f8f0; }
 
         .stats-cards {
             display: grid;
@@ -130,9 +125,7 @@
             padding: 8px 10px;
             border-bottom: 1px solid #eee;
         }
-        table.stats tr:hover {
-            background: #f9faf9;
-        }
+        table.stats tr:hover { background: #f9faf9; }
         .pourcent {
             font-weight: bold;
             color: #2c5530;
@@ -208,24 +201,20 @@
         let tousResidents = [];
 
         async function chargerInitial() {
-            // Charger lieux
             const { data: lieux } = await supaClient
                 .from('lieux_repas')
                 .select('*')
                 .order('ordre', { ascending: true });
             lieuxDisponibles = lieux || [];
 
-            // Charger résidents
             tousResidents = await chargerResidentsActifs();
 
-            // Remplir select résidents
             const sel = document.getElementById('select-resident');
             sel.innerHTML = '<option value="">— Choisir —</option>';
             for (const r of tousResidents) {
                 sel.innerHTML += `<option value="${r.id}">${r.prenom} ${r.nom}</option>`;
             }
 
-            // Période par défaut : ce mois
             periodePredefinie('mois');
         }
 
@@ -299,7 +288,6 @@
             const contenu = document.getElementById('contenu');
             contenu.innerHTML = '<p class="loading">⏳ Calcul des statistiques...</p>';
 
-            // Récupérer les présences sur la période
             const { data: presences, error } = await supaClient
                 .from(TABLE_PRESENCES)
                 .select('*')
@@ -311,7 +299,7 @@
                 return;
             }
 
-            // Récupérer EJC
+            // Récupérer EJC : commandes et annulations par catégorie
             const { data: ejcCmd } = await supaClient
                 .from(TABLE_COMMANDES_EJC)
                 .select('*')
@@ -323,10 +311,8 @@
                 .gte('date', dateDebut)
                 .lte('date', dateFin);
 
-            // Calculer le nombre de jours dans la période
             const jours = nbJoursEntre(dateDebut, dateFin);
 
-            // Filtrer si vue résident
             const residentsConcernes = (vue === 'resident' && residentId)
                 ? tousResidents.filter(r => r.id === parseInt(residentId))
                 : tousResidents;
@@ -356,20 +342,11 @@
             const { dateDebut, dateFin, jours, presences, ejcCmd, ejcAnn, residents, vueGlobale } = ctx;
             const repasPossibles = ['petit_dej', 'dejeuner', 'diner'];
 
-            // ========================================
-            // CALCUL DES STATS PAR RÉSIDENT
-            // ========================================
-            // Pour chaque résident, on parcourt chaque jour x chaque repas
-            // - S'il y a une présence enregistrée et present=false → absent
-            // - Sinon → présent (+ on compte le lieu)
-
-            // Map d'accès rapide aux présences : key = "residentId_date_repas"
             const presMap = {};
             for (const p of presences) {
                 presMap[`${p.resident_id}_${p.date}_${p.repas}`] = p;
             }
 
-            // Liste des dates de la période
             const datesPeriode = [];
             const dCur = new Date(dateDebut);
             const dEnd = new Date(dateFin);
@@ -378,14 +355,13 @@
                 dCur.setDate(dCur.getDate() + 1);
             }
 
-            // Stats par résident
             const statsResidents = [];
             for (const r of residents) {
                 const stats = {
                     resident: r,
                     nbPresent: 0,
                     nbAbsent: 0,
-                    parLieu: {}, // lieu_id → count
+                    parLieu: {},
                     aucunLieu: 0
                 };
                 for (const d of datesPeriode) {
@@ -395,7 +371,6 @@
                             stats.nbAbsent++;
                         } else {
                             stats.nbPresent++;
-                            // Calcul du lieu effectif
                             const lieuEnregistre = p && p.lieu_id != null ? p.lieu_id : null;
                             const lieuDef = lieuDefautPourRepas(r, repas);
                             const lieuEffectif = lieuEnregistre || lieuDef;
@@ -411,16 +386,12 @@
                 statsResidents.push(stats);
             }
 
-            // ========================================
-            // STATS GLOBALES
-            // ========================================
             const totalPresent = statsResidents.reduce((s, x) => s + x.nbPresent, 0);
             const totalAbsent = statsResidents.reduce((s, x) => s + x.nbAbsent, 0);
             const totalRepasResidents = totalPresent + totalAbsent;
             const tauxPresence = totalRepasResidents > 0
                 ? Math.round((totalPresent / totalRepasResidents) * 100) : 0;
 
-            // Répartition globale par lieu
             const globalParLieu = {};
             let globalAucunLieu = 0;
             for (const s of statsResidents) {
@@ -431,30 +402,17 @@
             }
             const totalAvecLieu = Object.values(globalParLieu).reduce((s, x) => s + x, 0) + globalAucunLieu;
 
-            // EJC : total net portions sur la période
-            let totalEjc = 0;
-            const categories = [
-                'adulte_normal', 'adulte_sans_lactose', 'adulte_sans_porc', 'adulte_vegetarien', 'adulte_sans_proteine_lactique',
-                'enfant_normal', 'enfant_sans_lactose', 'enfant_sans_porc', 'enfant_vegetarien', 'enfant_sans_proteine_lactique'
-            ];
-            for (const c of ejcCmd) {
-                const ann = ejcAnn.find(a => a.date === c.date);
-                for (const cat of categories) {
-                    const nbCmd = c[cat] || 0;
-                    const nbAnn = (ann && ann[cat]) || 0;
-                    totalEjc += Math.max(0, nbCmd - nbAnn);
-                }
-            }
+            // EJC : total net portions sur la période (nouvelle structure dynamique)
+            let totalEjcCmd = 0, totalEjcAnn = 0;
+            for (const c of ejcCmd) totalEjcCmd += (c.quantite || 0);
+            for (const a of ejcAnn) totalEjcAnn += (a.quantite || 0);
+            const totalEjcNet = totalEjcCmd - totalEjcAnn;
 
-            // ========================================
-            // RENDU HTML
-            // ========================================
             const contenu = document.getElementById('contenu');
             let html = `
                 <h3 style="margin-top:0;">Période : ${dateFr(dateDebut)} → ${dateFr(dateFin)} <span style="color:#888;font-weight:normal;">(${jours} jour${jours>1?'s':''})</span></h3>
             `;
 
-            // === CARTES STATS GLOBALES ===
             html += `
                 <div class="stats-cards">
                     <div class="stat-card">
@@ -468,29 +426,26 @@
                         <div class="sub">${totalAbsent} absence(s)</div>
                     </div>
                     <div class="stat-card">
-                        <div class="label">Repas EJC Péry</div>
-                        <div class="valeur">${totalEjc}</div>
-                        <div class="sub">portions nettes</div>
+                        <div class="label">Repas EJC Péry (net)</div>
+                        <div class="valeur">${Math.max(0, totalEjcNet)}</div>
+                        <div class="sub">${totalEjcCmd} cmd − ${totalEjcAnn} ann</div>
                     </div>
                     <div class="stat-card">
                         <div class="label">Total repas servis</div>
-                        <div class="valeur">${totalPresent + totalEjc}</div>
+                        <div class="valeur">${totalPresent + Math.max(0, totalEjcNet)}</div>
                         <div class="sub">résidents + EJC</div>
                     </div>
                 </div>
             `;
 
-            // === RÉPARTITION GLOBALE PAR LIEU ===
             if (vueGlobale && totalAvecLieu > 0) {
                 html += `<div class="section-stats">
                     <h3>📍 Répartition par lieu (vue d'ensemble)</h3>`;
                 html += renderBarreLieux(globalParLieu, globalAucunLieu, totalAvecLieu);
 
-                // Tableau détaillé
                 html += `<table class="stats" style="margin-top:15px;">
                     <thead><tr><th>Lieu</th><th style="text-align:right;">Repas</th><th style="text-align:right;">%</th></tr></thead>
                     <tbody>`;
-                // Trier par count décroissant
                 const trie = lieuxDisponibles
                     .map(l => ({ lieu: l, n: globalParLieu[l.id] || 0 }))
                     .filter(x => x.n > 0)
@@ -506,7 +461,6 @@
                 html += `</tbody></table></div>`;
             }
 
-            // === DÉTAIL PAR RÉSIDENT ===
             html += `<div class="section-stats">
                 <h3>👥 Détail par résident</h3>`;
 
@@ -524,7 +478,6 @@
                         </tr>
                     </thead>
                     <tbody>`;
-                // Tri par nb de présents décroissant
                 const trie = [...statsResidents].sort((a, b) => b.nbPresent - a.nbPresent);
                 for (const s of trie) {
                     const tx = s.total > 0 ? Math.round((s.nbPresent / s.total) * 100) : 0;
@@ -557,7 +510,6 @@
             }
             html += `</div>`;
 
-            // === ZOOM RÉSIDENT (si vue par résident) ===
             if (!vueGlobale && statsResidents.length === 1) {
                 const s = statsResidents[0];
                 const totalLieu = Object.values(s.parLieu).reduce((sum, x) => sum + x, 0) + s.aucunLieu;
@@ -571,7 +523,6 @@
                 }
                 html += `</div>`;
 
-                // Bloc présence/absence
                 html += `<div class="section-stats">
                     <h3>✅ Présence vs absence</h3>`;
                 if (s.total > 0) {
@@ -594,7 +545,6 @@
             contenu.innerHTML = html;
         }
 
-        // Génère une barre empilée pour les lieux
         function renderBarreLieux(parLieu, aucunLieu, total) {
             if (total === 0) return '<p>Aucune donnée.</p>';
             let html = '<div class="barre-container">';
@@ -618,7 +568,6 @@
             }
             html += '</div>';
 
-            // Légende
             html += '<div class="legende">';
             const couleursHex = { 'barre-restaurant': '#2c5530', 'barre-chambre': '#d4825a', 'barre-aucun': '#999' };
             for (const it of items) {

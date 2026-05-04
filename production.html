@@ -5,6 +5,17 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Production J-1 - Restauration Les Bouleaux</title>
     <link rel="stylesheet" href="shared.css">
+    <style>
+        .ejc-cat-line {
+            padding: 6px 0;
+            border-bottom: 1px dotted #ddd;
+        }
+        .ejc-cat-allergenes {
+            font-size: 12px;
+            color: #856404;
+            margin-top: 2px;
+        }
+    </style>
 </head>
 <body>
     <h1>🍽️ Restauration Les Bouleaux</h1>
@@ -27,6 +38,15 @@
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script src="shared.js"></script>
     <script>
+        function dateDemain() {
+            const d = new Date();
+            d.setDate(d.getDate() + 1);
+            const yyyy = d.getFullYear();
+            const mm = String(d.getMonth() + 1).padStart(2, '0');
+            const dd = String(d.getDate()).padStart(2, '0');
+            return `${yyyy}-${mm}-${dd}`;
+        }
+
         async function genererListe() {
             const date = document.getElementById('date-prod').value;
             const contenu = document.getElementById('contenu');
@@ -36,13 +56,20 @@
             const { data: presences } = await supaClient
                 .from(TABLE_PRESENCES).select('*').eq('date', date);
 
+            // Charger TOUTES les catégories EJC (pour avoir le nom + allergènes même si désactivée)
+            const categoriesEjc = await chargerCategoriesEjc(false);
+
             // Charger commandes et annulations EJC pour la date
             const { data: cmdEjcArr } = await supaClient
                 .from(TABLE_COMMANDES_EJC).select('*').eq('date', date);
             const { data: annEjcArr } = await supaClient
                 .from(TABLE_ANNULATIONS_EJC).select('*').eq('date', date);
-            const cmdEjc = (cmdEjcArr && cmdEjcArr[0]) || null;
-            const annEjc = (annEjcArr && annEjcArr[0]) || null;
+
+            // Maps : categorie_id → quantite
+            const cmdMap = {};
+            for (const c of (cmdEjcArr || [])) cmdMap[c.categorie_id] = c.quantite;
+            const annMap = {};
+            for (const a of (annEjcArr || [])) annMap[a.categorie_id] = a.quantite;
 
             const repas = ['petit_dej', 'dejeuner', 'diner'];
             let html = `<h2>Production du ${dateFr(date)}</h2>`;
@@ -59,31 +86,30 @@
                 // Pour le déjeuner, on ajoute les commandes EJC (nettes des annulations)
                 let totalEjc = 0;
                 let detailEjc = '';
-                if (codeRepas === 'dejeuner' && cmdEjc) {
-                    const categories = [
-                        { code: 'adulte_normal', label: 'Adulte normal' },
-                        { code: 'adulte_sans_lactose', label: 'Adulte sans lactose' },
-                        { code: 'adulte_sans_porc', label: 'Adulte sans porc' },
-                        { code: 'adulte_vegetarien', label: 'Adulte végétarien' },
-                        { code: 'adulte_sans_proteine_lactique', label: 'Adulte sans protéine lactique' },
-                        { code: 'enfant_normal', label: 'Enfant normal' },
-                        { code: 'enfant_sans_lactose', label: 'Enfant sans lactose' },
-                        { code: 'enfant_sans_porc', label: 'Enfant sans porc' },
-                        { code: 'enfant_vegetarien', label: 'Enfant végétarien' },
-                        { code: 'enfant_sans_proteine_lactique', label: 'Enfant sans protéine lactique' }
-                    ];
+                if (codeRepas === 'dejeuner') {
                     const lignes = [];
-                    for (const c of categories) {
-                        const cmd = cmdEjc[c.code] || 0;
-                        const ann = (annEjc && annEjc[c.code]) || 0;
+                    // Tri des catégories par ordre
+                    const catsTriees = [...categoriesEjc].sort((a, b) => a.ordre - b.ordre);
+                    for (const cat of catsTriees) {
+                        const cmd = cmdMap[cat.id] || 0;
+                        const ann = annMap[cat.id] || 0;
                         const net = cmd - ann;
                         if (cmd > 0 || ann > 0) {
                             totalEjc += net;
-                            lignes.push(`<li>${c.label} : <strong>${net}</strong> (commandé ${cmd}${ann ? `, annulé ${ann}` : ''})</li>`);
+                            let allergenesTxt = '';
+                            if (cat.allergenes && cat.allergenes.length) {
+                                const list = cat.allergenes.map(a => nomAllergene(a)).join(' · ');
+                                allergenesTxt = `<div class="ejc-cat-allergenes">🚫 Sans : ${list}</div>`;
+                            }
+                            lignes.push(`<li class="ejc-cat-line">
+                                <strong>${cat.nom}</strong> : <strong>${net}</strong>
+                                <span style="color:#666;font-size:13px;">(commandé ${cmd}${ann ? `, annulé ${ann}` : ''})</span>
+                                ${allergenesTxt}
+                            </li>`);
                         }
                     }
                     if (lignes.length) {
-                        detailEjc = `<p><strong>EJC Péry — ${totalEjc} portion(s) :</strong></p><ul class="print-list">${lignes.join('')}</ul>`;
+                        detailEjc = `<p><strong>🍴 EJC Péry — ${totalEjc} portion(s) :</strong></p><ul class="print-list">${lignes.join('')}</ul>`;
                     }
                 }
 
@@ -122,7 +148,7 @@
             const auth = await verifierAuthEtRole(['admin']);
             if (!auth) return;
             afficherMenuComplet('production', auth.user.email, auth.profil.role, auth.profil.nom_affiche);
-            document.getElementById('date-prod').value = demain();
+            document.getElementById('date-prod').value = dateDemain();
             genererListe();
         })();
     </script>
