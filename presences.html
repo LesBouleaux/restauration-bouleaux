@@ -5,6 +5,26 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Présences - Restauration Les Bouleaux</title>
     <link rel="stylesheet" href="shared.css">
+    <style>
+        select.lieu-select {
+            padding: 6px 10px;
+            border: 1px solid #ccc;
+            border-radius: 6px;
+            font-size: 14px;
+            background: white;
+            cursor: pointer;
+        }
+        select.lieu-select:disabled {
+            background: #f5f5f5;
+            color: #999;
+            cursor: not-allowed;
+        }
+        select.lieu-select.modifie {
+            border-color: #2c5530;
+            background: #f0f8f0;
+            font-weight: bold;
+        }
+    </style>
 </head>
 <body>
     <h1>🍽️ Restauration Les Bouleaux</h1>
@@ -33,12 +53,42 @@
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script src="shared.js"></script>
     <script>
+        let lieuxDisponibles = [];
+
+        async function chargerLieux() {
+            const { data, error } = await supaClient
+                .from('lieux_repas')
+                .select('*')
+                .eq('actif', true)
+                .order('ordre', { ascending: true });
+            if (error) console.error(error);
+            lieuxDisponibles = data || [];
+        }
+
+        function optionsLieux(lieuSelectionneId) {
+            let opts = '<option value="">— Aucun —</option>';
+            for (const l of lieuxDisponibles) {
+                const sel = l.id === lieuSelectionneId ? 'selected' : '';
+                opts += `<option value="${l.id}" ${sel}>${l.nom}</option>`;
+            }
+            return opts;
+        }
+
+        // Récupère le lieu par défaut d'un résident pour le repas en cours
+        function lieuDefautPourRepas(resident, repas) {
+            if (repas === 'petit_dej') return resident.lieu_defaut_petit_dej_id || null;
+            if (repas === 'dejeuner') return resident.lieu_defaut_dejeuner_id || null;
+            if (repas === 'diner') return resident.lieu_defaut_diner_id || null;
+            return null;
+        }
+
         async function chargerPresences() {
             const date = document.getElementById('date-saisie').value;
             const repas = document.getElementById('repas-saisie').value;
             const contenu = document.getElementById('contenu');
             contenu.innerHTML = '<p class="loading">⏳ Chargement...</p>';
 
+            await chargerLieux();
             const residents = await chargerResidentsActifs();
             if (!residents.length) {
                 contenu.innerHTML = '<p class="info-msg">Aucun résident.</p>';
@@ -56,7 +106,9 @@
             }
 
             const map = {};
-            for (const p of (presences || [])) map[p.resident_id] = p.present;
+            for (const p of (presences || [])) {
+                map[p.resident_id] = { present: p.present, lieu_id: p.lieu_id };
+            }
 
             let html = `
                 <p>${dateFr(date)} — ${libelleRepas(repas)}</p>
@@ -65,12 +117,22 @@
                         <tr>
                             <th>Résident</th>
                             <th class="col-center">Présent</th>
+                            <th>📍 Lieu</th>
                             <th>Allergies / Intolérances</th>
                         </tr>
                     </thead>
                     <tbody>`;
             for (const r of residents) {
-                const present = map[r.id] !== undefined ? map[r.id] : true;
+                const data = map[r.id];
+                const present = data ? data.present : true;
+                // Lieu par défaut pour CE repas spécifique
+                const lieuDefautRepas = lieuDefautPourRepas(r, repas);
+                // Lieu effectif : celui de la présence enregistrée OU lieu par défaut du repas
+                const lieuId = data && data.lieu_id != null ? data.lieu_id : lieuDefautRepas;
+                // Marque visuelle si différent du défaut
+                const estModifie = lieuId && lieuDefautRepas && lieuId !== lieuDefautRepas;
+                const classModif = estModifie ? 'modifie' : '';
+
                 const tags = [];
                 if (r.allergies) tags.push(`<span class="tag tag-allergie">⚠️ ${r.allergies}</span>`);
                 if (r.intolerances) tags.push(`<span class="tag tag-intolerance">🚫 ${r.intolerances}</span>`);
@@ -83,6 +145,15 @@
                                    ${present ? 'checked' : ''}
                                    onchange="enregistrerPresence(${r.id}, this.checked)">
                         </td>
+                        <td>
+                            <select class="lieu-select ${classModif}"
+                                    data-resident-id="${r.id}"
+                                    data-defaut="${lieuDefautRepas || ''}"
+                                    ${present ? '' : 'disabled'}
+                                    onchange="enregistrerLieu(${r.id}, this.value, this)">
+                                ${optionsLieux(lieuId)}
+                            </select>
+                        </td>
                         <td>${tags.join(' ') || '<span class="empty">—</span>'}</td>
                     </tr>`;
             }
@@ -94,11 +165,20 @@
             const date = document.getElementById('date-saisie').value;
             const repas = document.getElementById('repas-saisie').value;
 
+            const selectLieu = document.querySelector(`select.lieu-select[data-resident-id="${residentId}"]`);
+            const lieuId = selectLieu && selectLieu.value ? parseInt(selectLieu.value) : null;
+
+            if (selectLieu) selectLieu.disabled = !present;
+
             await supaClient.from(TABLE_PRESENCES).delete()
                 .eq('resident_id', residentId).eq('date', date).eq('repas', repas);
 
             const { error } = await supaClient.from(TABLE_PRESENCES).insert({
-                resident_id: residentId, date, repas, present
+                resident_id: residentId,
+                date,
+                repas,
+                present,
+                lieu_id: present ? lieuId : null
             });
 
             const msg = document.getElementById('message');
@@ -106,6 +186,41 @@
                 msg.innerHTML = `<div class="error">Erreur : ${error.message}</div>`;
             } else {
                 msg.innerHTML = `<div class="success">✓ Enregistré</div>`;
+                setTimeout(() => msg.innerHTML = '', 1500);
+            }
+        }
+
+        async function enregistrerLieu(residentId, lieuValue, selectEl) {
+            const date = document.getElementById('date-saisie').value;
+            const repas = document.getElementById('repas-saisie').value;
+            const lieuId = lieuValue ? parseInt(lieuValue) : null;
+
+            const checkbox = document.querySelector(`input[type="checkbox"][data-resident-id="${residentId}"]`);
+            const present = checkbox ? checkbox.checked : true;
+
+            const lieuDefaut = selectEl.dataset.defaut ? parseInt(selectEl.dataset.defaut) : null;
+            if (lieuId && lieuDefaut && lieuId !== lieuDefaut) {
+                selectEl.classList.add('modifie');
+            } else {
+                selectEl.classList.remove('modifie');
+            }
+
+            await supaClient.from(TABLE_PRESENCES).delete()
+                .eq('resident_id', residentId).eq('date', date).eq('repas', repas);
+
+            const { error } = await supaClient.from(TABLE_PRESENCES).insert({
+                resident_id: residentId,
+                date,
+                repas,
+                present,
+                lieu_id: present ? lieuId : null
+            });
+
+            const msg = document.getElementById('message');
+            if (error) {
+                msg.innerHTML = `<div class="error">Erreur : ${error.message}</div>`;
+            } else {
+                msg.innerHTML = `<div class="success">✓ Lieu enregistré</div>`;
                 setTimeout(() => msg.innerHTML = '', 1500);
             }
         }

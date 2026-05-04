@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+ <!DOCTYPE html>
 <html lang="fr">
 <head>
     <meta charset="UTF-8">
@@ -29,6 +29,36 @@
             font-size: 13px;
             font-style: italic;
             margin-left: 8px;
+        }
+        .lieu-mini {
+            display: inline-flex;
+            align-items: center;
+            gap: 4px;
+            background: #e8f4e8;
+            color: #2c5530;
+            padding: 2px 8px;
+            border-radius: 10px;
+            font-size: 12px;
+            font-weight: bold;
+            margin-right: 4px;
+        }
+        .lieux-recap {
+            margin-top: 8px;
+            padding: 8px 12px;
+            background: #f5faf5;
+            border-left: 3px solid #2c5530;
+            border-radius: 4px;
+        }
+        .form-lieux-row {
+            display: grid;
+            grid-template-columns: 1fr 1fr 1fr;
+            gap: 10px;
+        }
+        @media (max-width: 600px) {
+            .form-lieux-row { grid-template-columns: 1fr; }
+        }
+        .form-lieux-row .form-group {
+            margin-bottom: 0;
         }
         .pdf-zone {
             border: 2px dashed #ccc;
@@ -79,6 +109,32 @@
                     <label for="nom">Nom *</label>
                     <input type="text" id="nom" required>
                 </div>
+
+                <div class="form-group">
+                    <label>📍 Lieux de repas par défaut</label>
+                    <small style="color:#666;display:block;margin-bottom:8px;">Lieu habituel pour chaque repas. Modifiable au cas par cas lors de la saisie des présences.</small>
+                    <div class="form-lieux-row">
+                        <div class="form-group">
+                            <label for="lieu_petit_dej" style="font-size:13px;">🥐 Petit-déjeuner</label>
+                            <select id="lieu_petit_dej">
+                                <option value="">— Non défini —</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label for="lieu_dejeuner" style="font-size:13px;">🍽️ Déjeuner</label>
+                            <select id="lieu_dejeuner">
+                                <option value="">— Non défini —</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label for="lieu_diner" style="font-size:13px;">🌙 Dîner</label>
+                            <select id="lieu_diner">
+                                <option value="">— Non défini —</option>
+                            </select>
+                        </div>
+                    </div>
+                </div>
+
                 <div class="form-group">
                     <label for="gouts">Goûts</label>
                     <textarea id="gouts"></textarea>
@@ -120,13 +176,41 @@
     <script src="shared.js"></script>
     <script>
         let tousLesResidents = [];
+        let tousLesLieux = [];
         let residentDocCourant = null;
 
         const BUCKET_DOCUMENTS = 'documents-residents';
 
+        async function chargerLieux() {
+            const { data, error } = await supaClient
+                .from('lieux_repas')
+                .select('*')
+                .eq('actif', true)
+                .order('ordre', { ascending: true });
+            if (error) console.error(error);
+            tousLesLieux = data || [];
+
+            // Remplir les 3 selects dans le formulaire
+            const selects = ['lieu_petit_dej', 'lieu_dejeuner', 'lieu_diner'];
+            for (const id of selects) {
+                const sel = document.getElementById(id);
+                sel.innerHTML = '<option value="">— Non défini —</option>';
+                for (const l of tousLesLieux) {
+                    sel.innerHTML += `<option value="${l.id}">${l.nom}</option>`;
+                }
+            }
+        }
+
         async function charger() {
+            await chargerLieux();
             tousLesResidents = await chargerResidentsActifs();
             afficher(tousLesResidents);
+        }
+
+        function nomLieu(id) {
+            if (!id) return '— non défini —';
+            const l = tousLesLieux.find(x => x.id === id);
+            return l ? l.nom : '— non défini —';
         }
 
         function afficher(liste) {
@@ -140,6 +224,15 @@
                 const docBadge = r.document_pdf
                     ? `<span class="doc-info">📎 PDF attaché</span>`
                     : `<span class="doc-info-empty">📎 Aucun document</span>`;
+
+                // Récap des 3 lieux
+                const lieuxRecap = `
+                    <div class="lieux-recap">
+                        <span class="lieu-mini">🥐 ${nomLieu(r.lieu_defaut_petit_dej_id)}</span>
+                        <span class="lieu-mini">🍽️ ${nomLieu(r.lieu_defaut_dejeuner_id)}</span>
+                        <span class="lieu-mini">🌙 ${nomLieu(r.lieu_defaut_diner_id)}</span>
+                    </div>`;
+
                 html += `
                     <div class="resident">
                         <h3>
@@ -150,6 +243,7 @@
                                 <button class="btn-danger" onclick="archiverResident(${r.id}, '${r.prenom} ${r.nom}')">🗑️ Archiver</button>
                             </span>
                         </h3>
+                        ${lieuxRecap}
                         <p class="info"><span class="label">Goûts :</span> ${r.gouts || '<span class="empty">non renseigné</span>'}</p>
                         <p class="info"><span class="label">Aversions :</span> ${r.aversions || '<span class="empty">non renseigné</span>'}</p>
                         <p class="info"><span class="label">Allergies :</span> ${r.allergies || '<span class="empty">aucune</span>'}</p>
@@ -174,6 +268,9 @@
             document.getElementById('modal-titre').textContent = 'Ajouter un résident';
             document.getElementById('form-resident').reset();
             document.getElementById('resident-id').value = '';
+            document.getElementById('lieu_petit_dej').value = '';
+            document.getElementById('lieu_dejeuner').value = '';
+            document.getElementById('lieu_diner').value = '';
             document.getElementById('modal').classList.add('active');
         }
 
@@ -184,6 +281,9 @@
             document.getElementById('resident-id').value = r.id;
             document.getElementById('prenom').value = r.prenom || '';
             document.getElementById('nom').value = r.nom || '';
+            document.getElementById('lieu_petit_dej').value = r.lieu_defaut_petit_dej_id || '';
+            document.getElementById('lieu_dejeuner').value = r.lieu_defaut_dejeuner_id || '';
+            document.getElementById('lieu_diner').value = r.lieu_defaut_diner_id || '';
             document.getElementById('gouts').value = r.gouts || '';
             document.getElementById('aversions').value = r.aversions || '';
             document.getElementById('allergies').value = r.allergies || '';
@@ -198,9 +298,15 @@
         async function sauvegarderResident(event) {
             event.preventDefault();
             const id = document.getElementById('resident-id').value;
+            const lieuPD = document.getElementById('lieu_petit_dej').value;
+            const lieuDJ = document.getElementById('lieu_dejeuner').value;
+            const lieuDI = document.getElementById('lieu_diner').value;
             const donnees = {
                 prenom: document.getElementById('prenom').value.trim(),
                 nom: document.getElementById('nom').value.trim(),
+                lieu_defaut_petit_dej_id: lieuPD ? parseInt(lieuPD) : null,
+                lieu_defaut_dejeuner_id: lieuDJ ? parseInt(lieuDJ) : null,
+                lieu_defaut_diner_id: lieuDI ? parseInt(lieuDI) : null,
                 gouts: document.getElementById('gouts').value.trim() || null,
                 aversions: document.getElementById('aversions').value.trim() || null,
                 allergies: document.getElementById('allergies').value.trim() || null,
@@ -243,7 +349,6 @@
             const r = residentDocCourant;
 
             if (r.document_pdf) {
-                // Document existant
                 zone.className = 'pdf-zone has-file';
                 zone.innerHTML = `
                     <div style="font-size: 48px;">📄</div>
@@ -256,7 +361,6 @@
                     <input type="file" id="input-pdf" accept="application/pdf" style="display:none" onchange="uploaderDoc(event)">
                 `;
             } else {
-                // Pas de document
                 zone.className = 'pdf-zone';
                 zone.innerHTML = `
                     <div style="font-size: 48px;">📎</div>
@@ -274,12 +378,10 @@
             const fichier = event.target.files[0];
             if (!fichier) return;
 
-            // Vérifier le type
             if (fichier.type !== 'application/pdf') {
                 alert('❌ Seuls les fichiers PDF sont acceptés.');
                 return;
             }
-            // Vérifier la taille
             if (fichier.size > 5 * 1024 * 1024) {
                 alert('❌ Le fichier dépasse 5 MB.');
                 return;
@@ -289,12 +391,10 @@
             zone.innerHTML = '<p class="loading">⏳ Téléversement en cours...</p>';
 
             const r = residentDocCourant;
-            // Si un document existait, on le supprime d'abord
             if (r.document_pdf) {
                 await supaClient.storage.from(BUCKET_DOCUMENTS).remove([r.document_pdf]);
             }
 
-            // Nouveau chemin : resident_<id>_<timestamp>.pdf
             const chemin = `resident_${r.id}_${Date.now()}.pdf`;
 
             const { error: errUpload } = await supaClient.storage
@@ -307,7 +407,6 @@
                 return;
             }
 
-            // Mettre à jour la table
             const { error: errUpdate } = await supaClient
                 .from(TABLE_RESIDENTS)
                 .update({ document_pdf: chemin })
@@ -318,7 +417,6 @@
                 return;
             }
 
-            // Mettre à jour les données locales
             r.document_pdf = chemin;
             const idx = tousLesResidents.findIndex(x => x.id === r.id);
             if (idx >= 0) tousLesResidents[idx].document_pdf = chemin;
@@ -331,7 +429,6 @@
             const r = residentDocCourant;
             if (!r.document_pdf) return;
 
-            // Créer un lien signé valable 60 secondes
             const { data, error } = await supaClient.storage
                 .from(BUCKET_DOCUMENTS)
                 .createSignedUrl(r.document_pdf, 60);
@@ -340,7 +437,6 @@
                 alert('❌ Erreur : ' + error.message);
                 return;
             }
-            // Ouvrir dans un nouvel onglet
             window.open(data.signedUrl, '_blank');
         }
 
@@ -348,7 +444,6 @@
             const r = residentDocCourant;
             if (!confirm(`Supprimer le document de ${r.prenom} ${r.nom} ?\n\nCette action est définitive.`)) return;
 
-            // Supprimer le fichier du storage
             const { error: errStorage } = await supaClient.storage
                 .from(BUCKET_DOCUMENTS)
                 .remove([r.document_pdf]);
@@ -358,7 +453,6 @@
                 return;
             }
 
-            // Mettre à jour la table
             const { error: errUpdate } = await supaClient
                 .from(TABLE_RESIDENTS)
                 .update({ document_pdf: null })

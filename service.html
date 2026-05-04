@@ -1,10 +1,70 @@
-<!DOCTYPE html>
+ <!DOCTYPE html>
 <html lang="fr">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Service du jour - Restauration Les Bouleaux</title>
     <link rel="stylesheet" href="shared.css">
+    <style>
+        .lieu-tag {
+            display: inline-block;
+            background: #2c5530;
+            color: white;
+            padding: 2px 10px;
+            border-radius: 12px;
+            font-size: 13px;
+            font-weight: bold;
+            margin-left: 6px;
+        }
+        .lieu-tag-aucun {
+            display: inline-block;
+            background: #999;
+            color: white;
+            padding: 2px 10px;
+            border-radius: 12px;
+            font-size: 13px;
+            margin-left: 6px;
+        }
+        .vue-toggle {
+            display: inline-flex;
+            border: 2px solid #2c5530;
+            border-radius: 6px;
+            overflow: hidden;
+        }
+        .vue-toggle button {
+            background: white;
+            color: #2c5530;
+            border: none;
+            padding: 8px 16px;
+            cursor: pointer;
+            font-size: 14px;
+            font-weight: bold;
+        }
+        .vue-toggle button.active {
+            background: #2c5530;
+            color: white;
+        }
+        .lieu-section {
+            background: #f5faf5;
+            border-left: 4px solid #2c5530;
+            padding: 15px 20px;
+            border-radius: 6px;
+            margin-bottom: 15px;
+        }
+        .lieu-section h3 {
+            margin-top: 0;
+            color: #2c5530;
+            border-bottom: 1px solid #c8d8c8;
+            padding-bottom: 8px;
+        }
+        @media print {
+            .lieu-section {
+                page-break-inside: avoid;
+                background: white;
+                border-left: 3px solid #000;
+            }
+        }
+    </style>
 </head>
 <body>
     <h1>🍽️ Restauration Les Bouleaux</h1>
@@ -22,6 +82,11 @@
             <option value="dejeuner" selected>🍽️ Déjeuner</option>
             <option value="diner">🌙 Dîner</option>
         </select>
+        <label><strong>Vue :</strong></label>
+        <div class="vue-toggle">
+            <button id="btn-vue-liste" class="active" onclick="changerVue('liste')">📋 Liste</button>
+            <button id="btn-vue-lieu" onclick="changerVue('lieu')">📍 Par lieu</button>
+        </div>
         <button class="btn-primary" onclick="genererService()">🔄 Générer</button>
         <button class="btn-print" onclick="window.print()">🖨️ Imprimer</button>
     </div>
@@ -33,24 +98,75 @@
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script src="shared.js"></script>
     <script>
+        let vueActuelle = 'liste';
+        let donneesServiceCache = null;
+        let lieuxDisponibles = [];
+
+        async function chargerLieux() {
+            const { data, error } = await supaClient
+                .from('lieux_repas')
+                .select('*')
+                .order('ordre', { ascending: true });
+            if (error) console.error(error);
+            lieuxDisponibles = data || [];
+        }
+
+        function nomLieu(id) {
+            if (!id) return null;
+            const l = lieuxDisponibles.find(x => x.id === id);
+            return l ? l.nom : null;
+        }
+
+        // Récupère le lieu par défaut d'un résident pour le repas en cours
+        function lieuDefautPourRepas(resident, repas) {
+            if (repas === 'petit_dej') return resident.lieu_defaut_petit_dej_id || null;
+            if (repas === 'dejeuner') return resident.lieu_defaut_dejeuner_id || null;
+            if (repas === 'diner') return resident.lieu_defaut_diner_id || null;
+            return null;
+        }
+
+        function changerVue(vue) {
+            vueActuelle = vue;
+            document.getElementById('btn-vue-liste').classList.toggle('active', vue === 'liste');
+            document.getElementById('btn-vue-lieu').classList.toggle('active', vue === 'lieu');
+            if (donneesServiceCache) afficherService();
+        }
+
+        function tagsResident(r) {
+            const tags = [];
+            if (r.allergies) tags.push(`<span class="tag tag-allergie">⚠️ ${r.allergies}</span>`);
+            if (r.intolerances) tags.push(`<span class="tag tag-intolerance">🚫 ${r.intolerances}</span>`);
+            if (r.aversions) tags.push(`<span class="tag tag-aversion">N'aime pas : ${r.aversions}</span>`);
+            return tags.join(' ');
+        }
+
         async function genererService() {
             const date = document.getElementById('date-srv').value;
             const repas = document.getElementById('repas-srv').value;
             const contenu = document.getElementById('contenu');
             contenu.innerHTML = '<p class="loading">⏳ Chargement...</p>';
 
+            await chargerLieux();
             const residents = await chargerResidentsActifs();
             const { data: presences } = await supaClient
                 .from(TABLE_PRESENCES).select('*').eq('date', date).eq('repas', repas);
 
-            const presents = residents.filter(r => {
+            // Construire la liste des présents avec leur lieu effectif
+            const presents = [];
+            const absents = [];
+            for (const r of residents) {
                 const p = (presences || []).find(x => x.resident_id === r.id);
-                return p ? p.present : true;
-            });
-            const absents = residents.filter(r => {
-                const p = (presences || []).find(x => x.resident_id === r.id);
-                return p && !p.present;
-            });
+                const estPresent = p ? p.present : true;
+                if (estPresent) {
+                    // Lieu par défaut pour CE repas (petit-déj/déjeuner/dîner)
+                    const lieuDefautRepas = lieuDefautPourRepas(r, repas);
+                    // Lieu effectif = lieu enregistré dans presences OU lieu par défaut du repas
+                    const lieuEffectifId = (p && p.lieu_id != null) ? p.lieu_id : lieuDefautRepas;
+                    presents.push({ ...r, lieu_effectif_id: lieuEffectifId });
+                } else {
+                    absents.push(r);
+                }
+            }
 
             // EJC pour le déjeuner
             let detailEjc = '';
@@ -92,6 +208,15 @@
                 }
             }
 
+            // Mettre en cache
+            donneesServiceCache = { date, repas, presents, absents, detailEjc, totalEjcNet };
+            afficherService();
+        }
+
+        function afficherService() {
+            const contenu = document.getElementById('contenu');
+            const { date, repas, presents, absents, detailEjc, totalEjcNet } = donneesServiceCache;
+
             let html = `
                 <h2>Service — ${dateFr(date)}</h2>
                 <h3>${libelleRepas(repas)}</h3>
@@ -100,25 +225,70 @@
             if (absents.length) html += ` — <strong>${absents.length}</strong> absent(s)`;
             html += '</p>';
 
-            html += '<div class="print-section"><h3>✅ Résidents présents</h3>';
-            if (!presents.length) {
-                html += '<p><em>Aucun.</em></p>';
-            } else {
-                html += '<ul class="print-list">';
-                for (const r of presents) {
-                    const tags = [];
-                    if (r.allergies) tags.push(`<span class="tag tag-allergie">⚠️ ${r.allergies}</span>`);
-                    if (r.intolerances) tags.push(`<span class="tag tag-intolerance">🚫 ${r.intolerances}</span>`);
-                    if (r.aversions) tags.push(`<span class="tag tag-aversion">N'aime pas : ${r.aversions}</span>`);
-                    html += `<li><strong>${r.prenom} ${r.nom}</strong> ${tags.join(' ')}</li>`;
-                }
-                html += '</ul>';
-            }
-            html += '</div>';
+            // ===== AFFICHAGE SELON LA VUE =====
 
-            // Bloc EJC
+            if (vueActuelle === 'liste') {
+                // VUE LISTE : tous les résidents avec leur lieu à côté du nom
+                html += '<div class="print-section"><h3>✅ Résidents présents</h3>';
+                if (!presents.length) {
+                    html += '<p><em>Aucun.</em></p>';
+                } else {
+                    html += '<ul class="print-list">';
+                    for (const r of presents) {
+                        const lieu = nomLieu(r.lieu_effectif_id);
+                        const lieuTag = lieu
+                            ? `<span class="lieu-tag">📍 ${lieu}</span>`
+                            : `<span class="lieu-tag-aucun">📍 Lieu non défini</span>`;
+                        html += `<li><strong>${r.prenom} ${r.nom}</strong> ${lieuTag} ${tagsResident(r)}</li>`;
+                    }
+                    html += '</ul>';
+                }
+                html += '</div>';
+            } else {
+                // VUE PAR LIEU : groupé par lieu
+                const groupes = {};
+                const sansLieu = [];
+                for (const r of presents) {
+                    if (r.lieu_effectif_id) {
+                        if (!groupes[r.lieu_effectif_id]) groupes[r.lieu_effectif_id] = [];
+                        groupes[r.lieu_effectif_id].push(r);
+                    } else {
+                        sansLieu.push(r);
+                    }
+                }
+
+                if (!presents.length) {
+                    html += '<div class="print-section"><h3>✅ Résidents présents</h3><p><em>Aucun.</em></p></div>';
+                } else {
+                    // Afficher chaque lieu dans l'ordre défini
+                    for (const lieu of lieuxDisponibles) {
+                        const liste = groupes[lieu.id];
+                        if (!liste || !liste.length) continue;
+                        html += `<div class="lieu-section print-section">`;
+                        html += `<h3>📍 ${lieu.nom} — ${liste.length} résident(s)</h3>`;
+                        html += '<ul class="print-list">';
+                        for (const r of liste) {
+                            html += `<li><strong>${r.prenom} ${r.nom}</strong> ${tagsResident(r)}</li>`;
+                        }
+                        html += '</ul></div>';
+                    }
+                    // Sans lieu défini
+                    if (sansLieu.length) {
+                        html += `<div class="lieu-section print-section" style="background:#fffaf0;border-left-color:#999;">`;
+                        html += `<h3>❓ Lieu non défini — ${sansLieu.length} résident(s)</h3>`;
+                        html += '<ul class="print-list">';
+                        for (const r of sansLieu) {
+                            html += `<li><strong>${r.prenom} ${r.nom}</strong> ${tagsResident(r)}</li>`;
+                        }
+                        html += '</ul></div>';
+                    }
+                }
+            }
+
+            // Bloc EJC (toujours en bas)
             if (detailEjc) html += detailEjc;
 
+            // Absents (toujours en bas)
             if (absents.length) {
                 html += '<div class="print-section"><h3>❌ Absents</h3><ul class="print-list">';
                 for (const r of absents) html += `<li>${r.prenom} ${r.nom}</li>`;
