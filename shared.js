@@ -113,7 +113,7 @@ async function verifierAuthEtRole(rolesAutorises) {
 
     if (rolesAutorises && rolesAutorises.length && !rolesAutorises.includes(profil.role)) {
         alert('⛔ Vous n\'avez pas accès à cette page.');
-        if (profil.role === 'admin') window.location.href = 'residents.html';
+        if (profil.role === 'admin') window.location.href = 'dashboard.html';
         else if (profil.role === 'client_ejc') window.location.href = 'commande-ejc.html';
         else window.location.href = 'login.html';
         return null;
@@ -161,6 +161,7 @@ function afficherEntete() {
 
 function genererMenuOnglets(pageActive, role) {
     const ongletsAdmin = [
+        { id: 'dashboard', titre: '🏠 Accueil', url: 'dashboard.html' },
         { id: 'residents', titre: '👥 Résidents', url: 'residents.html' },
         { id: 'presences', titre: '✅ Présences', url: 'presences.html' },
         { id: 'production', titre: '📋 Production J-1', url: 'production.html' },
@@ -172,6 +173,7 @@ function genererMenuOnglets(pageActive, role) {
     ];
 
     const ongletsEjc = [
+        { id: 'dashboard', titre: '🏠 Accueil', url: 'dashboard.html' },
         { id: 'commande-ejc', titre: '🍽️ Saisie repas', url: 'commande-ejc.html' },
         { id: 'factures-ejc', titre: '🧾 Mes factures', url: 'factures-ejc.html' }
     ];

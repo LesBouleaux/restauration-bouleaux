@@ -1,0 +1,522 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Accueil - Les Bouleaux</title>
+    <link rel="stylesheet" href="shared.css">
+    <style>
+        .dashboard-hero {
+            background: linear-gradient(135deg, #2c5530 0%, #4a7c50 100%);
+            color: white;
+            padding: 25px 30px;
+            border-radius: 12px;
+            margin: 15px 0 25px 0;
+            box-shadow: 0 4px 12px rgba(44,85,48,0.2);
+        }
+        .dashboard-hero h2 {
+            margin: 0 0 5px 0;
+            font-size: 24px;
+            font-weight: 600;
+        }
+        .dashboard-hero .date {
+            font-size: 16px;
+            opacity: 0.9;
+            text-transform: capitalize;
+        }
+        .dashboard-hero .refresh-info {
+            font-size: 12px;
+            opacity: 0.7;
+            margin-top: 8px;
+        }
+
+        .grid-repas {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+            gap: 15px;
+            margin: 20px 0;
+        }
+        .card-repas {
+            background: white;
+            border-radius: 10px;
+            padding: 20px;
+            box-shadow: 0 2px 6px rgba(0,0,0,0.08);
+            cursor: pointer;
+            transition: transform 0.15s, box-shadow 0.15s;
+            border-top: 4px solid #2c5530;
+        }
+        .card-repas:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 16px rgba(0,0,0,0.12);
+        }
+        .card-repas.ejc { border-top-color: #e67e22; }
+        .card-repas .titre {
+            font-size: 14px;
+            color: #666;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            margin-bottom: 8px;
+        }
+        .card-repas .chiffre {
+            font-size: 42px;
+            font-weight: 700;
+            color: #2c5530;
+            line-height: 1;
+        }
+        .card-repas.ejc .chiffre { color: #e67e22; }
+        .card-repas .label {
+            font-size: 13px;
+            color: #888;
+            margin-top: 4px;
+        }
+        .card-repas .repartition {
+            margin-top: 12px;
+            padding-top: 12px;
+            border-top: 1px solid #eee;
+            font-size: 13px;
+            color: #555;
+            display: flex;
+            justify-content: space-between;
+            gap: 10px;
+        }
+        .card-repas .repartition span {
+            display: flex;
+            align-items: center;
+            gap: 4px;
+        }
+
+        .section-titre {
+            font-size: 18px;
+            font-weight: 600;
+            color: #2c5530;
+            margin: 25px 0 12px 0;
+            padding-bottom: 6px;
+            border-bottom: 2px solid #e0e0e0;
+        }
+
+        .alertes {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+        .alerte {
+            padding: 14px 18px;
+            border-radius: 8px;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            font-size: 14px;
+        }
+        .alerte-icone {
+            font-size: 22px;
+            flex-shrink: 0;
+        }
+        .alerte-texte { flex: 1; }
+        .alerte-texte strong { display: block; margin-bottom: 2px; }
+        .alerte-action {
+            background: white;
+            color: #333;
+            padding: 6px 14px;
+            border-radius: 6px;
+            text-decoration: none;
+            font-weight: 600;
+            font-size: 13px;
+            border: 1px solid rgba(0,0,0,0.15);
+            white-space: nowrap;
+        }
+        .alerte-action:hover { background: #f5f5f5; }
+        .alerte-rouge { background: #f8d7da; color: #721c24; border-left: 4px solid #dc3545; }
+        .alerte-orange { background: #fff3cd; color: #856404; border-left: 4px solid #ffc107; }
+        .alerte-verte { background: #d4edda; color: #155724; border-left: 4px solid #28a745; }
+
+        .grid-stats {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+            gap: 12px;
+            margin: 15px 0;
+        }
+        .stat-mini {
+            background: white;
+            border-radius: 8px;
+            padding: 15px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.06);
+            text-align: center;
+        }
+        .stat-mini .nombre {
+            font-size: 28px;
+            font-weight: 700;
+            color: #2c5530;
+        }
+        .stat-mini .label {
+            font-size: 12px;
+            color: #777;
+            text-transform: uppercase;
+            margin-top: 4px;
+        }
+
+        .placeholder-loading {
+            color: #ccc;
+            font-style: italic;
+        }
+    </style>
+</head>
+<body>
+    <div id="app-header"></div>
+    <h1>🏠 Accueil</h1>
+    <div id="menu"></div>
+
+    <div class="dashboard-hero">
+        <h2 id="salutation">Bonjour...</h2>
+        <div class="date" id="date-jour">...</div>
+        <div class="refresh-info">🔄 Mise à jour automatique toutes les 60 secondes — <span id="last-refresh">jamais</span></div>
+    </div>
+
+    <!-- ZONE 2 : SERVICE DU JOUR (admin uniquement) -->
+    <div id="zone-service" style="display:none;">
+        <div class="section-titre">🍽️ Service du jour</div>
+        <div class="grid-repas" id="grid-repas">
+            <p class="placeholder-loading">Chargement...</p>
+        </div>
+    </div>
+
+    <!-- ZONE 3 : ALERTES -->
+    <div id="zone-alertes">
+        <div class="section-titre">⚠️ Alertes & actions à faire</div>
+        <div class="alertes" id="alertes">
+            <p class="placeholder-loading">Chargement...</p>
+        </div>
+    </div>
+
+    <!-- ZONE 4 : APERÇU GLOBAL (admin uniquement) -->
+    <div id="zone-apercu" style="display:none;">
+        <div class="section-titre">📊 Aperçu</div>
+        <div class="grid-stats" id="grid-stats">
+            <p class="placeholder-loading">Chargement...</p>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="shared.js"></script>
+    <script>
+        let monProfil = null;
+        let intervalRefresh = null;
+
+        // ---------- UTILITAIRES DATE ----------
+        function aujourdhuiIso() {
+            const d = new Date();
+            const yyyy = d.getFullYear();
+            const mm = String(d.getMonth() + 1).padStart(2, '0');
+            const dd = String(d.getDate()).padStart(2, '0');
+            return `${yyyy}-${mm}-${dd}`;
+        }
+
+        function dateJourComplete() {
+            const d = new Date();
+            return d.toLocaleDateString('fr-FR', {
+                weekday: 'long', day: 'numeric', month: 'long', year: 'numeric'
+            });
+        }
+
+        function heureFr() {
+            return new Date().toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' });
+        }
+
+        // ---------- CHARGEMENT DES DONNÉES ----------
+        async function chargerPresencesDuJour() {
+            const date = aujourdhuiIso();
+            const { data: presences, error } = await supaClient
+                .from('presences')
+                .select('*, lieu:lieux_repas(nom)')
+                .eq('date', date)
+                .eq('present', true);
+
+            if (error) {
+                console.error('Erreur présences:', error);
+                return { petit_dej: {total:0, parLieu:{}}, dejeuner: {total:0, parLieu:{}}, diner: {total:0, parLieu:{}} };
+            }
+
+            const result = {
+                petit_dej: { total: 0, parLieu: {} },
+                dejeuner:  { total: 0, parLieu: {} },
+                diner:     { total: 0, parLieu: {} }
+            };
+            for (const p of (presences || [])) {
+                const repas = result[p.repas];
+                if (!repas) continue;
+                repas.total++;
+                const nomLieu = p.lieu ? p.lieu.nom : 'Non défini';
+                repas.parLieu[nomLieu] = (repas.parLieu[nomLieu] || 0) + 1;
+            }
+            return result;
+        }
+
+        async function chargerEjcDuJour() {
+            const date = aujourdhuiIso();
+            const { data: commandes } = await supaClient
+                .from(TABLE_COMMANDES_EJC)
+                .select('quantite, categorie:categories_ejc(nom)')
+                .eq('date', date);
+            const { data: annulations } = await supaClient
+                .from(TABLE_ANNULATIONS_EJC)
+                .select('quantite')
+                .eq('date', date);
+
+            let totalCommande = 0;
+            const detail = [];
+            for (const c of (commandes || [])) {
+                totalCommande += c.quantite;
+                if (c.quantite > 0) detail.push(`${c.categorie?.nom || '?'}: ${c.quantite}`);
+            }
+            let totalAnnulation = 0;
+            for (const a of (annulations || [])) totalAnnulation += a.quantite;
+
+            return {
+                commandes: totalCommande,
+                annulations: totalAnnulation,
+                net: totalCommande - totalAnnulation,
+                detail: detail.join(' · ')
+            };
+        }
+
+        async function chargerStatsGlobales() {
+            // Total résidents actifs
+            const { count: nbResidents } = await supaClient
+                .from('résidents').select('*', { count: 'exact', head: true })
+                .eq('actif', true);
+
+            // EJC de la semaine en cours
+            const aujourdhui = new Date();
+            const lundi = lundiDeLaSemaine(aujourdhui);
+            const jours = joursOuvres(lundi);
+            const { data: commandesSem } = await supaClient
+                .from(TABLE_COMMANDES_EJC).select('quantite').in('date', jours);
+            let totalSem = 0;
+            for (const c of (commandesSem || [])) totalSem += c.quantite;
+
+            return {
+                nbResidents: nbResidents || 0,
+                ejcSemaine: totalSem
+            };
+        }
+
+        async function chargerAlertes(isAdmin) {
+            const alertes = [];
+            const date = aujourdhuiIso();
+
+            // ALERTE EJC : saisie semaine prochaine pas faite
+            // On regarde si on est lundi (1) ou mardi (2) avant 12h
+            const now = new Date();
+            const jourSemaine = now.getDay(); // 0=dim, 1=lun, 2=mar
+            const heureNow = now.getHours();
+
+            if ((jourSemaine === 1) || (jourSemaine === 2 && heureNow < 12)) {
+                // On est dans la fenêtre de saisie : vérifier semaine prochaine
+                const lundiSemaineProchaine = (() => {
+                    const d = new Date();
+                    const decalage = (8 - d.getDay()) % 7 || 7;
+                    d.setDate(d.getDate() + decalage);
+                    const yyyy = d.getFullYear();
+                    const mm = String(d.getMonth() + 1).padStart(2, '0');
+                    const dd = String(d.getDate()).padStart(2, '0');
+                    return `${yyyy}-${mm}-${dd}`;
+                })();
+                const joursSemProch = joursOuvres(lundiSemaineProchaine);
+                const { data: cmdProch } = await supaClient
+                    .from(TABLE_COMMANDES_EJC).select('quantite').in('date', joursSemProch);
+                const totalProch = (cmdProch || []).reduce((s, c) => s + c.quantite, 0);
+                if (totalProch === 0) {
+                    alertes.push({
+                        couleur: 'rouge',
+                        icone: '📅',
+                        titre: 'Commande EJC de la semaine prochaine à faire',
+                        texte: `Limite : mardi 12h. Aucun repas saisi pour le moment.`,
+                        action: { label: 'Saisir', href: 'commande-ejc.html' }
+                    });
+                }
+            }
+
+            // Les alertes suivantes sont uniquement pour les admins
+            if (isAdmin) {
+                // ALERTE PRÉSENCES : pas saisies pour aujourd'hui
+                const { count: nbPresJour } = await supaClient
+                    .from('presences').select('*', { count: 'exact', head: true })
+                    .eq('date', date);
+                if (nbPresJour === 0) {
+                    alertes.push({
+                        couleur: 'orange',
+                        icone: '📋',
+                        titre: 'Présences du jour pas encore saisies',
+                        texte: `Pense à cocher les résidents présents pour aujourd'hui.`,
+                        action: { label: 'Saisir', href: 'presences.html' }
+                    });
+                }
+
+                // ALERTE LIEUX PAR DÉFAUT : résidents sans lieu configuré
+                const { data: residents } = await supaClient
+                    .from('résidents')
+                    .select('id, prenom, nom, lieu_defaut_petit_dej_id, lieu_defaut_dejeuner_id, lieu_defaut_diner_id')
+                    .eq('actif', true);
+                const sansLieu = (residents || []).filter(r =>
+                    !r.lieu_defaut_petit_dej_id || !r.lieu_defaut_dejeuner_id || !r.lieu_defaut_diner_id
+                );
+                if (sansLieu.length > 0) {
+                    alertes.push({
+                        couleur: 'orange',
+                        icone: '📍',
+                        titre: `${sansLieu.length} résident(s) sans lieu par défaut complet`,
+                        texte: `Configure les 3 lieux (petit-déj/déj/dîner) pour chaque résident.`,
+                        action: { label: 'Voir', href: 'residents.html' }
+                    });
+                }
+            }
+
+            // Si aucune alerte
+            if (alertes.length === 0) {
+                alertes.push({
+                    couleur: 'verte',
+                    icone: '✅',
+                    titre: 'Tout est à jour',
+                    texte: `Bonne journée ${monProfil?.nom_affiche || ''} !`,
+                    action: null
+                });
+            }
+
+            return alertes;
+        }
+
+        // ---------- AFFICHAGE ----------
+        function afficherEnTete() {
+            const heure = new Date().getHours();
+            let salutation = 'Bonjour';
+            if (heure >= 18) salutation = 'Bonsoir';
+            else if (heure >= 12) salutation = 'Bon après-midi';
+
+            const prenom = monProfil?.nom_affiche?.split(' ')[0] || '';
+            document.getElementById('salutation').textContent = `${salutation} ${prenom} 👋`;
+            document.getElementById('date-jour').textContent = `Nous sommes le ${dateJourComplete()}`;
+        }
+
+        function afficherService(presences, ejc) {
+            const grid = document.getElementById('grid-repas');
+            const repasInfos = [
+                { cle: 'petit_dej', label: 'Petit-déjeuner', icone: '☕', href: 'service.html' },
+                { cle: 'dejeuner',  label: 'Déjeuner',      icone: '🍽️', href: 'service.html' },
+                { cle: 'diner',     label: 'Dîner',         icone: '🌙', href: 'service.html' }
+            ];
+
+            let html = '';
+            for (const r of repasInfos) {
+                const p = presences[r.cle];
+                let repartHtml = '<div class="repartition"><em style="color:#999;">Aucune présence saisie</em></div>';
+                if (p.total > 0) {
+                    const items = Object.entries(p.parLieu).map(([nom, n]) => `<span>📍 ${nom}: <strong>${n}</strong></span>`);
+                    repartHtml = `<div class="repartition">${items.join('')}</div>`;
+                }
+                html += `
+                    <div class="card-repas" onclick="location.href='${r.href}'">
+                        <div class="titre">${r.icone} ${r.label}</div>
+                        <div class="chiffre">${p.total}</div>
+                        <div class="label">résident(s) présent(s)</div>
+                        ${repartHtml}
+                    </div>`;
+            }
+
+            // Carte EJC
+            let detailEjc = ejc.detail || '<em style="color:#999;">Aucune commande</em>';
+            if (ejc.annulations > 0) {
+                detailEjc += ` <br><span style="color:#dc3545;">⚠️ ${ejc.annulations} annulation(s) — net : ${ejc.net}</span>`;
+            }
+            html += `
+                <div class="card-repas ejc" onclick="location.href='production.html'">
+                    <div class="titre">🍴 EJC Péry</div>
+                    <div class="chiffre">${ejc.commandes}</div>
+                    <div class="label">repas commandé(s)</div>
+                    <div class="repartition" style="display:block;">${detailEjc}</div>
+                </div>`;
+
+            grid.innerHTML = html;
+        }
+
+        function afficherAlertes(alertes) {
+            const cont = document.getElementById('alertes');
+            let html = '';
+            for (const a of alertes) {
+                const actionHtml = a.action
+                    ? `<a class="alerte-action" href="${a.action.href}">${a.action.label} →</a>`
+                    : '';
+                html += `
+                    <div class="alerte alerte-${a.couleur}">
+                        <div class="alerte-icone">${a.icone}</div>
+                        <div class="alerte-texte">
+                            <strong>${a.titre}</strong>
+                            ${a.texte}
+                        </div>
+                        ${actionHtml}
+                    </div>`;
+            }
+            cont.innerHTML = html;
+        }
+
+        function afficherStats(stats) {
+            document.getElementById('grid-stats').innerHTML = `
+                <div class="stat-mini">
+                    <div class="nombre">${stats.nbResidents}</div>
+                    <div class="label">Résidents actifs</div>
+                </div>
+                <div class="stat-mini">
+                    <div class="nombre">${stats.ejcSemaine}</div>
+                    <div class="label">Repas EJC cette semaine</div>
+                </div>
+                <div class="stat-mini" style="cursor:pointer;" onclick="location.href='stats.html'">
+                    <div class="nombre">📈</div>
+                    <div class="label">Voir toutes les stats</div>
+                </div>`;
+        }
+
+        // ---------- ORCHESTRATION ----------
+        async function rafraichir() {
+            const isAdmin = monProfil?.role === 'admin';
+            afficherEnTete();
+
+            if (isAdmin) {
+                document.getElementById('zone-service').style.display = '';
+                document.getElementById('zone-apercu').style.display = '';
+
+                const [presences, ejc, stats, alertes] = await Promise.all([
+                    chargerPresencesDuJour(),
+                    chargerEjcDuJour(),
+                    chargerStatsGlobales(),
+                    chargerAlertes(true)
+                ]);
+                afficherService(presences, ejc);
+                afficherStats(stats);
+                afficherAlertes(alertes);
+            } else {
+                // Client EJC : alertes uniquement
+                const alertes = await chargerAlertes(false);
+                afficherAlertes(alertes);
+            }
+
+            document.getElementById('last-refresh').textContent = `dernière maj à ${heureFr()}`;
+        }
+
+        // ---------- DÉMARRAGE ----------
+        (async () => {
+            const auth = await verifierAuthEtRole(['admin', 'client_ejc']);
+            if (!auth) return;
+            monProfil = auth.profil;
+            afficherMenuComplet('dashboard', auth.user.email, auth.profil.role, auth.profil.nom_affiche);
+
+            await rafraichir();
+
+            // Auto-refresh toutes les 60 sec
+            intervalRefresh = setInterval(rafraichir, 60000);
+        })();
+
+        // Nettoyage si la page est cachée (économie batterie/CPU)
+        window.addEventListener('beforeunload', () => {
+            if (intervalRefresh) clearInterval(intervalRefresh);
+        });
+    </script>
+</body>
+</html>
