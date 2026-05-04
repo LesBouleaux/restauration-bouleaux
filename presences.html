@@ -27,6 +27,7 @@
     </style>
 </head>
 <body>
+    <div id="app-header"></div>
     <h1>🍽️ Restauration Les Bouleaux</h1>
     <div id="menu"></div>
 
@@ -125,11 +126,8 @@
             for (const r of residents) {
                 const data = map[r.id];
                 const present = data ? data.present : true;
-                // Lieu par défaut pour CE repas spécifique
                 const lieuDefautRepas = lieuDefautPourRepas(r, repas);
-                // Lieu effectif : celui de la présence enregistrée OU lieu par défaut du repas
                 const lieuId = data && data.lieu_id != null ? data.lieu_id : lieuDefautRepas;
-                // Marque visuelle si différent du défaut
                 const estModifie = lieuId && lieuDefautRepas && lieuId !== lieuDefautRepas;
                 const classModif = estModifie ? 'modifie' : '';
 

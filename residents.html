@@ -81,6 +81,7 @@
     </style>
 </head>
 <body>
+    <div id="app-header"></div>
     <h1>🍽️ Restauration Les Bouleaux</h1>
     <div id="menu"></div>
 
@@ -190,7 +191,6 @@
             if (error) console.error(error);
             tousLesLieux = data || [];
 
-            // Remplir les 3 selects dans le formulaire
             const selects = ['lieu_petit_dej', 'lieu_dejeuner', 'lieu_diner'];
             for (const id of selects) {
                 const sel = document.getElementById(id);
@@ -225,7 +225,6 @@
                     ? `<span class="doc-info">📎 PDF attaché</span>`
                     : `<span class="doc-info-empty">📎 Aucun document</span>`;
 
-                // Récap des 3 lieux
                 const lieuxRecap = `
                     <div class="lieux-recap">
                         <span class="lieu-mini">🥐 ${nomLieu(r.lieu_defaut_petit_dej_id)}</span>

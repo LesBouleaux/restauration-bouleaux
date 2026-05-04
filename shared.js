@@ -49,10 +49,9 @@ function libelleRepas(code) {
 // SEMAINE EJC (lundi, jours ouvrés, verrouillage)
 // ============================================================
 
-// Retourne le lundi (au format ISO YYYY-MM-DD) de la semaine d'une date donnée
 function lundiDeLaSemaine(date) {
     const d = new Date(date);
-    const jour = d.getDay(); // 0 = dimanche, 1 = lundi, ...
+    const jour = d.getDay();
     const diff = jour === 0 ? -6 : 1 - jour;
     d.setDate(d.getDate() + diff);
     const yyyy = d.getFullYear();
@@ -61,7 +60,6 @@ function lundiDeLaSemaine(date) {
     return `${yyyy}-${mm}-${dd}`;
 }
 
-// Renvoie la liste des 5 jours ouvrés (lundi à vendredi) à partir d'un lundi
 function joursOuvres(lundiIso) {
     const result = [];
     const d = new Date(lundiIso + 'T00:00:00');
@@ -76,19 +74,14 @@ function joursOuvres(lundiIso) {
     return result;
 }
 
-// Indique si la commande est encore ouverte pour une semaine donnée (lundi ISO)
-// Règle : ouverte jusqu'au mardi 12h00 de la semaine S-1
 function commandeOuverte(lundiSemaineConcernee) {
     const lundi = new Date(lundiSemaineConcernee + 'T00:00:00');
-    // Mardi de la semaine précédente à 12h00
     const limite = new Date(lundi);
-    limite.setDate(lundi.getDate() - 6); // mardi S-1
+    limite.setDate(lundi.getDate() - 6);
     limite.setHours(12, 0, 0, 0);
     return new Date() < limite;
 }
 
-// Indique si l'annulation est encore possible pour une date donnée
-// Règle : possible jusqu'au jour J à 08h00
 function annulationOuverte(dateIso) {
     const d = new Date(dateIso + 'T08:00:00');
     return new Date() < d;
@@ -99,14 +92,12 @@ function annulationOuverte(dateIso) {
 // ============================================================
 
 async function verifierAuthEtRole(rolesAutorises) {
-    // Vérifier la session
     const { data: { session } } = await supaClient.auth.getSession();
     if (!session) {
         window.location.href = 'login.html';
         return null;
     }
 
-    // Récupérer le profil
     const { data: profil, error } = await supaClient
         .from(TABLE_PROFILS)
         .select('*')
@@ -120,10 +111,8 @@ async function verifierAuthEtRole(rolesAutorises) {
         return null;
     }
 
-    // Vérifier le rôle
     if (rolesAutorises && rolesAutorises.length && !rolesAutorises.includes(profil.role)) {
         alert('⛔ Vous n\'avez pas accès à cette page.');
-        // Rediriger selon le rôle
         if (profil.role === 'admin') window.location.href = 'residents.html';
         else if (profil.role === 'client_ejc') window.location.href = 'commande-ejc.html';
         else window.location.href = 'login.html';
@@ -153,6 +142,17 @@ async function chargerProfil(userId) {
         return null;
     }
     return data;
+}
+
+// ============================================================
+// EN-TÊTE AVEC LOGO
+// ============================================================
+
+function afficherEntete() {
+    const entete = document.getElementById('app-header');
+    if (entete) {
+        entete.innerHTML = `<img src="images/logo.png" alt="Restauration Les Bouleaux" class="logo">`;
+    }
 }
 
 // ============================================================
@@ -188,11 +188,13 @@ function genererMenuOnglets(pageActive, role) {
 }
 
 function afficherMenu(pageActive) {
+    afficherEntete();
     const menu = document.getElementById('menu');
     if (menu) menu.innerHTML = genererMenuOnglets(pageActive, 'admin');
 }
 
 function afficherMenuComplet(pageActive, emailUtilisateur, role, nomAffiche) {
+    afficherEntete();
     const menu = document.getElementById('menu');
     if (!menu) return;
     let html = genererMenuOnglets(pageActive, role);

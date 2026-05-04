@@ -75,6 +75,7 @@
     </style>
 </head>
 <body>
+    <div id="app-header"></div>
     <h1>🍽️ Restauration Les Bouleaux</h1>
     <div id="menu"></div>
 
@@ -158,7 +159,6 @@
             const { data: presences } = await supaClient
                 .from(TABLE_PRESENCES).select('*').eq('date', date).eq('repas', repas);
 
-            // Construire la liste des présents avec leur lieu effectif
             const presents = [];
             const absents = [];
             for (const r of residents) {
@@ -183,7 +183,6 @@
                 const { data: annArr } = await supaClient
                     .from(TABLE_ANNULATIONS_EJC).select('*').eq('date', date);
 
-                // Maps : categorie_id → quantite
                 const cmdMap = {};
                 for (const c of (cmdArr || [])) cmdMap[c.categorie_id] = c.quantite;
                 const annMap = {};

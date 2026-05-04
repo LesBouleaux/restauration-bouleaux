@@ -102,6 +102,7 @@
     </style>
 </head>
 <body>
+    <div id="app-header"></div>
     <h1>🍽️ Restauration Les Bouleaux</h1>
     <div id="menu"></div>
 
@@ -140,7 +141,7 @@
     <script>
         let vueActuelle = 'semaine';
         let lundiCourant = lundiDeLaSemaine(new Date());
-        let categoriesAll = []; // toutes (actives + désactivées) car on peut avoir des données historiques
+        let categoriesAll = [];
         let donneesCache = null;
 
         function decalerJoursIso(iso, nbJours) {
@@ -179,7 +180,6 @@
             const contenu = document.getElementById('contenu');
             contenu.innerHTML = '<p class="loading">⏳ Chargement...</p>';
 
-            // Charger toutes les catégories (actives + inactives) car données historiques possibles
             categoriesAll = await chargerCategoriesEjc(false);
 
             let dateDebut, dateFin, jours;
@@ -223,7 +223,6 @@
             const { jours, cmds, anns, dateDebut, dateFin } = donneesCache;
             const contenu = document.getElementById('contenu');
 
-            // Filtrer les catégories qui ont au moins 1 enregistrement OU qui sont actives
             const idsAvecData = new Set();
             for (const c of cmds) idsAvecData.add(c.categorie_id);
             for (const a of anns) idsAvecData.add(a.categorie_id);
@@ -238,20 +237,17 @@
                 return;
             }
 
-            // Maps : key = "date_categorieId" → quantite
             const cmdMap = {};
             for (const c of cmds) cmdMap[`${c.date}_${c.categorie_id}`] = c.quantite;
             const annMap = {};
             for (const a of anns) annMap[`${a.date}_${a.categorie_id}`] = a.quantite;
 
-            // Calculer totaux globaux
             let totalCmd = 0, totalAnn = 0;
             for (const c of cmds) totalCmd += c.quantite;
             for (const a of anns) totalAnn += a.quantite;
             const totalNet = totalCmd - totalAnn;
             const equivFact = totalCmd - (totalAnn * 0.5);
 
-            // Cartes stats
             let html = `
                 <h3 style="margin-top:0;">${vueActuelle === 'semaine'
                     ? `Semaine du ${dateFr(dateDebut)} au ${dateFr(dateFin)}`
@@ -279,7 +275,6 @@
                     </div>
                 </div>`;
 
-            // Tableau
             if (vueActuelle === 'semaine') {
                 html += renduTableauSemaine(jours, catsAffichees, cmdMap, annMap);
             } else {
@@ -290,7 +285,6 @@
         }
 
         function renduTableauSemaine(jours, cats, cmdMap, annMap) {
-            // 1 colonne par jour, lignes : pour chaque catégorie 3 lignes (commandes / annulations / net)
             let html = '<table class="recap"><thead><tr><th>Catégorie</th>';
             for (const j of jours) {
                 const d = new Date(j + 'T00:00:00');
@@ -318,7 +312,6 @@
                 html += lCmd + lAnn + lNet;
             }
 
-            // Total journée (net)
             html += '<tr class="ligne-total"><td>TOTAL JOURNÉE (net)</td>';
             let grandTotalNet = 0;
             for (const j of jours) {
@@ -335,7 +328,6 @@
         }
 
         function renduTableauMois(jours, cats, cmdMap, annMap) {
-            // En mode mois, on agrège par catégorie : 1 ligne par catégorie avec totaux
             let html = '<table class="recap"><thead><tr><th>Catégorie</th>';
             html += '<th>Commandés</th><th>Annulés</th><th>Net servi</th><th>Équiv. facturation</th>';
             html += '</tr></thead><tbody>';
@@ -347,7 +339,7 @@
                     cCmd += cmdMap[`${j}_${cat.id}`] || 0;
                     cAnn += annMap[`${j}_${cat.id}`] || 0;
                 }
-                if (cCmd === 0 && cAnn === 0) continue; // ne pas afficher les lignes vides
+                if (cCmd === 0 && cAnn === 0) continue;
                 gtCmd += cCmd; gtAnn += cAnn;
                 const cNet = cCmd - cAnn;
                 const cEq = cCmd - (cAnn * 0.5);
@@ -373,7 +365,6 @@
             return html;
         }
 
-        // === EXPORTS ===
         function exporterCSV() {
             if (!donneesCache) return;
             const { jours, cmds, anns } = donneesCache;
@@ -449,7 +440,6 @@
             const auth = await verifierAuthEtRole(['admin']);
             if (!auth) return;
             afficherMenuComplet('recap-ejc', auth.user.email, auth.profil.role, auth.profil.nom_affiche);
-            // Initialiser le mois
             const now = new Date();
             document.getElementById('input-mois').value = `${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}`;
             charger();

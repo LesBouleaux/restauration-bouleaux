@@ -153,6 +153,7 @@
     </style>
 </head>
 <body>
+    <div id="app-header"></div>
     <h1>🍽️ Restauration Les Bouleaux</h1>
     <div id="menu"></div>
 
@@ -299,7 +300,6 @@
                 return;
             }
 
-            // Récupérer EJC : commandes et annulations par catégorie
             const { data: ejcCmd } = await supaClient
                 .from(TABLE_COMMANDES_EJC)
                 .select('*')
@@ -402,7 +402,6 @@
             }
             const totalAvecLieu = Object.values(globalParLieu).reduce((s, x) => s + x, 0) + globalAucunLieu;
 
-            // EJC : total net portions sur la période (nouvelle structure dynamique)
             let totalEjcCmd = 0, totalEjcAnn = 0;
             for (const c of ejcCmd) totalEjcCmd += (c.quantite || 0);
             for (const a of ejcAnn) totalEjcAnn += (a.quantite || 0);

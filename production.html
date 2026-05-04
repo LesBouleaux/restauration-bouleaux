@@ -18,6 +18,7 @@
     </style>
 </head>
 <body>
+    <div id="app-header"></div>
     <h1>🍽️ Restauration Les Bouleaux</h1>
     <div id="menu"></div>
 
@@ -56,16 +57,13 @@
             const { data: presences } = await supaClient
                 .from(TABLE_PRESENCES).select('*').eq('date', date);
 
-            // Charger TOUTES les catégories EJC (pour avoir le nom + allergènes même si désactivée)
             const categoriesEjc = await chargerCategoriesEjc(false);
 
-            // Charger commandes et annulations EJC pour la date
             const { data: cmdEjcArr } = await supaClient
                 .from(TABLE_COMMANDES_EJC).select('*').eq('date', date);
             const { data: annEjcArr } = await supaClient
                 .from(TABLE_ANNULATIONS_EJC).select('*').eq('date', date);
 
-            // Maps : categorie_id → quantite
             const cmdMap = {};
             for (const c of (cmdEjcArr || [])) cmdMap[c.categorie_id] = c.quantite;
             const annMap = {};
@@ -83,12 +81,10 @@
                 const avecAllergie = presentsForRepas.filter(r => r.allergies);
                 const avecIntolerance = presentsForRepas.filter(r => r.intolerances);
 
-                // Pour le déjeuner, on ajoute les commandes EJC (nettes des annulations)
                 let totalEjc = 0;
                 let detailEjc = '';
                 if (codeRepas === 'dejeuner') {
                     const lignes = [];
-                    // Tri des catégories par ordre
                     const catsTriees = [...categoriesEjc].sort((a, b) => a.ordre - b.ordre);
                     for (const cat of catsTriees) {
                         const cmd = cmdMap[cat.id] || 0;

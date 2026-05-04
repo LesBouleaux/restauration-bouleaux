@@ -116,6 +116,7 @@
     </style>
 </head>
 <body>
+    <div id="app-header"></div>
     <h1>🍴 EJC Péry — Saisie des repas</h1>
     <div id="menu"></div>
 
@@ -145,7 +146,7 @@
         let lundiCourant = lundiDeLaSemaine(new Date());
         lundiCourant = decalerJoursIso(lundiCourant, 7); // semaine prochaine par défaut
         let mode = 'commande';
-        let categoriesActives = []; // chargées dynamiquement
+        let categoriesActives = [];
 
         function decalerJoursIso(iso, nbJours) {
             const d = new Date(iso + 'T00:00:00');
@@ -172,7 +173,6 @@
             const contenu = document.getElementById('contenu');
             contenu.innerHTML = '<p class="loading">⏳ Chargement...</p>';
 
-            // Charger catégories actives
             categoriesActives = await chargerCategoriesEjc(true);
 
             const jours = joursOuvres(lundiCourant);
@@ -182,7 +182,6 @@
             const cmdOuverte = commandeOuverte(lundiCourant);
             const isAdmin = monProfil && monProfil.role === 'admin';
 
-            // Bannière
             const banner = document.getElementById('info-banner');
             if (mode === 'commande') {
                 if (cmdOuverte || isAdmin) {
@@ -206,7 +205,6 @@
                 </div>`;
             }
 
-            // Si aucune catégorie active
             if (!categoriesActives.length) {
                 contenu.innerHTML = `<div class="empty-cats">
                     <div style="font-size:48px;">🏷️</div>
@@ -216,19 +214,16 @@
                 return;
             }
 
-            // Charger commandes et annulations de la semaine
             const { data: commandes } = await supaClient
                 .from(TABLE_COMMANDES_EJC).select('*').in('date', jours);
             const { data: annulations } = await supaClient
                 .from(TABLE_ANNULATIONS_EJC).select('*').in('date', jours);
 
-            // Map d'accès rapide : key = "date_categorieId" → quantite
             const cmdMap = {};
             for (const c of (commandes || [])) cmdMap[`${c.date}_${c.categorie_id}`] = c.quantite;
             const annMap = {};
             for (const a of (annulations || [])) annMap[`${a.date}_${a.categorie_id}`] = a.quantite;
 
-            // Construire le tableau
             let html = '<table class="repas"><thead><tr><th>Catégorie</th>';
             for (const j of jours) {
                 const d = new Date(j + 'T00:00:00');
@@ -236,7 +231,6 @@
             }
             html += '<th class="col-total">Total</th></tr></thead><tbody>';
 
-            // 1 ligne par catégorie active
             for (const cat of categoriesActives) {
                 let allergenesHtml = '';
                 if (cat.allergenes && cat.allergenes.length) {
@@ -272,7 +266,6 @@
                 html += `<td class="col-total" id="total-cat-${cat.id}">${totalLigne}</td></tr>`;
             }
 
-            // Ligne total par jour
             html += '<tr style="background: #f0f8f0; font-weight: bold;"><td>TOTAL JOURNÉE</td>';
             let totalSem = 0;
             for (const j of jours) {
@@ -300,7 +293,6 @@
 
             const table = (mode === 'commande') ? TABLE_COMMANDES_EJC : TABLE_ANNULATIONS_EJC;
 
-            // UPSERT (insert ou update selon existence)
             const { data: existant } = await supaClient
                 .from(table).select('id')
                 .eq('date', date).eq('categorie_id', categorieId).maybeSingle();

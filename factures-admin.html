@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+ <!DOCTYPE html>
 <html lang="fr">
 <head>
     <meta charset="UTF-8">
@@ -54,6 +54,7 @@
     </style>
 </head>
 <body>
+    <div id="app-header"></div>
     <h1>🍽️ Restauration Les Bouleaux</h1>
     <div id="menu"></div>
 
@@ -161,12 +162,10 @@
         }
 
         function remplirAnnees() {
-            // Récupérer toutes les années distinctes
             const annees = new Set();
             for (const f of toutesFactures) {
                 annees.add(f.date_facture.substring(0, 4));
             }
-            // Ajouter l'année courante au cas où
             annees.add(new Date().getFullYear().toString());
             const sel = document.getElementById('filtre-annee');
             const valActu = sel.value;
@@ -182,7 +181,6 @@
                 contenu.innerHTML = '<p class="info-msg">Aucune facture pour cette période.</p>';
                 return;
             }
-            // Stats
             const total = toutesFactures.reduce((s, f) => s + parseFloat(f.montant), 0);
             const enAttente = toutesFactures.filter(f => f.statut === 'en_attente').reduce((s, f) => s + parseFloat(f.montant), 0);
             let html = `<p>
@@ -243,7 +241,6 @@
             document.getElementById('statut').value = f.statut;
             document.getElementById('notes').value = f.notes || '';
             nouveauFichier = null;
-            // Affichage zone : fichier déjà existant
             const zone = document.getElementById('zone-pdf');
             zone.className = 'pdf-zone has-file';
             zone.innerHTML = `
@@ -294,7 +291,6 @@
             const id = document.getElementById('facture-id').value;
             const fichierActuel = document.getElementById('facture-fichier-actuel').value;
 
-            // Validation : si nouvelle facture, le fichier est obligatoire
             if (!id && !nouveauFichier) {
                 alert('❌ Tu dois choisir un fichier PDF.');
                 return;
@@ -302,9 +298,7 @@
 
             let cheminFichier = fichierActuel;
 
-            // Upload si nouveau fichier
             if (nouveauFichier) {
-                // Si on remplace, supprimer l'ancien
                 if (fichierActuel) {
                     await supaClient.storage.from(BUCKET_FACTURES).remove([fichierActuel]);
                 }
@@ -354,9 +348,7 @@
             if (!f) return;
             if (!confirm(`Supprimer la facture N° ${f.numero} ?\n\nLe PDF sera également supprimé.`)) return;
 
-            // Supprimer le PDF
             await supaClient.storage.from(BUCKET_FACTURES).remove([f.fichier_pdf]);
-            // Supprimer la ligne
             const { error } = await supaClient.from('factures_ejc').delete().eq('id', id);
             if (error) return alert('❌ Erreur : ' + error.message);
             charger();

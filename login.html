@@ -8,7 +8,7 @@
     <style>
         .login-box {
             max-width: 400px;
-            margin: 60px auto;
+            margin: 30px auto;
             background: white;
             padding: 35px;
             border-radius: 10px;
@@ -18,6 +18,7 @@
             text-align: center;
             border: none;
             padding-bottom: 20px;
+            font-size: 22px;
         }
         .login-box .form-group { margin-bottom: 18px; }
         .login-box button { width: 100%; padding: 14px; font-size: 16px; }
@@ -32,8 +33,10 @@
     </style>
 </head>
 <body>
+    <div id="app-header"></div>
+
     <div class="login-box">
-        <h1>🍽️ Restauration<br>Les Bouleaux</h1>
+        <h1>Connexion</h1>
 
         <div id="erreur"></div>
 
@@ -53,11 +56,14 @@
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script src="shared.js"></script>
     <script>
+        // Afficher l'en-tête avec logo
+        afficherEntete();
+
         // Si déjà connecté, redirection selon le rôle
         (async () => {
             const { data } = await supaClient.auth.getSession();
             if (data.session) {
-                const profil = await chargerProfil();
+                const profil = await chargerProfil(data.session.user.id);
                 if (profil && profil.role === 'client_ejc') {
                     window.location.href = 'commande-ejc.html';
                 } else {
@@ -83,7 +89,7 @@
             }
 
             // Redirection selon le rôle
-            const profil = await chargerProfil();
+            const profil = await chargerProfil(data.user.id);
             if (profil && profil.role === 'client_ejc') {
                 window.location.href = 'commande-ejc.html';
             } else {
