@@ -138,6 +138,23 @@ async function deconnexion() {
 }
 
 // ============================================================
+// PROFIL UTILISATEUR (utilisé par login.html)
+// ============================================================
+
+async function chargerProfil(userId) {
+    const { data, error } = await supaClient
+        .from(TABLE_PROFILS)
+        .select('*')
+        .eq('user_id', userId)
+        .maybeSingle();
+    if (error) {
+        console.error('Erreur chargement profil :', error);
+        return null;
+    }
+    return data;
+}
+
+// ============================================================
 // MENU & ENTÊTE
 // ============================================================
 

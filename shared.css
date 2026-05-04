@@ -1,4 +1,4 @@
-/* ===== STYLES PARTAGÉS — Restauration Les Bouleaux ===== */
+ /* ===== STYLES PARTAGÉS — Restauration Les Bouleaux ===== */
 
 * { box-sizing: border-box; }
 
@@ -21,14 +21,14 @@ h2 { color: #2c5530; margin-top: 25px; }
 h3 { color: #2c5530; }
 
 /* ===== MENU D'ONGLETS ===== */
-.tabs {
+.menu-onglets, .tabs {
     display: flex;
     gap: 5px;
-    margin: 15px 0 25px;
+    margin: 15px 0 0;
     border-bottom: 2px solid #2c5530;
     flex-wrap: wrap;
 }
-.tab {
+.onglet, .tab {
     padding: 10px 18px;
     background: #e8e8e8;
     color: #333;
@@ -38,8 +38,24 @@ h3 { color: #2c5530; }
     font-size: 15px;
     transition: background 0.2s;
 }
-.tab:hover { background: #d4d4d4; }
-.tab.active { background: #2c5530; color: white; }
+.onglet:hover, .tab:hover { background: #d4d4d4; }
+.onglet.active, .tab.active { background: #2c5530; color: white; }
+
+/* ===== BARRE UTILISATEUR ===== */
+.user-bar {
+    display: flex;
+    justify-content: flex-end;
+    align-items: center;
+    gap: 12px;
+    padding: 10px 0;
+    margin-bottom: 20px;
+    color: #555;
+    font-size: 14px;
+}
+.btn-small {
+    padding: 4px 10px !important;
+    font-size: 13px !important;
+}
 
 /* ===== BOUTONS ===== */
 button, .btn {
@@ -108,7 +124,7 @@ button, .btn {
     background: white;
     border-radius: 8px;
 }
-.error {
+.error, .erreur-msg {
     background: #fee;
     color: #c00;
     padding: 15px;
@@ -229,9 +245,18 @@ table.presences input[type="checkbox"] {
 .tag-intolerance { background: #ffe5b4; color: #a05000; }
 .tag-aversion { background: #e0e0e0; color: #555; }
 
+/* ===== RESPONSIVE MOBILE ===== */
+@media (max-width: 600px) {
+    .onglet, .tab {
+        padding: 8px 12px;
+        font-size: 13px;
+    }
+    body { padding: 10px; }
+}
+
 /* ===== IMPRESSION ===== */
 @media print {
     body { background: white; padding: 0; max-width: 100%; }
-    .tabs, .toolbar, .no-print, button { display: none !important; }
+    .menu-onglets, .tabs, .toolbar, .user-bar, .no-print, button { display: none !important; }
     .print-area { box-shadow: none; padding: 0; }
 }
