@@ -14,6 +14,7 @@ const TABLE_PRESENCES = 'presences';
 const TABLE_PROFILS = 'profils_utilisateurs';
 const TABLE_COMMANDES_EJC = 'commandes_ejc';
 const TABLE_ANNULATIONS_EJC = 'annulations_ejc';
+const TABLE_CATEGORIES_EJC = 'categories_ejc';
 
 // ============================================================
 // UTILITAIRES DATES
@@ -165,6 +166,7 @@ function genererMenuOnglets(pageActive, role) {
         { id: 'production', titre: '📋 Production J-1', url: 'production.html' },
         { id: 'service', titre: '🍽️ Service du jour', url: 'service.html' },
         { id: 'recap-ejc', titre: '🍴 EJC Péry', url: 'recap-ejc.html' },
+        { id: 'categories-ejc', titre: '🏷️ Catégories EJC', url: 'categories-ejc.html' },
         { id: 'factures-admin', titre: '🧾 Factures EJC', url: 'factures-admin.html' },
         { id: 'stats', titre: '📊 Statistiques', url: 'stats.html' }
     ];
@@ -216,4 +218,47 @@ async function chargerResidentsActifs() {
         return [];
     }
     return data || [];
+}
+
+// ============================================================
+// CATÉGORIES EJC - Chargement
+// ============================================================
+
+async function chargerCategoriesEjc(uniquementActives = true) {
+    let query = supaClient
+        .from(TABLE_CATEGORIES_EJC)
+        .select('*')
+        .order('ordre', { ascending: true })
+        .order('nom', { ascending: true });
+    if (uniquementActives) query = query.eq('actif', true);
+
+    const { data, error } = await query;
+    if (error) {
+        console.error('Erreur chargement catégories EJC :', error);
+        return [];
+    }
+    return data || [];
+}
+
+// Liste des 14 allergènes majeurs (réutilisable partout)
+const ALLERGENES_LISTE = [
+    { code: 'gluten',         nom: 'Gluten',           emoji: '🌾' },
+    { code: 'crustaces',      nom: 'Crustacés',        emoji: '🦐' },
+    { code: 'oeufs',          nom: 'Œufs',             emoji: '🥚' },
+    { code: 'poissons',       nom: 'Poissons',         emoji: '🐟' },
+    { code: 'arachides',      nom: 'Arachides',        emoji: '🥜' },
+    { code: 'soja',           nom: 'Soja',             emoji: '🌱' },
+    { code: 'lait',           nom: 'Lait',             emoji: '🥛' },
+    { code: 'fruits_a_coque', nom: 'Fruits à coque',   emoji: '🌰' },
+    { code: 'celeri',         nom: 'Céleri',           emoji: '🥬' },
+    { code: 'moutarde',       nom: 'Moutarde',         emoji: '🟡' },
+    { code: 'sesame',         nom: 'Graines de sésame',emoji: '🌻' },
+    { code: 'sulfites',       nom: 'Sulfites',         emoji: '🧪' },
+    { code: 'lupin',          nom: 'Lupin',            emoji: '🌿' },
+    { code: 'mollusques',     nom: 'Mollusques',       emoji: '🦪' }
+];
+
+function nomAllergene(code) {
+    const a = ALLERGENES_LISTE.find(x => x.code === code);
+    return a ? `${a.emoji} ${a.nom}` : code;
 }

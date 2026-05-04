@@ -1,0 +1,366 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Catégories EJC - Restauration Les Bouleaux</title>
+    <link rel="stylesheet" href="shared.css">
+    <style>
+        .cat-card {
+            background: white;
+            padding: 15px 20px;
+            border-radius: 8px;
+            margin-bottom: 10px;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.08);
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            gap: 15px;
+            flex-wrap: wrap;
+        }
+        .cat-card.inactif { opacity: 0.6; background: #f5f5f5; }
+        .cat-info { flex: 1; min-width: 250px; }
+        .cat-nom {
+            font-size: 18px;
+            font-weight: bold;
+            color: #2c5530;
+        }
+        .ordre-badge {
+            display: inline-block;
+            background: #555;
+            color: white;
+            padding: 2px 10px;
+            border-radius: 12px;
+            font-size: 12px;
+            margin-right: 8px;
+            vertical-align: middle;
+        }
+        .badge-inactif {
+            background: #999;
+            color: white;
+            padding: 2px 10px;
+            border-radius: 12px;
+            font-size: 12px;
+            margin-left: 8px;
+        }
+        .allergenes-tags {
+            margin-top: 8px;
+            display: flex;
+            flex-wrap: wrap;
+            gap: 5px;
+        }
+        .allergene-tag {
+            background: #fff3cd;
+            color: #856404;
+            padding: 3px 10px;
+            border-radius: 12px;
+            font-size: 13px;
+            border: 1px solid #ffe5a0;
+        }
+        .pas-allergene {
+            color: #999;
+            font-style: italic;
+            font-size: 13px;
+            margin-top: 8px;
+        }
+        .cat-actions { display: flex; gap: 8px; flex-wrap: wrap; }
+        .info-banner {
+            background: #e3f2fd;
+            color: #0d47a1;
+            padding: 12px 18px;
+            border-radius: 8px;
+            border-left: 4px solid #1976d2;
+            margin: 15px 0;
+        }
+
+        /* Checkboxes allergènes dans le formulaire */
+        .allergenes-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+            gap: 8px;
+            background: #fafafa;
+            padding: 12px;
+            border-radius: 6px;
+            border: 1px solid #ddd;
+        }
+        .allergene-check {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            padding: 5px 8px;
+            border-radius: 4px;
+            cursor: pointer;
+            transition: background 0.15s;
+        }
+        .allergene-check:hover { background: #f0f0f0; }
+        .allergene-check input[type="checkbox"] {
+            width: 18px;
+            height: 18px;
+            cursor: pointer;
+        }
+        .allergene-check label {
+            cursor: pointer;
+            font-size: 14px;
+            margin: 0;
+            font-weight: normal;
+        }
+    </style>
+</head>
+<body>
+    <h1>🍽️ Restauration Les Bouleaux</h1>
+    <div id="menu"></div>
+
+    <h2>🏷️ Catégories de repas EJC</h2>
+
+    <div class="info-banner">
+        ℹ️ Configure ici les catégories de repas que <strong>EJC Péry</strong> peut commander.
+        Pour chaque catégorie, tu peux préciser les <strong>allergènes à éviter</strong>.
+        EJC verra automatiquement ces informations dans son tableau de saisie.
+    </div>
+
+    <div class="toolbar">
+        <button class="btn-primary" onclick="ouvrirFormulaire()">➕ Nouvelle catégorie</button>
+    </div>
+
+    <div id="contenu">
+        <p class="loading">⏳ Chargement...</p>
+    </div>
+
+    <!-- Modal formulaire -->
+    <div class="modal-overlay" id="modal">
+        <div class="modal" style="max-width:700px;">
+            <h2 id="modal-titre">Nouvelle catégorie</h2>
+            <form id="form-cat" onsubmit="sauvegarderCategorie(event)">
+                <input type="hidden" id="cat-id">
+
+                <div class="form-group">
+                    <label for="nom">Nom de la catégorie *</label>
+                    <input type="text" id="nom" required placeholder="Ex: Adulte normal, Enfant sans porc, Végétarien...">
+                </div>
+
+                <div class="form-group">
+                    <label for="ordre">Ordre d'affichage</label>
+                    <input type="number" id="ordre" value="0" min="0">
+                    <small style="color:#666;">Plus le chiffre est petit, plus la catégorie apparaît en premier.</small>
+                </div>
+
+                <div class="form-group">
+                    <label>🚫 Allergènes à éviter (à cocher selon la catégorie)</label>
+                    <small style="color:#666;display:block;margin-bottom:8px;">
+                        Ces informations seront visibles côté EJC dans le tableau de saisie.
+                    </small>
+                    <div class="allergenes-grid" id="allergenes-grid">
+                        <!-- généré en JS -->
+                    </div>
+                </div>
+
+                <div class="form-actions">
+                    <button type="button" class="btn-secondary" onclick="fermerFormulaire()">Annuler</button>
+                    <button type="submit" class="btn-primary">💾 Enregistrer</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="shared.js"></script>
+    <script>
+        // Liste des 14 allergènes majeurs réglementaires (UE)
+        const ALLERGENES_LISTE = [
+            { code: 'gluten',        nom: 'Gluten',        emoji: '🌾' },
+            { code: 'crustaces',     nom: 'Crustacés',     emoji: '🦐' },
+            { code: 'oeufs',         nom: 'Œufs',          emoji: '🥚' },
+            { code: 'poissons',      nom: 'Poissons',      emoji: '🐟' },
+            { code: 'arachides',     nom: 'Arachides',     emoji: '🥜' },
+            { code: 'soja',          nom: 'Soja',          emoji: '🌱' },
+            { code: 'lait',          nom: 'Lait',          emoji: '🥛' },
+            { code: 'fruits_a_coque',nom: 'Fruits à coque',emoji: '🌰' },
+            { code: 'celeri',        nom: 'Céleri',        emoji: '🥬' },
+            { code: 'moutarde',      nom: 'Moutarde',      emoji: '🟡' },
+            { code: 'sesame',        nom: 'Graines de sésame',emoji:'🌻' },
+            { code: 'sulfites',      nom: 'Sulfites',      emoji: '🧪' },
+            { code: 'lupin',         nom: 'Lupin',         emoji: '🌿' },
+            { code: 'mollusques',    nom: 'Mollusques',    emoji: '🦪' }
+        ];
+
+        let toutesCats = [];
+
+        function nomAllergene(code) {
+            const a = ALLERGENES_LISTE.find(x => x.code === code);
+            return a ? `${a.emoji} ${a.nom}` : code;
+        }
+
+        async function charger() {
+            const { data, error } = await supaClient
+                .from('categories_ejc')
+                .select('*')
+                .order('actif', { ascending: false })
+                .order('ordre', { ascending: true })
+                .order('nom', { ascending: true });
+
+            if (error) {
+                document.getElementById('contenu').innerHTML = `<div class="error">Erreur : ${error.message}</div>`;
+                return;
+            }
+            toutesCats = data || [];
+            afficher();
+        }
+
+        function afficher() {
+            const contenu = document.getElementById('contenu');
+            if (!toutesCats.length) {
+                contenu.innerHTML = `
+                    <div class="info-msg" style="text-align:center;padding:40px;">
+                        <div style="font-size:48px;">🏷️</div>
+                        <p><strong>Aucune catégorie configurée pour le moment.</strong></p>
+                        <p>Clique sur "Nouvelle catégorie" pour commencer.</p>
+                    </div>`;
+                return;
+            }
+            let html = `<p><strong>${toutesCats.length}</strong> catégorie(s)</p>`;
+            for (const c of toutesCats) {
+                const inactifBadge = !c.actif ? '<span class="badge-inactif">⏸️ Désactivée</span>' : '';
+
+                let allergenesHtml = '';
+                if (c.allergenes && c.allergenes.length) {
+                    allergenesHtml = '<div class="allergenes-tags">';
+                    allergenesHtml += '<span style="font-size:13px;color:#666;font-weight:bold;margin-right:4px;">🚫 Sans :</span>';
+                    for (const a of c.allergenes) {
+                        allergenesHtml += `<span class="allergene-tag">${nomAllergene(a)}</span>`;
+                    }
+                    allergenesHtml += '</div>';
+                } else {
+                    allergenesHtml = '<div class="pas-allergene">Aucun allergène à éviter renseigné.</div>';
+                }
+
+                let actions = `<button class="btn-edit" onclick="modifierCategorie(${c.id})">✏️ Modifier</button>`;
+                if (c.actif) {
+                    actions += `<button class="btn-secondary" onclick="basculerActif(${c.id}, false)">⏸️ Désactiver</button>`;
+                } else {
+                    actions += `<button class="btn-primary" onclick="basculerActif(${c.id}, true)">▶️ Réactiver</button>`;
+                }
+                actions += `<button class="btn-danger" onclick="supprimerCategorie(${c.id})">🗑️ Supprimer</button>`;
+
+                html += `
+                    <div class="cat-card ${c.actif ? '' : 'inactif'}">
+                        <div class="cat-info">
+                            <div>
+                                <span class="ordre-badge">#${c.ordre}</span>
+                                <span class="cat-nom">${c.nom}</span>
+                                ${inactifBadge}
+                            </div>
+                            ${allergenesHtml}
+                        </div>
+                        <div class="cat-actions">${actions}</div>
+                    </div>`;
+            }
+            contenu.innerHTML = html;
+        }
+
+        function genererGrilleAllergenes(coches = []) {
+            const grid = document.getElementById('allergenes-grid');
+            grid.innerHTML = '';
+            for (const a of ALLERGENES_LISTE) {
+                const checked = coches.includes(a.code) ? 'checked' : '';
+                grid.innerHTML += `
+                    <div class="allergene-check">
+                        <input type="checkbox" id="all_${a.code}" value="${a.code}" ${checked}>
+                        <label for="all_${a.code}">${a.emoji} ${a.nom}</label>
+                    </div>`;
+            }
+        }
+
+        function ouvrirFormulaire() {
+            document.getElementById('modal-titre').textContent = 'Nouvelle catégorie';
+            document.getElementById('form-cat').reset();
+            document.getElementById('cat-id').value = '';
+            const maxOrdre = toutesCats.reduce((m, c) => Math.max(m, c.ordre), 0);
+            document.getElementById('ordre').value = maxOrdre + 10;
+            genererGrilleAllergenes([]);
+            document.getElementById('modal').classList.add('active');
+        }
+
+        function modifierCategorie(id) {
+            const c = toutesCats.find(x => x.id === id);
+            if (!c) return;
+            document.getElementById('modal-titre').textContent = 'Modifier la catégorie';
+            document.getElementById('cat-id').value = c.id;
+            document.getElementById('nom').value = c.nom;
+            document.getElementById('ordre').value = c.ordre;
+            genererGrilleAllergenes(c.allergenes || []);
+            document.getElementById('modal').classList.add('active');
+        }
+
+        function fermerFormulaire() {
+            document.getElementById('modal').classList.remove('active');
+        }
+
+        async function sauvegarderCategorie(event) {
+            event.preventDefault();
+            const id = document.getElementById('cat-id').value;
+            const nom = document.getElementById('nom').value.trim();
+            const ordre = parseInt(document.getElementById('ordre').value) || 0;
+
+            // Récupérer les allergènes cochés
+            const allergenes = [];
+            for (const a of ALLERGENES_LISTE) {
+                const cb = document.getElementById('all_' + a.code);
+                if (cb && cb.checked) allergenes.push(a.code);
+            }
+
+            const donnees = { nom, ordre, allergenes };
+            let res;
+            if (id) {
+                res = await supaClient.from('categories_ejc').update(donnees).eq('id', id);
+            } else {
+                donnees.actif = true;
+                res = await supaClient.from('categories_ejc').insert(donnees);
+            }
+
+            if (res.error) {
+                if (res.error.message.includes('duplicate')) {
+                    alert('❌ Une catégorie avec ce nom existe déjà.');
+                } else {
+                    alert('❌ Erreur : ' + res.error.message);
+                }
+                return;
+            }
+            fermerFormulaire();
+            charger();
+        }
+
+        async function basculerActif(id, nouvelEtat) {
+            const cat = toutesCats.find(c => c.id === id);
+            if (!cat) return;
+            const action = nouvelEtat ? 'réactiver' : 'désactiver';
+            if (!confirm(`Voulez-vous ${action} la catégorie "${cat.nom}" ?\n\nElle ${nouvelEtat ? 'apparaîtra' : 'disparaîtra'} dans le tableau de saisie EJC.`)) return;
+
+            const { error } = await supaClient
+                .from('categories_ejc')
+                .update({ actif: nouvelEtat })
+                .eq('id', id);
+
+            if (error) return alert('❌ Erreur : ' + error.message);
+            charger();
+        }
+
+        async function supprimerCategorie(id) {
+            const cat = toutesCats.find(c => c.id === id);
+            if (!cat) return;
+            if (!confirm(`Supprimer définitivement la catégorie "${cat.nom}" ?\n\n⚠️ Toutes les commandes/annulations EJC liées à cette catégorie seront supprimées.\n\nCette action est irréversible.`)) return;
+
+            const { error } = await supaClient.from('categories_ejc').delete().eq('id', id);
+            if (error) return alert('❌ Erreur : ' + error.message);
+            charger();
+        }
+
+        // Démarrage admin uniquement
+        (async () => {
+            const auth = await verifierAuthEtRole(['admin']);
+            if (!auth) return;
+            afficherMenuComplet('categories-ejc', auth.user.email, auth.profil.role, auth.profil.nom_affiche);
+            charger();
+        })();
+    </script>
+</body>
+</html>
