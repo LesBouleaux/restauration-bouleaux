@@ -18,8 +18,6 @@ const TABLE_CATEGORIES_EJC = 'categories_ejc';
 const TABLE_CLIENTS = 'clients';
 
 // ===== CONTEXTE GLOBAL DE L'UTILISATEUR CONNECTÉ =====
-// Rempli par chargerContexteClient() au démarrage de chaque page
-// { user: {...}, profil: {...}, client: {...} | null }
 let CONTEXTE_CLIENT = null;
 
 // ============================================================
@@ -80,9 +78,7 @@ function joursOuvres(lundiIso) {
     return result;
 }
 
-// ⚠️ Version legacy (valeurs en dur : mardi 12h S-1)
-// Conservée pour compatibilité avec d'éventuels appels existants.
-// Préférer commandeOuverteClient() pour le multi-clients.
+// ⚠️ Versions legacy (valeurs en dur) — conservées pour compatibilité
 function commandeOuverte(lundiSemaineConcernee) {
     const lundi = new Date(lundiSemaineConcernee + 'T00:00:00');
     const limite = new Date(lundi);
@@ -91,7 +87,6 @@ function commandeOuverte(lundiSemaineConcernee) {
     return new Date() < limite;
 }
 
-// ⚠️ Version legacy (valeurs en dur : jour J 8h)
 function annulationOuverte(dateIso) {
     const d = new Date(dateIso + 'T08:00:00');
     return new Date() < d;
@@ -101,31 +96,23 @@ function annulationOuverte(dateIso) {
 // SEMAINE EJC - VERSIONS PARAMÉTRABLES PAR CLIENT
 // ============================================================
 
-// Calcule la deadline de commande pour la semaine donnée, selon les règles du client
-// client : objet { deadline_jour, deadline_heure } (0=dim, 1=lun, 2=mar, ...)
-// Par défaut : mardi 12h de la semaine S-1 (= 6 jours avant le lundi de la semaine concernée)
 function calculerDeadlineCommande(lundiSemaineConcernee, client) {
-    const dlJour = client?.deadline_jour ?? 2;       // mardi
-    const dlHeure = client?.deadline_heure ?? 12;    // 12h
+    const dlJour = client?.deadline_jour ?? 2;
+    const dlHeure = client?.deadline_heure ?? 12;
     const lundi = new Date(lundiSemaineConcernee + 'T00:00:00');
-    // On part du lundi de la semaine concernée, on remonte d'une semaine, puis on positionne sur le bon jour
     const lundiSemPrecedente = new Date(lundi);
     lundiSemPrecedente.setDate(lundi.getDate() - 7);
     const deadline = new Date(lundiSemPrecedente);
-    // dlJour : 0=dim, 1=lun, 2=mar... → décalage depuis lundi (=1) : (dlJour - 1 + 7) % 7
     const decalage = (dlJour - 1 + 7) % 7;
     deadline.setDate(lundiSemPrecedente.getDate() + decalage);
     deadline.setHours(dlHeure, 0, 0, 0);
     return deadline;
 }
 
-// Version multi-clients : la commande est-elle encore ouverte ?
 function commandeOuverteClient(lundiSemaineConcernee, client) {
     return new Date() < calculerDeadlineCommande(lundiSemaineConcernee, client);
 }
 
-// Version multi-clients : l'annulation est-elle encore ouverte ?
-// client : objet { deadline_annulation_heure }
 function annulationOuverteClient(dateIso, client) {
     const heureLimite = client?.deadline_annulation_heure ?? 8;
     const d = new Date(dateIso + 'T00:00:00');
@@ -133,7 +120,6 @@ function annulationOuverteClient(dateIso, client) {
     return new Date() < d;
 }
 
-// Renvoie un objet règles formatées (pour l'affichage)
 function getReglesClient(client) {
     const jours = ['dimanche', 'lundi', 'mardi', 'mercredi', 'jeudi', 'vendredi', 'samedi'];
     return {
@@ -183,16 +169,6 @@ async function verifierAuthEtRole(rolesAutorises) {
 // ============================================================
 // CONTEXTE CLIENT - chargement enrichi (multi-clients)
 // ============================================================
-// Version enrichie de verifierAuthEtRole : charge en plus le client lié
-// et remplit la variable globale CONTEXTE_CLIENT.
-//
-// Utilisation type en début de page :
-//     const ctx = await chargerContexteClient(['client_ejc']);
-//     if (!ctx) return; // redirection déjà faite
-//     // ctx.user, ctx.profil, ctx.client
-//     // ou via la globale CONTEXTE_CLIENT
-//
-// Pour un admin : ctx.client vaut null (l'admin n'est pas lié à un client unique)
 
 async function chargerContexteClient(rolesAutorises) {
     const auth = await verifierAuthEtRole(rolesAutorises);
@@ -220,12 +196,10 @@ async function chargerContexteClient(rolesAutorises) {
     return CONTEXTE_CLIENT;
 }
 
-// Renvoie le client courant (raccourci)
 function getClientCourant() {
     return CONTEXTE_CLIENT?.client || null;
 }
 
-// Charge tous les clients (pour les sélecteurs admin)
 async function chargerTousLesClients(uniquementActifs = true) {
     let query = supaClient
         .from(TABLE_CLIENTS)
@@ -280,21 +254,21 @@ function afficherEntete() {
 
 function genererMenuOnglets(pageActive, role) {
     const ongletsAdmin = [
-        { id: 'dashboard', titre: '🏠 Accueil', url: 'dashboard.html' },
-        { id: 'residents', titre: '👥 Résidents', url: 'residents.html' },
-        { id: 'presences', titre: '✅ Présences', url: 'presences.html' },
-        { id: 'production', titre: '📋 Production J-1', url: 'production.html' },
-        { id: 'service', titre: '🍽️ Service du jour', url: 'service.html' },
-        { id: 'recap-ejc', titre: '🍴 EJC Péry', url: 'recap-ejc.html' },
-        { id: 'categories-ejc', titre: '🏷️ Catégories EJC', url: 'categories-ejc.html' },
-        { id: 'factures-admin', titre: '🧾 Factures EJC', url: 'factures-admin.html' },
-        { id: 'stats', titre: '📊 Statistiques', url: 'stats.html' }
+        { id: 'dashboard',              titre: '🏠 Accueil',            url: 'dashboard.html' },
+        { id: 'residents',              titre: '👥 Résidents',          url: 'residents.html' },
+        { id: 'presences',              titre: '✅ Présences',           url: 'presences.html' },
+        { id: 'production',             titre: '📋 Production J-1',     url: 'production.html' },
+        { id: 'service',                titre: '🍽️ Service du jour',    url: 'service.html' },
+        { id: 'recap-clients',          titre: '📊 Récap clients',      url: 'recap-clients.html' },
+        { id: 'categories-clients',     titre: '🏷️ Catégories clients', url: 'categories-clients.html' },
+        { id: 'factures-clients-admin', titre: '🧾 Factures clients',   url: 'factures-clients-admin.html' },
+        { id: 'stats',                  titre: '📊 Statistiques',       url: 'stats.html' }
     ];
 
     const ongletsEjc = [
-        { id: 'dashboard', titre: '🏠 Accueil', url: 'dashboard.html' },
-        { id: 'commande-ejc', titre: '🍽️ Saisie repas', url: 'commande-ejc.html' },
-        { id: 'factures-ejc', titre: '🧾 Mes factures', url: 'factures-ejc.html' }
+        { id: 'dashboard',    titre: '🏠 Accueil',       url: 'dashboard.html' },
+        { id: 'commande-ejc', titre: '🍽️ Saisie repas',  url: 'commande-ejc.html' },
+        { id: 'factures-ejc', titre: '🧾 Mes factures',  url: 'factures-ejc.html' }
     ];
 
     const onglets = role === 'client_ejc' ? ongletsEjc : ongletsAdmin;
@@ -346,12 +320,6 @@ async function chargerResidentsActifs() {
 // ============================================================
 // CATÉGORIES EJC - Chargement
 // ============================================================
-// ⚠️ Multi-clients :
-// - Si un clientId est passé : filtre par ce client.
-// - Sinon, RLS fait le filtrage automatique :
-//   * client_ejc → ne voit QUE les catégories de son client
-//   * admin      → voit toutes les catégories de tous les clients
-// Pour les pages admin avec sélecteur, passer explicitement le clientId.
 
 async function chargerCategoriesEjc(uniquementActives = true, clientId = null) {
     let query = supaClient
@@ -399,7 +367,6 @@ function nomAllergene(code) {
 
 const TABLE_ABSENCES = 'absences_prolongees';
 
-// Charge les absences prolongées qui couvrent la date donnée
 async function chargerAbsencesPourDate(dateIso) {
     const { data, error } = await supaClient
         .from(TABLE_ABSENCES)
@@ -413,7 +380,6 @@ async function chargerAbsencesPourDate(dateIso) {
     return data || [];
 }
 
-// Charge les absences prolongées qui chevauchent une période [date1, date2]
 async function chargerAbsencesPeriode(date1, date2) {
     const { data, error } = await supaClient
         .from(TABLE_ABSENCES)
@@ -427,24 +393,17 @@ async function chargerAbsencesPeriode(date1, date2) {
     return data || [];
 }
 
-// À partir des absences chargées, retourne un Map { resident_id => absence }
-// pour une date et un repas donnés. Une absence ne s'applique que si :
-// - la date est dans la plage [date_debut, date_fin]
-// - le repas est dans repas_concernes
 function indexerAbsencesPourDateRepas(absences, dateIso, repas) {
     const map = {};
     for (const a of (absences || [])) {
         if (dateIso < a.date_debut || dateIso > a.date_fin) continue;
         const repasConcernes = a.repas_concernes || ['petit_dej', 'dejeuner', 'diner'];
         if (!repasConcernes.includes(repas)) continue;
-        // Si plusieurs absences pour le même résident, on prend la 1re
         if (!map[a.resident_id]) map[a.resident_id] = a;
     }
     return map;
 }
 
-// Détermine si un résident est en absence prolongée pour (date, repas)
-// Retourne l'objet absence si oui, null sinon
 function estEnAbsenceProlongee(absences, residentId, dateIso, repas) {
     for (const a of (absences || [])) {
         if (a.resident_id !== residentId) continue;

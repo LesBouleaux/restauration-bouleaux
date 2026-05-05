@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Catégories EJC - Restauration Les Bouleaux</title>
+    <title>Catégories de repas - Restauration Les Bouleaux</title>
     <link rel="stylesheet" href="shared.css">
     <style>
         .selecteur-client {
@@ -139,7 +139,7 @@
     <h1>🍽️ Restauration Les Bouleaux</h1>
     <div id="menu"></div>
 
-    <h2 id="titre-h2">🏷️ Catégories de repas EJC</h2>
+    <h2 id="titre-h2">🏷️ Catégories de repas</h2>
 
     <!-- Sélecteur de client -->
     <div id="zone-selecteur-client"></div>
@@ -175,7 +175,7 @@
                 <div class="form-group">
                     <label>🚫 Allergènes à éviter (à cocher selon la catégorie)</label>
                     <small style="color:#666;display:block;margin-bottom:8px;">
-                        Ces informations seront visibles côté EJC dans le tableau de saisie.
+                        Ces informations seront visibles côté client externe dans le tableau de saisie.
                     </small>
                     <div class="allergenes-grid" id="allergenes-grid">
                         <!-- généré en JS -->
@@ -216,7 +216,7 @@
             }
             let html = `<div class="selecteur-client">
                 <span class="badge-admin">👑 ADMIN</span>
-                <label for="select-client">Client configuré :</label>
+                <label for="select-client">Client externe configuré :</label>
                 <select id="select-client" onchange="changerClient(this.value)">`;
             for (const c of tousLesClients) {
                 const sel = (clientActif && clientActif.id === c.id) ? 'selected' : '';
@@ -243,7 +243,7 @@
             if (!clientActif) {
                 contenu.innerHTML = `<div class="info-msg" style="text-align:center;padding:40px;">
                     <div style="font-size:48px;">⚠️</div>
-                    <p><strong>Aucun client sélectionné.</strong></p>
+                    <p><strong>Aucun client externe sélectionné.</strong></p>
                 </div>`;
                 return;
             }
@@ -331,7 +331,7 @@
 
         function ouvrirFormulaire() {
             if (!clientActif) {
-                alert('⚠️ Sélectionne d\'abord un client.');
+                alert('⚠️ Sélectionne d\'abord un client externe.');
                 return;
             }
             document.getElementById('modal-titre').textContent = `Nouvelle catégorie — ${clientActif.nom}`;
@@ -361,7 +361,7 @@
         async function sauvegarderCategorie(event) {
             event.preventDefault();
             if (!clientActif) {
-                alert('⚠️ Aucun client sélectionné.');
+                alert('⚠️ Aucun client externe sélectionné.');
                 return;
             }
             const id = document.getElementById('cat-id').value;
@@ -376,13 +376,11 @@
 
             let res;
             if (id) {
-                // UPDATE : on ne touche PAS à client_id (sécurité : on ne peut jamais "déplacer" une catégorie d'un client à un autre)
                 res = await supaClient.from('categories_ejc')
                     .update({ nom, ordre, allergenes })
                     .eq('id', id)
-                    .eq('client_id', clientActif.id); // double vérif côté client
+                    .eq('client_id', clientActif.id);
             } else {
-                // INSERT avec client_id
                 res = await supaClient.from('categories_ejc').insert({
                     client_id: clientActif.id,
                     nom,
@@ -423,7 +421,7 @@
         async function supprimerCategorie(id) {
             const cat = toutesCats.find(c => c.id === id);
             if (!cat) return;
-            if (!confirm(`Supprimer définitivement la catégorie "${cat.nom}" pour ${clientActif.nom} ?\n\n⚠️ Toutes les commandes/annulations EJC liées à cette catégorie seront supprimées.\n\nCette action est irréversible.`)) return;
+            if (!confirm(`Supprimer définitivement la catégorie "${cat.nom}" pour ${clientActif.nom} ?\n\n⚠️ Toutes les commandes/annulations liées à cette catégorie seront supprimées.\n\nCette action est irréversible.`)) return;
 
             const { error } = await supaClient
                 .from('categories_ejc')
@@ -438,15 +436,14 @@
         (async () => {
             const ctx = await chargerContexteClient(['admin']);
             if (!ctx) return;
-            afficherMenuComplet('categories-ejc', ctx.user.email, ctx.profil.role, ctx.profil.nom_affiche);
+            afficherMenuComplet('categories-clients', ctx.user.email, ctx.profil.role, ctx.profil.nom_affiche);
 
             tousLesClients = await chargerTousLesClients(true);
             if (!tousLesClients.length) {
                 document.getElementById('contenu').innerHTML = `
                     <div class="info-msg" style="text-align:center;padding:40px;">
                         <div style="font-size:48px;">⚠️</div>
-                        <p><strong>Aucun client n'est configuré dans la base.</strong></p>
-                        <p>Contacte le développeur pour ajouter des clients.</p>
+                        <p><strong>Aucun client externe n'est configuré dans la base.</strong></p>
                     </div>`;
                 return;
             }

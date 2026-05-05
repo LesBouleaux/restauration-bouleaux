@@ -3,9 +3,39 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Factures EJC - Restauration Les Bouleaux</title>
+    <title>Factures clients externes - Restauration Les Bouleaux</title>
     <link rel="stylesheet" href="shared.css">
     <style>
+        .selecteur-client {
+            background: #fff8e1;
+            border: 2px solid #ffc107;
+            padding: 12px 18px;
+            border-radius: 8px;
+            margin: 15px 0;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            flex-wrap: wrap;
+        }
+        .selecteur-client label {
+            font-weight: bold;
+            color: #856404;
+        }
+        .selecteur-client select {
+            padding: 6px 10px;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+            font-size: 15px;
+            min-width: 220px;
+        }
+        .selecteur-client .badge-admin {
+            background: #856404;
+            color: white;
+            padding: 3px 10px;
+            border-radius: 12px;
+            font-size: 12px;
+            font-weight: bold;
+        }
         .facture-card {
             background: white;
             padding: 15px 20px;
@@ -39,6 +69,16 @@
         }
         .statut-attente { background: #fff3cd; color: #856404; }
         .statut-payee { background: #d4edda; color: #155724; }
+        .badge-client {
+            display: inline-block;
+            background: #2c5530;
+            color: white;
+            padding: 3px 10px;
+            border-radius: 12px;
+            font-size: 12px;
+            font-weight: bold;
+            margin-left: 8px;
+        }
         .pdf-zone {
             border: 2px dashed #ccc;
             padding: 20px;
@@ -58,7 +98,10 @@
     <h1>🍽️ Restauration Les Bouleaux</h1>
     <div id="menu"></div>
 
-    <h2>🧾 Factures EJC Péry</h2>
+    <h2>🧾 Factures clients externes</h2>
+
+    <!-- Sélecteur de client (filtre) -->
+    <div id="zone-selecteur-client"></div>
 
     <div class="toolbar">
         <label><strong>Année :</strong></label>
@@ -79,6 +122,13 @@
             <form id="form-facture" onsubmit="sauvegarderFacture(event)">
                 <input type="hidden" id="facture-id">
                 <input type="hidden" id="facture-fichier-actuel">
+
+                <div class="form-group">
+                    <label for="select-client-modal">Client externe *</label>
+                    <select id="select-client-modal" required>
+                        <!-- rempli en JS -->
+                    </select>
+                </div>
 
                 <div class="form-group">
                     <label for="numero">Numéro de facture *</label>
@@ -144,12 +194,52 @@
         const BUCKET_FACTURES = 'factures-ejc';
         let toutesFactures = [];
         let nouveauFichier = null;
+        let tousLesClients = [];
+        let filtreClientId = ''; // '' = tous les clients
+        let mapClients = {};
+
+        // ===== SÉLECTEUR DE CLIENT (filtre liste) =====
+        function changerFiltreClient(clientId) {
+            filtreClientId = clientId;
+            charger();
+        }
+
+        function afficherSelecteurClient() {
+            const zone = document.getElementById('zone-selecteur-client');
+            if (!tousLesClients.length) { zone.innerHTML = ''; return; }
+            let html = `<div class="selecteur-client">
+                <span class="badge-admin">👑 ADMIN</span>
+                <label for="select-client-filtre">Filtrer par client externe :</label>
+                <select id="select-client-filtre" onchange="changerFiltreClient(this.value)">
+                    <option value="">📊 Tous les clients</option>`;
+            for (const c of tousLesClients) {
+                const sel = (filtreClientId === c.id) ? 'selected' : '';
+                html += `<option value="${c.id}" ${sel}>${c.nom}</option>`;
+            }
+            html += `</select></div>`;
+            zone.innerHTML = html;
+        }
+
+        function remplirSelectClientModal(clientIdSelectionne) {
+            const sel = document.getElementById('select-client-modal');
+            sel.innerHTML = '';
+            for (const c of tousLesClients) {
+                const opt = document.createElement('option');
+                opt.value = c.id;
+                opt.textContent = c.nom;
+                if (c.id === clientIdSelectionne) opt.selected = true;
+                sel.appendChild(opt);
+            }
+        }
 
         async function charger() {
             const annee = document.getElementById('filtre-annee').value;
             let query = supaClient.from('factures_ejc').select('*').order('date_facture', { ascending: false });
             if (annee) {
                 query = query.gte('date_facture', `${annee}-01-01`).lte('date_facture', `${annee}-12-31`);
+            }
+            if (filtreClientId) {
+                query = query.eq('client_id', filtreClientId);
             }
             const { data, error } = await query;
             if (error) {
@@ -175,6 +265,10 @@
             sel.value = valActu;
         }
 
+        function nomClient(clientId) {
+            return mapClients[clientId]?.nom || '?';
+        }
+
         function afficher() {
             const contenu = document.getElementById('contenu');
             if (!toutesFactures.length) {
@@ -183,8 +277,9 @@
             }
             const total = toutesFactures.reduce((s, f) => s + parseFloat(f.montant), 0);
             const enAttente = toutesFactures.filter(f => f.statut === 'en_attente').reduce((s, f) => s + parseFloat(f.montant), 0);
+            const filtreLib = filtreClientId ? nomClient(filtreClientId) : 'tous clients externes';
             let html = `<p>
-                <strong>${toutesFactures.length}</strong> facture(s) ·
+                <strong>${toutesFactures.length}</strong> facture(s) · <strong>${filtreLib}</strong> ·
                 Total : <strong>${total.toFixed(2)} CHF</strong> ·
                 En attente : <strong style="color:#856404;">${enAttente.toFixed(2)} CHF</strong>
             </p>`;
@@ -192,6 +287,7 @@
                 const statutBadge = f.statut === 'payee'
                     ? '<span class="statut statut-payee">✅ Payée</span>'
                     : '<span class="statut statut-attente">⏳ En attente</span>';
+                const clientBadge = `<span class="badge-client">${nomClient(f.client_id)}</span>`;
                 let periode = '';
                 if (f.periode_debut && f.periode_fin) {
                     periode = ` · Période : ${dateFr(f.periode_debut)} → ${dateFr(f.periode_fin)}`;
@@ -199,7 +295,7 @@
                 html += `
                     <div class="facture-card">
                         <div class="facture-info">
-                            <div class="facture-numero">📄 N° ${f.numero} ${statutBadge}</div>
+                            <div class="facture-numero">📄 N° ${f.numero} ${clientBadge} ${statutBadge}</div>
                             <div class="facture-meta">
                                 <strong>${dateFr(f.date_facture)}</strong>${periode}
                                 ${f.notes ? `<br><em>${f.notes}</em>` : ''}
@@ -217,11 +313,17 @@
         }
 
         function ouvrirFormulaire() {
+            if (!tousLesClients.length) {
+                alert('⚠️ Aucun client externe configuré.');
+                return;
+            }
             document.getElementById('modal-titre').textContent = 'Téléverser une facture';
             document.getElementById('form-facture').reset();
             document.getElementById('facture-id').value = '';
             document.getElementById('facture-fichier-actuel').value = '';
             document.getElementById('date_facture').value = aujourdhui();
+            const idDefaut = filtreClientId || tousLesClients[0].id;
+            remplirSelectClientModal(idDefaut);
             nouveauFichier = null;
             resetZonePdf();
             document.getElementById('modal').classList.add('active');
@@ -233,6 +335,8 @@
             document.getElementById('modal-titre').textContent = 'Modifier la facture';
             document.getElementById('facture-id').value = f.id;
             document.getElementById('facture-fichier-actuel').value = f.fichier_pdf;
+            remplirSelectClientModal(f.client_id);
+            document.getElementById('select-client-modal').disabled = true;
             document.getElementById('numero').value = f.numero;
             document.getElementById('date_facture').value = f.date_facture;
             document.getElementById('montant').value = f.montant;
@@ -255,6 +359,7 @@
 
         function fermerFormulaire() {
             document.getElementById('modal').classList.remove('active');
+            document.getElementById('select-client-modal').disabled = false;
         }
 
         function changerFichier(event) {
@@ -290,7 +395,12 @@
             event.preventDefault();
             const id = document.getElementById('facture-id').value;
             const fichierActuel = document.getElementById('facture-fichier-actuel').value;
+            const clientIdModal = document.getElementById('select-client-modal').value;
 
+            if (!clientIdModal) {
+                alert('❌ Tu dois choisir un client externe.');
+                return;
+            }
             if (!id && !nouveauFichier) {
                 alert('❌ Tu dois choisir un fichier PDF.');
                 return;
@@ -325,6 +435,7 @@
             if (id) {
                 res = await supaClient.from('factures_ejc').update(donnees).eq('id', id);
             } else {
+                donnees.client_id = clientIdModal;
                 res = await supaClient.from('factures_ejc').insert(donnees);
             }
             if (res.error) return alert('❌ Erreur : ' + res.error.message);
@@ -354,11 +465,16 @@
             charger();
         }
 
-        // Démarrage admin uniquement
+        // ===== Démarrage admin uniquement =====
         (async () => {
-            const auth = await verifierAuthEtRole(['admin']);
-            if (!auth) return;
-            afficherMenuComplet('factures-admin', auth.user.email, auth.profil.role, auth.profil.nom_affiche);
+            const ctx = await chargerContexteClient(['admin']);
+            if (!ctx) return;
+            afficherMenuComplet('factures-clients-admin', ctx.user.email, ctx.profil.role, ctx.profil.nom_affiche);
+
+            tousLesClients = await chargerTousLesClients(true);
+            for (const c of tousLesClients) mapClients[c.id] = c;
+
+            afficherSelecteurClient();
             charger();
         })();
     </script>

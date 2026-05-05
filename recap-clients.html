@@ -3,9 +3,39 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Récap EJC Péry - Restauration Les Bouleaux</title>
+    <title>Récapitulatif client externe - Restauration Les Bouleaux</title>
     <link rel="stylesheet" href="shared.css">
     <style>
+        .selecteur-client {
+            background: #fff8e1;
+            border: 2px solid #ffc107;
+            padding: 12px 18px;
+            border-radius: 8px;
+            margin: 15px 0;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            flex-wrap: wrap;
+        }
+        .selecteur-client label {
+            font-weight: bold;
+            color: #856404;
+        }
+        .selecteur-client select {
+            padding: 6px 10px;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+            font-size: 15px;
+            min-width: 220px;
+        }
+        .selecteur-client .badge-admin {
+            background: #856404;
+            color: white;
+            padding: 3px 10px;
+            border-radius: 12px;
+            font-size: 12px;
+            font-weight: bold;
+        }
         .vue-toggle {
             display: inline-flex;
             border: 2px solid #2c5530;
@@ -106,7 +136,10 @@
     <h1>🍽️ Restauration Les Bouleaux</h1>
     <div id="menu"></div>
 
-    <h2>🍴 Récapitulatif EJC Péry</h2>
+    <h2 id="titre-h2">📊 Récapitulatif client externe</h2>
+
+    <!-- Sélecteur de client -->
+    <div id="zone-selecteur-client"></div>
 
     <div class="toolbar no-print">
         <label><strong>Vue :</strong></label>
@@ -143,6 +176,8 @@
         let lundiCourant = lundiDeLaSemaine(new Date());
         let categoriesAll = [];
         let donneesCache = null;
+        let clientActif = null;
+        let tousLesClients = [];
 
         function decalerJoursIso(iso, nbJours) {
             const d = new Date(iso + 'T00:00:00');
@@ -151,6 +186,29 @@
             const mm = String(d.getMonth() + 1).padStart(2, '0');
             const dd = String(d.getDate()).padStart(2, '0');
             return `${yyyy}-${mm}-${dd}`;
+        }
+
+        function changerClient(clientId) {
+            clientActif = tousLesClients.find(c => c.id === clientId);
+            if (clientActif) {
+                document.getElementById('titre-h2').textContent = `📊 Récapitulatif — ${clientActif.nom}`;
+            }
+            charger();
+        }
+
+        function afficherSelecteurClient() {
+            const zone = document.getElementById('zone-selecteur-client');
+            if (!tousLesClients.length) { zone.innerHTML = ''; return; }
+            let html = `<div class="selecteur-client no-print">
+                <span class="badge-admin">👑 ADMIN</span>
+                <label for="select-client">Client externe consulté :</label>
+                <select id="select-client" onchange="changerClient(this.value)">`;
+            for (const c of tousLesClients) {
+                const sel = (clientActif && clientActif.id === c.id) ? 'selected' : '';
+                html += `<option value="${c.id}" ${sel}>${c.nom}</option>`;
+            }
+            html += `</select></div>`;
+            zone.innerHTML = html;
         }
 
         function changerVue(v) {
@@ -180,7 +238,15 @@
             const contenu = document.getElementById('contenu');
             contenu.innerHTML = '<p class="loading">⏳ Chargement...</p>';
 
-            categoriesAll = await chargerCategoriesEjc(false);
+            if (!clientActif) {
+                contenu.innerHTML = `<div class="empty-cats">
+                    <div style="font-size:48px;">⚠️</div>
+                    <p><strong>Aucun client externe sélectionné.</strong></p>
+                </div>`;
+                return;
+            }
+
+            categoriesAll = await chargerCategoriesEjc(false, clientActif.id);
 
             let dateDebut, dateFin, jours;
             if (vueActuelle === 'semaine') {
@@ -207,9 +273,11 @@
 
             const { data: cmds } = await supaClient
                 .from(TABLE_COMMANDES_EJC).select('*')
+                .eq('client_id', clientActif.id)
                 .gte('date', dateDebut).lte('date', dateFin);
             const { data: anns } = await supaClient
                 .from(TABLE_ANNULATIONS_EJC).select('*')
+                .eq('client_id', clientActif.id)
                 .gte('date', dateDebut).lte('date', dateFin);
 
             donneesCache = {
@@ -222,6 +290,9 @@
         function afficher() {
             const { jours, cmds, anns, dateDebut, dateFin } = donneesCache;
             const contenu = document.getElementById('contenu');
+            const regles = getReglesClient(clientActif);
+            const pctAnn = regles.pctAnnulationJourJ;
+            const ratioAnn = pctAnn / 100;
 
             const idsAvecData = new Set();
             for (const c of cmds) idsAvecData.add(c.categorie_id);
@@ -231,8 +302,8 @@
             if (!catsAffichees.length) {
                 contenu.innerHTML = `<div class="empty-cats">
                     <div style="font-size:48px;">🏷️</div>
-                    <p><strong>Aucune catégorie configurée.</strong></p>
-                    <p>Va dans l'onglet "Catégories EJC" pour en créer.</p>
+                    <p><strong>Aucune catégorie configurée pour ${clientActif.nom}.</strong></p>
+                    <p>Va dans l'onglet "Catégories clients" pour en créer.</p>
                 </div>`;
                 return;
             }
@@ -246,12 +317,13 @@
             for (const c of cmds) totalCmd += c.quantite;
             for (const a of anns) totalAnn += a.quantite;
             const totalNet = totalCmd - totalAnn;
-            const equivFact = totalCmd - (totalAnn * 0.5);
+            const equivFact = totalCmd - (totalAnn * (1 - ratioAnn));
 
             let html = `
-                <h3 style="margin-top:0;">${vueActuelle === 'semaine'
-                    ? `Semaine du ${dateFr(dateDebut)} au ${dateFr(dateFin)}`
-                    : `Mois : ${dateFr(dateDebut)} → ${dateFr(dateFin)}`}</h3>
+                <h3 style="margin-top:0;">${clientActif.nom} —
+                    ${vueActuelle === 'semaine'
+                        ? `Semaine du ${dateFr(dateDebut)} au ${dateFr(dateFin)}`
+                        : `Mois : ${dateFr(dateDebut)} → ${dateFr(dateFin)}`}</h3>
                 <div class="stats-cards">
                     <div class="stat-card commande">
                         <div class="label">Commandés</div>
@@ -261,7 +333,7 @@
                     <div class="stat-card annulation">
                         <div class="label">Annulés</div>
                         <div class="valeur">${totalAnn}</div>
-                        <div class="sub">50% facturé</div>
+                        <div class="sub">${pctAnn}% facturé</div>
                     </div>
                     <div class="stat-card net">
                         <div class="label">Net servi</div>
@@ -271,14 +343,14 @@
                     <div class="stat-card facturation">
                         <div class="label">Équivalent facturation</div>
                         <div class="valeur">${equivFact.toFixed(1)}</div>
-                        <div class="sub">cmd − (ann × 0.5)</div>
+                        <div class="sub">cmd − (ann × ${(1 - ratioAnn).toFixed(2)})</div>
                     </div>
                 </div>`;
 
             if (vueActuelle === 'semaine') {
                 html += renduTableauSemaine(jours, catsAffichees, cmdMap, annMap);
             } else {
-                html += renduTableauMois(jours, catsAffichees, cmdMap, annMap);
+                html += renduTableauMois(jours, catsAffichees, cmdMap, annMap, ratioAnn);
             }
 
             contenu.innerHTML = html;
@@ -327,7 +399,7 @@
             return html;
         }
 
-        function renduTableauMois(jours, cats, cmdMap, annMap) {
+        function renduTableauMois(jours, cats, cmdMap, annMap, ratioAnn) {
             let html = '<table class="recap"><thead><tr><th>Catégorie</th>';
             html += '<th>Commandés</th><th>Annulés</th><th>Net servi</th><th>Équiv. facturation</th>';
             html += '</tr></thead><tbody>';
@@ -342,7 +414,7 @@
                 if (cCmd === 0 && cAnn === 0) continue;
                 gtCmd += cCmd; gtAnn += cAnn;
                 const cNet = cCmd - cAnn;
-                const cEq = cCmd - (cAnn * 0.5);
+                const cEq = cCmd - (cAnn * (1 - ratioAnn));
                 html += `<tr>
                     <td>${cat.nom}${cat.actif ? '' : ' <small style="color:#999;">(inactif)</small>'}</td>
                     <td class="num-cmd">${cCmd}</td>
@@ -353,7 +425,7 @@
             }
 
             const gtNet = gtCmd - gtAnn;
-            const gtEq = gtCmd - (gtAnn * 0.5);
+            const gtEq = gtCmd - (gtAnn * (1 - ratioAnn));
             html += `<tr class="ligne-total">
                 <td>TOTAL</td>
                 <td>${gtCmd}</td>
@@ -365,15 +437,22 @@
             return html;
         }
 
+        function suffixePeriode() {
+            if (!donneesCache) return '';
+            return `${donneesCache.dateDebut}_${donneesCache.dateFin}`;
+        }
+
         function exporterCSV() {
-            if (!donneesCache) return;
+            if (!donneesCache || !clientActif) return;
             const { jours, cmds, anns } = donneesCache;
             const cmdMap = {}, annMap = {};
             for (const c of cmds) cmdMap[`${c.date}_${c.categorie_id}`] = c.quantite;
             for (const a of anns) annMap[`${a.date}_${a.categorie_id}`] = a.quantite;
 
             const cats = categoriesAll;
-            let csv = 'Catégorie;Type;' + jours.join(';') + ';Total\n';
+            let csv = `Client externe;${clientActif.nom}\n`;
+            csv += `Période;${donneesCache.dateDebut};au;${donneesCache.dateFin}\n\n`;
+            csv += 'Catégorie;Type;' + jours.join(';') + ';Total\n';
             for (const cat of cats) {
                 let tCmd = 0, tAnn = 0;
                 let lCmd = `${cat.nom};Commandés`;
@@ -389,18 +468,24 @@
                 lAnn += `;${tAnn}\n`;
                 if (tCmd > 0 || tAnn > 0) csv += lCmd + lAnn;
             }
-            telecharger(csv, 'recap-ejc.csv', 'text/csv;charset=utf-8;');
+            const nomFichier = `recap-${clientActif.code}-${suffixePeriode()}.csv`;
+            telecharger(csv, nomFichier, 'text/csv;charset=utf-8;');
         }
 
         function exporterExcel() {
-            if (!donneesCache) return;
+            if (!donneesCache || !clientActif) return;
             const { jours, cmds, anns } = donneesCache;
             const cmdMap = {}, annMap = {};
             for (const c of cmds) cmdMap[`${c.date}_${c.categorie_id}`] = c.quantite;
             for (const a of anns) annMap[`${a.date}_${a.categorie_id}`] = a.quantite;
 
             const cats = categoriesAll;
-            const rows = [['Catégorie', 'Type', ...jours, 'Total']];
+            const rows = [
+                ['Client externe', clientActif.nom],
+                ['Période', donneesCache.dateDebut, 'au', donneesCache.dateFin],
+                [],
+                ['Catégorie', 'Type', ...jours, 'Total']
+            ];
             for (const cat of cats) {
                 let tCmd = 0, tAnn = 0;
                 const rowCmd = [cat.nom, 'Commandés'];
@@ -421,8 +506,9 @@
             }
             const ws = XLSX.utils.aoa_to_sheet(rows);
             const wb = XLSX.utils.book_new();
-            XLSX.utils.book_append_sheet(wb, ws, 'Récap EJC');
-            XLSX.writeFile(wb, 'recap-ejc.xlsx');
+            XLSX.utils.book_append_sheet(wb, ws, `Récap ${clientActif.code}`);
+            const nomFichier = `recap-${clientActif.code}-${suffixePeriode()}.xlsx`;
+            XLSX.writeFile(wb, nomFichier);
         }
 
         function telecharger(contenu, nom, type) {
@@ -435,13 +521,25 @@
             URL.revokeObjectURL(url);
         }
 
-        // Démarrage
+        // ===== Démarrage =====
         (async () => {
-            const auth = await verifierAuthEtRole(['admin']);
-            if (!auth) return;
-            afficherMenuComplet('recap-ejc', auth.user.email, auth.profil.role, auth.profil.nom_affiche);
+            const ctx = await chargerContexteClient(['admin']);
+            if (!ctx) return;
+            afficherMenuComplet('recap-clients', ctx.user.email, ctx.profil.role, ctx.profil.nom_affiche);
             const now = new Date();
             document.getElementById('input-mois').value = `${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}`;
+
+            tousLesClients = await chargerTousLesClients(true);
+            if (!tousLesClients.length) {
+                document.getElementById('contenu').innerHTML = `<div class="empty-cats">
+                    <div style="font-size:48px;">⚠️</div>
+                    <p><strong>Aucun client externe n'est configuré.</strong></p>
+                </div>`;
+                return;
+            }
+            clientActif = tousLesClients[0];
+            document.getElementById('titre-h2').textContent = `📊 Récapitulatif — ${clientActif.nom}`;
+            afficherSelecteurClient();
             charger();
         })();
     </script>
