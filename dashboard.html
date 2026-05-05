@@ -203,6 +203,7 @@
     <script src="shared.js"></script>
     <script>
         let monProfil = null;
+        let monClient = null;        // Le client lié au compte (NULL pour admin)
         let intervalRefresh = null;
 
         // ---------- UTILITAIRES DATE ----------
@@ -223,6 +224,16 @@
 
         function heureFr() {
             return new Date().toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' });
+        }
+
+        function lundiSemaineProchaineIso() {
+            const d = new Date();
+            const decalage = (8 - d.getDay()) % 7 || 7;
+            d.setDate(d.getDate() + decalage);
+            const yyyy = d.getFullYear();
+            const mm = String(d.getMonth() + 1).padStart(2, '0');
+            const dd = String(d.getDate()).padStart(2, '0');
+            return `${yyyy}-${mm}-${dd}`;
         }
 
         // ---------- CHARGEMENT DES DONNÉES ----------
@@ -254,11 +265,12 @@
             return result;
         }
 
-        async function chargerEjcDuJour() {
+        // Charge les commandes/annulations du jour pour TOUS les clients (admin)
+        async function chargerClientsDuJour() {
             const date = aujourdhuiIso();
             const { data: commandes } = await supaClient
                 .from(TABLE_COMMANDES_EJC)
-                .select('quantite, categorie:categories_ejc(nom)')
+                .select('quantite, client_id, categorie:categories_ejc(nom)')
                 .eq('date', date);
             const { data: annulations } = await supaClient
                 .from(TABLE_ANNULATIONS_EJC)
@@ -266,19 +278,24 @@
                 .eq('date', date);
 
             let totalCommande = 0;
-            const detail = [];
+            const detailParCat = {};
             for (const c of (commandes || [])) {
                 totalCommande += c.quantite;
-                if (c.quantite > 0) detail.push(`${c.categorie?.nom || '?'}: ${c.quantite}`);
+                const nomCat = c.categorie?.nom || '?';
+                detailParCat[nomCat] = (detailParCat[nomCat] || 0) + c.quantite;
             }
             let totalAnnulation = 0;
             for (const a of (annulations || [])) totalAnnulation += a.quantite;
+
+            const detailItems = Object.entries(detailParCat)
+                .filter(([_, n]) => n > 0)
+                .map(([nom, n]) => `${nom}: ${n}`);
 
             return {
                 commandes: totalCommande,
                 annulations: totalAnnulation,
                 net: totalCommande - totalAnnulation,
-                detail: detail.join(' · ')
+                detail: detailItems.join(' · ')
             };
         }
 
@@ -288,7 +305,7 @@
                 .from('résidents').select('*', { count: 'exact', head: true })
                 .eq('actif', true);
 
-            // EJC de la semaine en cours
+            // Repas clients de la semaine en cours (tous clients confondus)
             const aujourdhui = new Date();
             const lundi = lundiDeLaSemaine(aujourdhui);
             const jours = joursOuvres(lundi);
@@ -299,47 +316,90 @@
 
             return {
                 nbResidents: nbResidents || 0,
-                ejcSemaine: totalSem
+                repasSemaine: totalSem
             };
+        }
+
+        // Vérifie quels clients n'ont rien saisi pour la semaine prochaine
+        // Renvoie [{ id, nom }, ...]
+        async function chargerClientsEnRetard() {
+            const lundiProch = lundiSemaineProchaineIso();
+            const joursProch = joursOuvres(lundiProch);
+
+            // Tous les clients actifs
+            const tousClients = await chargerTousLesClients(true);
+
+            // Pour chaque client, on regarde s'il a saisi quelque chose
+            const enRetard = [];
+            for (const c of tousClients) {
+                const { data: cmds } = await supaClient
+                    .from(TABLE_COMMANDES_EJC)
+                    .select('quantite')
+                    .eq('client_id', c.id)
+                    .in('date', joursProch);
+                const total = (cmds || []).reduce((s, x) => s + x.quantite, 0);
+                if (total === 0) {
+                    enRetard.push({ id: c.id, nom: c.nom });
+                }
+            }
+            return enRetard;
+        }
+
+        // Vérifie si MON client (compte client_ejc) a saisi pour la semaine prochaine
+        async function monClientAEnRetard() {
+            if (!monClient) return false;
+            const lundiProch = lundiSemaineProchaineIso();
+            const joursProch = joursOuvres(lundiProch);
+            const { data: cmds } = await supaClient
+                .from(TABLE_COMMANDES_EJC)
+                .select('quantite')
+                .eq('client_id', monClient.id)
+                .in('date', joursProch);
+            const total = (cmds || []).reduce((s, x) => s + x.quantite, 0);
+            return total === 0;
         }
 
         async function chargerAlertes(isAdmin) {
             const alertes = [];
             const date = aujourdhuiIso();
 
-            // ALERTE EJC : saisie semaine prochaine pas faite
+            // ---- ALERTE COMMANDES SEMAINE PROCHAINE ----
             // On regarde si on est lundi (1) ou mardi (2) avant 12h
             const now = new Date();
             const jourSemaine = now.getDay(); // 0=dim, 1=lun, 2=mar
             const heureNow = now.getHours();
+            const dansFenetreSaisie = (jourSemaine === 1) || (jourSemaine === 2 && heureNow < 12);
 
-            if ((jourSemaine === 1) || (jourSemaine === 2 && heureNow < 12)) {
-                // On est dans la fenêtre de saisie : vérifier semaine prochaine
-                const lundiSemaineProchaine = (() => {
-                    const d = new Date();
-                    const decalage = (8 - d.getDay()) % 7 || 7;
-                    d.setDate(d.getDate() + decalage);
-                    const yyyy = d.getFullYear();
-                    const mm = String(d.getMonth() + 1).padStart(2, '0');
-                    const dd = String(d.getDate()).padStart(2, '0');
-                    return `${yyyy}-${mm}-${dd}`;
-                })();
-                const joursSemProch = joursOuvres(lundiSemaineProchaine);
-                const { data: cmdProch } = await supaClient
-                    .from(TABLE_COMMANDES_EJC).select('quantite').in('date', joursSemProch);
-                const totalProch = (cmdProch || []).reduce((s, c) => s + c.quantite, 0);
-                if (totalProch === 0) {
-                    alertes.push({
-                        couleur: 'rouge',
-                        icone: '📅',
-                        titre: 'Commande EJC de la semaine prochaine à faire',
-                        texte: `Limite : mardi 12h. Aucun repas saisi pour le moment.`,
-                        action: { label: 'Saisir', href: 'commande-ejc.html' }
-                    });
+            if (dansFenetreSaisie) {
+                if (isAdmin) {
+                    // Admin : on liste tous les clients en retard
+                    const enRetard = await chargerClientsEnRetard();
+                    if (enRetard.length > 0) {
+                        const noms = enRetard.map(c => c.nom).join(', ');
+                        alertes.push({
+                            couleur: 'rouge',
+                            icone: '📅',
+                            titre: `${enRetard.length} client(s) n'ont pas saisi leur commande`,
+                            texte: `Limite : mardi 12h. En attente : ${noms}.`,
+                            action: { label: 'Saisir', href: 'commande-ejc.html' }
+                        });
+                    }
+                } else {
+                    // Client : on regarde uniquement SON client
+                    const enRetard = await monClientAEnRetard();
+                    if (enRetard) {
+                        alertes.push({
+                            couleur: 'rouge',
+                            icone: '📅',
+                            titre: 'Commande de la semaine prochaine à faire',
+                            texte: `Limite : mardi 12h. Aucun repas saisi pour le moment.`,
+                            action: { label: 'Saisir', href: 'commande-ejc.html' }
+                        });
+                    }
                 }
             }
 
-            // Les alertes suivantes sont uniquement pour les admins
+            // ---- ALERTES ADMIN UNIQUEMENT ----
             if (isAdmin) {
                 // ALERTE PRÉSENCES : pas saisies pour aujourd'hui
                 const { count: nbPresJour } = await supaClient
@@ -380,7 +440,7 @@
                     couleur: 'verte',
                     icone: '✅',
                     titre: 'Tout est à jour',
-                    texte: `Bonne journée ${monProfil?.nom_affiche || ''} !`,
+                    texte: `Bonne journée !`,
                     action: null
                 });
             }
@@ -395,12 +455,12 @@
             if (heure >= 18) salutation = 'Bonsoir';
             else if (heure >= 12) salutation = 'Bon après-midi';
 
-            const prenom = monProfil?.nom_affiche?.split(' ')[0] || '';
-            document.getElementById('salutation').textContent = `${salutation} ${prenom} 👋`;
+            // Salutation neutre, le nom complet est déjà affiché dans le bandeau "Connecté : ..."
+            document.getElementById('salutation').textContent = `${salutation} ! 👋`;
             document.getElementById('date-jour').textContent = `Nous sommes le ${dateJourComplete()}`;
         }
 
-        function afficherService(presences, ejc) {
+        function afficherService(presences, clientsDuJour) {
             const grid = document.getElementById('grid-repas');
             const repasInfos = [
                 { cle: 'petit_dej', label: 'Petit-déjeuner', icone: '☕', href: 'service.html' },
@@ -425,15 +485,15 @@
                     </div>`;
             }
 
-            // Carte EJC
-            let detailEjc = ejc.detail || '<em style="color:#999;">Aucune commande</em>';
-            if (ejc.annulations > 0) {
-                detailEjc += ` <br><span style="color:#dc3545;">⚠️ ${ejc.annulations} annulation(s) — net : ${ejc.net}</span>`;
+            // Carte "Clients externes" (somme tous clients confondus)
+            let detailEjc = clientsDuJour.detail || '<em style="color:#999;">Aucune commande</em>';
+            if (clientsDuJour.annulations > 0) {
+                detailEjc += ` <br><span style="color:#dc3545;">⚠️ ${clientsDuJour.annulations} annulation(s) — net : ${clientsDuJour.net}</span>`;
             }
             html += `
-                <div class="card-repas ejc" onclick="location.href='production.html'">
-                    <div class="titre">🍴 EJC Péry</div>
-                    <div class="chiffre">${ejc.commandes}</div>
+                <div class="card-repas ejc" onclick="location.href='recap-clients.html'">
+                    <div class="titre">🍴 Clients externes</div>
+                    <div class="chiffre">${clientsDuJour.commandes}</div>
                     <div class="label">repas commandé(s)</div>
                     <div class="repartition" style="display:block;">${detailEjc}</div>
                 </div>`;
@@ -468,8 +528,8 @@
                     <div class="label">Résidents actifs</div>
                 </div>
                 <div class="stat-mini">
-                    <div class="nombre">${stats.ejcSemaine}</div>
-                    <div class="label">Repas EJC cette semaine</div>
+                    <div class="nombre">${stats.repasSemaine}</div>
+                    <div class="label">Repas clients cette semaine</div>
                 </div>
                 <div class="stat-mini" style="cursor:pointer;" onclick="location.href='stats.html'">
                     <div class="nombre">📈</div>
@@ -486,17 +546,17 @@
                 document.getElementById('zone-service').style.display = '';
                 document.getElementById('zone-apercu').style.display = '';
 
-                const [presences, ejc, stats, alertes] = await Promise.all([
+                const [presences, clientsDuJour, stats, alertes] = await Promise.all([
                     chargerPresencesDuJour(),
-                    chargerEjcDuJour(),
+                    chargerClientsDuJour(),
                     chargerStatsGlobales(),
                     chargerAlertes(true)
                 ]);
-                afficherService(presences, ejc);
+                afficherService(presences, clientsDuJour);
                 afficherStats(stats);
                 afficherAlertes(alertes);
             } else {
-                // Client EJC : alertes uniquement
+                // Compte client : alertes uniquement (relatives à son client)
                 const alertes = await chargerAlertes(false);
                 afficherAlertes(alertes);
             }
@@ -506,10 +566,12 @@
 
         // ---------- DÉMARRAGE ----------
         (async () => {
-            const auth = await verifierAuthEtRole(['admin', 'client_ejc']);
-            if (!auth) return;
-            monProfil = auth.profil;
-            afficherMenuComplet('dashboard', auth.user.email, auth.profil.role, auth.profil.nom_affiche);
+            const ctx = await chargerContexteClient(['admin', 'client_ejc']);
+            if (!ctx) return;
+            monProfil = ctx.profil;
+            monClient = ctx.client;  // NULL pour admin, objet client pour client_ejc
+
+            afficherMenuComplet('dashboard', ctx.user.email, ctx.profil.role, ctx.profil.nom_affiche);
 
             await rafraichir();
 
