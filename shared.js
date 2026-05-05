@@ -259,6 +259,7 @@ function genererMenuOnglets(pageActive, role) {
         { id: 'presences',              titre: '✅ Présences',           url: 'presences.html' },
         { id: 'production',             titre: '📋 Production J-1',     url: 'production.html' },
         { id: 'service',                titre: '🍽️ Service du jour',    url: 'service.html' },
+        { id: 'commande-ejc',           titre: '🍴 Saisie repas',       url: 'commande-ejc.html' },
         { id: 'recap-clients',          titre: '📊 Récap clients',      url: 'recap-clients.html' },
         { id: 'categories-clients',     titre: '🏷️ Catégories clients', url: 'categories-clients.html' },
         { id: 'factures-clients-admin', titre: '🧾 Factures clients',   url: 'factures-clients-admin.html' },
