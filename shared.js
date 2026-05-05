@@ -265,4 +265,65 @@ const ALLERGENES_LISTE = [
 function nomAllergene(code) {
     const a = ALLERGENES_LISTE.find(x => x.code === code);
     return a ? `${a.emoji} ${a.nom}` : code;
+}// ============================================================
+// ABSENCES PROLONGÉES
+// ============================================================
+
+const TABLE_ABSENCES = 'absences_prolongees';
+
+// Charge les absences prolongées qui couvrent la date donnée
+async function chargerAbsencesPourDate(dateIso) {
+    const { data, error } = await supaClient
+        .from(TABLE_ABSENCES)
+        .select('*')
+        .lte('date_debut', dateIso)
+        .gte('date_fin', dateIso);
+    if (error) {
+        console.error('Erreur chargement absences :', error);
+        return [];
+    }
+    return data || [];
+}
+
+// Charge les absences prolongées qui chevauchent une période [date1, date2]
+async function chargerAbsencesPeriode(date1, date2) {
+    const { data, error } = await supaClient
+        .from(TABLE_ABSENCES)
+        .select('*')
+        .lte('date_debut', date2)
+        .gte('date_fin', date1);
+    if (error) {
+        console.error('Erreur chargement absences :', error);
+        return [];
+    }
+    return data || [];
+}
+
+// À partir des absences chargées, retourne un Map { resident_id => absence }
+// pour une date et un repas donnés. Une absence ne s'applique que si :
+// - la date est dans la plage [date_debut, date_fin]
+// - le repas est dans repas_concernes
+function indexerAbsencesPourDateRepas(absences, dateIso, repas) {
+    const map = {};
+    for (const a of (absences || [])) {
+        if (dateIso < a.date_debut || dateIso > a.date_fin) continue;
+        const repasConcernes = a.repas_concernes || ['petit_dej', 'dejeuner', 'diner'];
+        if (!repasConcernes.includes(repas)) continue;
+        // Si plusieurs absences pour le même résident, on prend la 1re
+        if (!map[a.resident_id]) map[a.resident_id] = a;
+    }
+    return map;
+}
+
+// Détermine si un résident est en absence prolongée pour (date, repas)
+// Retourne l'objet absence si oui, null sinon
+function estEnAbsenceProlongee(absences, residentId, dateIso, repas) {
+    for (const a of (absences || [])) {
+        if (a.resident_id !== residentId) continue;
+        if (dateIso < a.date_debut || dateIso > a.date_fin) continue;
+        const repasConcernes = a.repas_concernes || ['petit_dej', 'dejeuner', 'diner'];
+        if (!repasConcernes.includes(repas)) continue;
+        return a;
+    }
+    return null;
 }

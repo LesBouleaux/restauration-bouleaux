@@ -1,4 +1,4 @@
- <!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="fr">
 <head>
     <meta charset="UTF-8">
@@ -159,6 +159,13 @@
             margin-top: 2px;
         }
 
+        /* Mention absence prolongée dans la section absents */
+        .absence-prolongee-mention {
+            color: #b35900;
+            font-size: 12px;
+            margin-left: 4px;
+        }
+
         /* Conteneur global doc */
         .service-doc {
             background: white;
@@ -257,6 +264,9 @@
                 color: black !important;
                 border: 1px solid #000;
                 font-weight: bold;
+            }
+            .absence-prolongee-mention {
+                color: black !important;
             }
             .pied-page { font-size: 9pt; }
         }
@@ -434,11 +444,13 @@
             // Charger les résidents et présences (uniquement si nécessaire)
             let residents = [];
             let toutesPresences = [];
+            let absences = [];
             if (inclureResidents) {
                 residents = await chargerResidentsActifs();
                 const { data: presences } = await supaClient
                     .from(TABLE_PRESENCES).select('*').eq('date', date);
                 toutesPresences = presences || [];
+                absences = await chargerAbsencesPourDate(date);
             }
 
             // Charger EJC (uniquement si nécessaire)
@@ -470,6 +482,13 @@
                 if (inclureResidents) {
                     const presencesRepas = toutesPresences.filter(p => p.repas === repas);
                     for (const r of residents) {
+                        // Vérifier d'abord si en absence prolongée
+                        const absence = estEnAbsenceProlongee(absences, r.id, date, repas);
+                        if (absence) {
+                            dataRepas.absents.push({ ...r, _absenceProlongee: absence });
+                            continue;
+                        }
+                        // Sinon, logique habituelle
                         const p = presencesRepas.find(x => x.resident_id === r.id);
                         const estPresent = p ? p.present : true;
                         if (estPresent) {
@@ -637,7 +656,13 @@
                 // ===== ABSENTS =====
                 if (inclureResidents && dr.absents.length) {
                     html += '<div class="print-section"><h3>❌ Absents</h3><ul class="print-list">';
-                    for (const r of dr.absents) html += `<li>${r.prenom} ${r.nom}</li>`;
+                    for (const r of dr.absents) {
+                        if (r._absenceProlongee) {
+                            html += `<li>${r.prenom} ${r.nom} <span class="absence-prolongee-mention">🏥 Absence prolongée jusqu'au ${dateFr(r._absenceProlongee.date_fin)}</span></li>`;
+                        } else {
+                            html += `<li>${r.prenom} ${r.nom}</li>`;
+                        }
+                    }
                     html += '</ul></div>';
                 }
 

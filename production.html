@@ -556,11 +556,13 @@
             // Charger les données nécessaires uniquement
             let residents = [];
             let presences = [];
+            let absences = [];
             if (inclureResidents) {
                 residents = await chargerResidentsActifs();
                 const res = await supaClient
                     .from(TABLE_PRESENCES).select('*').eq('date', date);
                 presences = res.data || [];
+                absences = await chargerAbsencesPourDate(date);
             }
 
             let categoriesEjc = [];
@@ -596,6 +598,9 @@
                 let presentsForRepas = [];
                 if (inclureResidents) {
                     presentsForRepas = residents.filter(r => {
+                        // Si en absence prolongée → exclu
+                        if (estEnAbsenceProlongee(absences, r.id, date, codeRepas)) return false;
+                        // Sinon, on regarde la table presences (présent par défaut si pas d'enregistrement)
                         const p = presences.find(x => x.resident_id === r.id && x.repas === codeRepas);
                         return p ? p.present : true;
                     });
