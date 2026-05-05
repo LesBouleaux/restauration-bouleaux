@@ -6,6 +6,36 @@
     <title>Catégories EJC - Restauration Les Bouleaux</title>
     <link rel="stylesheet" href="shared.css">
     <style>
+        .selecteur-client {
+            background: #fff8e1;
+            border: 2px solid #ffc107;
+            padding: 12px 18px;
+            border-radius: 8px;
+            margin: 15px 0;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            flex-wrap: wrap;
+        }
+        .selecteur-client label {
+            font-weight: bold;
+            color: #856404;
+        }
+        .selecteur-client select {
+            padding: 6px 10px;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+            font-size: 15px;
+            min-width: 220px;
+        }
+        .selecteur-client .badge-admin {
+            background: #856404;
+            color: white;
+            padding: 3px 10px;
+            border-radius: 12px;
+            font-size: 12px;
+            font-weight: bold;
+        }
         .cat-card {
             background: white;
             padding: 15px 20px;
@@ -109,13 +139,12 @@
     <h1>🍽️ Restauration Les Bouleaux</h1>
     <div id="menu"></div>
 
-    <h2>🏷️ Catégories de repas EJC</h2>
+    <h2 id="titre-h2">🏷️ Catégories de repas EJC</h2>
 
-    <div class="info-banner">
-        ℹ️ Configure ici les catégories de repas que <strong>EJC Péry</strong> peut commander.
-        Pour chaque catégorie, tu peux préciser les <strong>allergènes à éviter</strong>.
-        EJC verra automatiquement ces informations dans son tableau de saisie.
-    </div>
+    <!-- Sélecteur de client -->
+    <div id="zone-selecteur-client"></div>
+
+    <div id="info-banner-zone"></div>
 
     <div class="toolbar">
         <button class="btn-primary" onclick="ouvrirFormulaire()">➕ Nouvelle catégorie</button>
@@ -166,17 +195,69 @@
     <script>
         // ALLERGENES_LISTE et nomAllergene() viennent de shared.js
         let toutesCats = [];
+        let clientActif = null;
+        let tousLesClients = [];
+
+        // ===== SÉLECTEUR DE CLIENT =====
+        function changerClient(clientId) {
+            clientActif = tousLesClients.find(c => c.id === clientId);
+            if (clientActif) {
+                document.getElementById('titre-h2').textContent = `🏷️ Catégories de repas — ${clientActif.nom}`;
+                afficherBanniere();
+            }
+            charger();
+        }
+
+        function afficherSelecteurClient() {
+            const zone = document.getElementById('zone-selecteur-client');
+            if (!tousLesClients.length) {
+                zone.innerHTML = '';
+                return;
+            }
+            let html = `<div class="selecteur-client">
+                <span class="badge-admin">👑 ADMIN</span>
+                <label for="select-client">Client configuré :</label>
+                <select id="select-client" onchange="changerClient(this.value)">`;
+            for (const c of tousLesClients) {
+                const sel = (clientActif && clientActif.id === c.id) ? 'selected' : '';
+                html += `<option value="${c.id}" ${sel}>${c.nom}</option>`;
+            }
+            html += `</select></div>`;
+            zone.innerHTML = html;
+        }
+
+        function afficherBanniere() {
+            const zone = document.getElementById('info-banner-zone');
+            if (!clientActif) { zone.innerHTML = ''; return; }
+            zone.innerHTML = `<div class="info-banner">
+                ℹ️ Configure ici les catégories de repas que <strong>${clientActif.nom}</strong> peut commander.
+                Pour chaque catégorie, tu peux préciser les <strong>allergènes à éviter</strong>.
+                ${clientActif.nom} verra automatiquement ces informations dans son tableau de saisie.
+            </div>`;
+        }
 
         async function charger() {
+            const contenu = document.getElementById('contenu');
+            contenu.innerHTML = '<p class="loading">⏳ Chargement...</p>';
+
+            if (!clientActif) {
+                contenu.innerHTML = `<div class="info-msg" style="text-align:center;padding:40px;">
+                    <div style="font-size:48px;">⚠️</div>
+                    <p><strong>Aucun client sélectionné.</strong></p>
+                </div>`;
+                return;
+            }
+
             const { data, error } = await supaClient
                 .from('categories_ejc')
                 .select('*')
+                .eq('client_id', clientActif.id)
                 .order('actif', { ascending: false })
                 .order('ordre', { ascending: true })
                 .order('nom', { ascending: true });
 
             if (error) {
-                document.getElementById('contenu').innerHTML = `<div class="error">Erreur : ${error.message}</div>`;
+                contenu.innerHTML = `<div class="error">Erreur : ${error.message}</div>`;
                 return;
             }
             toutesCats = data || [];
@@ -189,12 +270,12 @@
                 contenu.innerHTML = `
                     <div class="info-msg" style="text-align:center;padding:40px;">
                         <div style="font-size:48px;">🏷️</div>
-                        <p><strong>Aucune catégorie configurée pour le moment.</strong></p>
+                        <p><strong>Aucune catégorie configurée pour ${clientActif.nom}.</strong></p>
                         <p>Clique sur "Nouvelle catégorie" pour commencer.</p>
                     </div>`;
                 return;
             }
-            let html = `<p><strong>${toutesCats.length}</strong> catégorie(s)</p>`;
+            let html = `<p><strong>${toutesCats.length}</strong> catégorie(s) pour <strong>${clientActif.nom}</strong></p>`;
             for (const c of toutesCats) {
                 const inactifBadge = !c.actif ? '<span class="badge-inactif">⏸️ Désactivée</span>' : '';
 
@@ -249,7 +330,11 @@
         }
 
         function ouvrirFormulaire() {
-            document.getElementById('modal-titre').textContent = 'Nouvelle catégorie';
+            if (!clientActif) {
+                alert('⚠️ Sélectionne d\'abord un client.');
+                return;
+            }
+            document.getElementById('modal-titre').textContent = `Nouvelle catégorie — ${clientActif.nom}`;
             document.getElementById('form-cat').reset();
             document.getElementById('cat-id').value = '';
             const maxOrdre = toutesCats.reduce((m, c) => Math.max(m, c.ordre), 0);
@@ -261,7 +346,7 @@
         function modifierCategorie(id) {
             const c = toutesCats.find(x => x.id === id);
             if (!c) return;
-            document.getElementById('modal-titre').textContent = 'Modifier la catégorie';
+            document.getElementById('modal-titre').textContent = `Modifier la catégorie — ${clientActif.nom}`;
             document.getElementById('cat-id').value = c.id;
             document.getElementById('nom').value = c.nom;
             document.getElementById('ordre').value = c.ordre;
@@ -275,6 +360,10 @@
 
         async function sauvegarderCategorie(event) {
             event.preventDefault();
+            if (!clientActif) {
+                alert('⚠️ Aucun client sélectionné.');
+                return;
+            }
             const id = document.getElementById('cat-id').value;
             const nom = document.getElementById('nom').value.trim();
             const ordre = parseInt(document.getElementById('ordre').value) || 0;
@@ -285,18 +374,27 @@
                 if (cb && cb.checked) allergenes.push(a.code);
             }
 
-            const donnees = { nom, ordre, allergenes };
             let res;
             if (id) {
-                res = await supaClient.from('categories_ejc').update(donnees).eq('id', id);
+                // UPDATE : on ne touche PAS à client_id (sécurité : on ne peut jamais "déplacer" une catégorie d'un client à un autre)
+                res = await supaClient.from('categories_ejc')
+                    .update({ nom, ordre, allergenes })
+                    .eq('id', id)
+                    .eq('client_id', clientActif.id); // double vérif côté client
             } else {
-                donnees.actif = true;
-                res = await supaClient.from('categories_ejc').insert(donnees);
+                // INSERT avec client_id
+                res = await supaClient.from('categories_ejc').insert({
+                    client_id: clientActif.id,
+                    nom,
+                    ordre,
+                    allergenes,
+                    actif: true
+                });
             }
 
             if (res.error) {
-                if (res.error.message.includes('duplicate')) {
-                    alert('❌ Une catégorie avec ce nom existe déjà.');
+                if (res.error.message.includes('duplicate') || res.error.code === '23505') {
+                    alert(`❌ Une catégorie nommée "${nom}" existe déjà pour ${clientActif.nom}.`);
                 } else {
                     alert('❌ Erreur : ' + res.error.message);
                 }
@@ -310,12 +408,13 @@
             const cat = toutesCats.find(c => c.id === id);
             if (!cat) return;
             const action = nouvelEtat ? 'réactiver' : 'désactiver';
-            if (!confirm(`Voulez-vous ${action} la catégorie "${cat.nom}" ?\n\nElle ${nouvelEtat ? 'apparaîtra' : 'disparaîtra'} dans le tableau de saisie EJC.`)) return;
+            if (!confirm(`Voulez-vous ${action} la catégorie "${cat.nom}" pour ${clientActif.nom} ?\n\nElle ${nouvelEtat ? 'apparaîtra' : 'disparaîtra'} dans le tableau de saisie ${clientActif.nom}.`)) return;
 
             const { error } = await supaClient
                 .from('categories_ejc')
                 .update({ actif: nouvelEtat })
-                .eq('id', id);
+                .eq('id', id)
+                .eq('client_id', clientActif.id);
 
             if (error) return alert('❌ Erreur : ' + error.message);
             charger();
@@ -324,18 +423,37 @@
         async function supprimerCategorie(id) {
             const cat = toutesCats.find(c => c.id === id);
             if (!cat) return;
-            if (!confirm(`Supprimer définitivement la catégorie "${cat.nom}" ?\n\n⚠️ Toutes les commandes/annulations EJC liées à cette catégorie seront supprimées.\n\nCette action est irréversible.`)) return;
+            if (!confirm(`Supprimer définitivement la catégorie "${cat.nom}" pour ${clientActif.nom} ?\n\n⚠️ Toutes les commandes/annulations EJC liées à cette catégorie seront supprimées.\n\nCette action est irréversible.`)) return;
 
-            const { error } = await supaClient.from('categories_ejc').delete().eq('id', id);
+            const { error } = await supaClient
+                .from('categories_ejc')
+                .delete()
+                .eq('id', id)
+                .eq('client_id', clientActif.id);
             if (error) return alert('❌ Erreur : ' + error.message);
             charger();
         }
 
-        // Démarrage admin uniquement
+        // ===== Démarrage admin uniquement =====
         (async () => {
-            const auth = await verifierAuthEtRole(['admin']);
-            if (!auth) return;
-            afficherMenuComplet('categories-ejc', auth.user.email, auth.profil.role, auth.profil.nom_affiche);
+            const ctx = await chargerContexteClient(['admin']);
+            if (!ctx) return;
+            afficherMenuComplet('categories-ejc', ctx.user.email, ctx.profil.role, ctx.profil.nom_affiche);
+
+            tousLesClients = await chargerTousLesClients(true);
+            if (!tousLesClients.length) {
+                document.getElementById('contenu').innerHTML = `
+                    <div class="info-msg" style="text-align:center;padding:40px;">
+                        <div style="font-size:48px;">⚠️</div>
+                        <p><strong>Aucun client n'est configuré dans la base.</strong></p>
+                        <p>Contacte le développeur pour ajouter des clients.</p>
+                    </div>`;
+                return;
+            }
+            clientActif = tousLesClients[0];
+            document.getElementById('titre-h2').textContent = `🏷️ Catégories de repas — ${clientActif.nom}`;
+            afficherSelecteurClient();
+            afficherBanniere();
             charger();
         })();
     </script>

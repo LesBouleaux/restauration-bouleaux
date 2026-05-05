@@ -3,9 +3,39 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Saisie repas - EJC Péry</title>
+    <title>Saisie repas - EJC</title>
     <link rel="stylesheet" href="shared.css">
     <style>
+        .selecteur-client {
+            background: #fff8e1;
+            border: 2px solid #ffc107;
+            padding: 12px 18px;
+            border-radius: 8px;
+            margin: 15px 0;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            flex-wrap: wrap;
+        }
+        .selecteur-client label {
+            font-weight: bold;
+            color: #856404;
+        }
+        .selecteur-client select {
+            padding: 6px 10px;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+            font-size: 15px;
+            min-width: 220px;
+        }
+        .selecteur-client .badge-admin {
+            background: #856404;
+            color: white;
+            padding: 3px 10px;
+            border-radius: 12px;
+            font-size: 12px;
+            font-weight: bold;
+        }
         .semaine-nav {
             display: flex;
             justify-content: space-between;
@@ -119,8 +149,11 @@
 </head>
 <body>
     <div id="app-header"></div>
-    <h1>🍴 EJC Péry — Saisie des repas</h1>
+    <h1 id="titre-page">🍴 Saisie des repas</h1>
     <div id="menu"></div>
+
+    <!-- Sélecteur de client (visible uniquement pour admin) -->
+    <div id="zone-selecteur-client" style="display:none;"></div>
 
     <div id="info-banner"></div>
 
@@ -144,7 +177,11 @@
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script src="shared.js"></script>
     <script>
+        // ===== ÉTAT GLOBAL DE LA PAGE =====
         let monProfil = null;
+        let isAdmin = false;
+        let clientActif = null;        // Le client dont on consulte/saisit les commandes
+        let tousLesClients = [];       // Pour le sélecteur admin
         let lundiCourant = lundiDeLaSemaine(new Date());
         lundiCourant = decalerJoursIso(lundiCourant, 7); // semaine prochaine par défaut
         let mode = 'commande';
@@ -171,6 +208,34 @@
             charger();
         }
 
+        // ===== SÉLECTEUR DE CLIENT (admin uniquement) =====
+        function changerClient(clientId) {
+            clientActif = tousLesClients.find(c => c.id === clientId);
+            if (clientActif) {
+                document.getElementById('titre-page').textContent = `🍴 ${clientActif.nom} — Saisie des repas`;
+            }
+            charger();
+        }
+
+        function afficherSelecteurClient() {
+            const zone = document.getElementById('zone-selecteur-client');
+            if (!isAdmin) {
+                zone.style.display = 'none';
+                return;
+            }
+            zone.style.display = 'flex';
+            let html = `<div class="selecteur-client">
+                <span class="badge-admin">👑 ADMIN</span>
+                <label for="select-client">Client consulté :</label>
+                <select id="select-client" onchange="changerClient(this.value)">`;
+            for (const c of tousLesClients) {
+                const sel = (clientActif && clientActif.id === c.id) ? 'selected' : '';
+                html += `<option value="${c.id}" ${sel}>${c.nom}</option>`;
+            }
+            html += `</select></div>`;
+            zone.innerHTML = html;
+        }
+
         // Affiche un message dans le bandeau flottant en haut à droite
         function afficherStatus(type, message, dureeMs = 1500) {
             const status = document.getElementById('save-status');
@@ -183,14 +248,26 @@
             const contenu = document.getElementById('contenu');
             contenu.innerHTML = '<p class="loading">⏳ Chargement...</p>';
 
-            categoriesActives = await chargerCategoriesEjc(true);
+            // Sécurité : on a forcément un clientActif à ce stade (sauf bug)
+            if (!clientActif) {
+                contenu.innerHTML = `<div class="empty-cats">
+                    <div style="font-size:48px;">⚠️</div>
+                    <p><strong>Aucun client sélectionné.</strong></p>
+                    <p>Contacte l'administrateur si tu vois ce message.</p>
+                </div>`;
+                return;
+            }
+
+            // Charger les catégories du client actif uniquement
+            categoriesActives = await chargerCategoriesEjc(true, clientActif.id);
 
             const jours = joursOuvres(lundiCourant);
             const titre = `Semaine du ${dateFr(jours[0])} au ${dateFr(jours[4])}`;
             document.getElementById('titre-semaine').textContent = titre;
 
-            const cmdOuverte = commandeOuverte(lundiCourant);
-            const isAdmin = monProfil && monProfil.role === 'admin';
+            // Règles métier dynamiques pour le client actif
+            const regles = getReglesClient(clientActif);
+            const cmdOuverte = commandeOuverteClient(lundiCourant, clientActif);
 
             const banner = document.getElementById('info-banner');
             if (mode === 'commande') {
@@ -201,33 +278,38 @@
                     </div>`;
                 } else {
                     banner.innerHTML = `<div class="info-banner">
-                        🔒 <strong>Saisie verrouillée</strong> — la limite était mardi 12h.
-                        Pour annuler des repas commandés, utilise le <strong>mode Annulation</strong> (facturé 50%).
+                        🔒 <strong>Saisie verrouillée</strong> — la limite était <strong>${regles.deadlineJourLibelle} ${regles.deadlineHeure}h</strong>.
+                        Pour annuler des repas commandés, utilise le <strong>mode Annulation</strong> (facturé ${regles.pctAnnulationJourJ}%).
                         <span class="badge badge-ferme">Lecture seule</span>
                     </div>`;
                 }
             } else {
                 banner.innerHTML = `<div class="info-banner">
-                    ⚠️ <strong>Mode Annulation tardive</strong> : utilise ce mode après la limite de mardi 12h.
-                    Les annulations sont facturées <strong>à 50% du prix initial</strong>.
-                    Possible jusqu'à <strong>08h00 le jour même</strong>.
-                    <span class="badge badge-annulation">Facturation 50%</span>
+                    ⚠️ <strong>Mode Annulation tardive</strong> : utilise ce mode après la limite de <strong>${regles.deadlineJourLibelle} ${regles.deadlineHeure}h</strong>.
+                    Les annulations sont facturées <strong>à ${regles.pctAnnulationJourJ}% du prix initial</strong>.
+                    Possible jusqu'à <strong>${String(regles.deadlineAnnulationHeure).padStart(2,'0')}h00 le jour même</strong>.
+                    <span class="badge badge-annulation">Facturation ${regles.pctAnnulationJourJ}%</span>
                 </div>`;
             }
 
             if (!categoriesActives.length) {
                 contenu.innerHTML = `<div class="empty-cats">
                     <div style="font-size:48px;">🏷️</div>
-                    <p><strong>Aucune catégorie de repas n'est configurée.</strong></p>
-                    <p>Contactez l'administrateur pour qu'il configure les catégories disponibles.</p>
+                    <p><strong>Aucune catégorie de repas n'est configurée pour ${clientActif.nom}.</strong></p>
+                    <p>${isAdmin ? 'Va sur l\'onglet 🏷️ Catégories EJC pour en créer.' : 'Contactez l\'administrateur pour qu\'il configure les catégories.'}</p>
                 </div>`;
                 return;
             }
 
+            // Charger commandes & annulations DU CLIENT ACTIF uniquement
             const { data: commandes } = await supaClient
-                .from(TABLE_COMMANDES_EJC).select('*').in('date', jours);
+                .from(TABLE_COMMANDES_EJC).select('*')
+                .eq('client_id', clientActif.id)
+                .in('date', jours);
             const { data: annulations } = await supaClient
-                .from(TABLE_ANNULATIONS_EJC).select('*').in('date', jours);
+                .from(TABLE_ANNULATIONS_EJC).select('*')
+                .eq('client_id', clientActif.id)
+                .in('date', jours);
 
             const cmdMap = {};
             for (const c of (commandes || [])) cmdMap[`${c.date}_${c.categorie_id}`] = c.quantite;
@@ -263,7 +345,7 @@
                         editable = isAdmin || cmdOuverte;
                     } else {
                         valeur = annMap[`${j}_${cat.id}`] || 0;
-                        editable = isAdmin || annulationOuverte(j);
+                        editable = isAdmin || annulationOuverteClient(j, clientActif);
                     }
                     totalLigne += valeur;
                     html += `<td>
@@ -303,21 +385,21 @@
             const valeur = parseInt(input.value, 10) || 0;
             const ancienneValeur = parseInt(input.dataset.ancienneValeur, 10) || 0;
 
-            // 🛡️ VALIDATION : annulations ≤ commandes pour cette date + catégorie
-            // On lit les deux quantités fraîches en base (pas le cmdMap qui peut être périmé)
+            // 🛡️ VALIDATION : annulations ≤ commandes pour cette date + catégorie + client
             const { data: cmdRow } = await supaClient
                 .from(TABLE_COMMANDES_EJC).select('quantite')
+                .eq('client_id', clientActif.id)
                 .eq('date', date).eq('categorie_id', categorieId).maybeSingle();
             const { data: annRow } = await supaClient
                 .from(TABLE_ANNULATIONS_EJC).select('quantite')
+                .eq('client_id', clientActif.id)
                 .eq('date', date).eq('categorie_id', categorieId).maybeSingle();
 
             const qteCommande = cmdRow ? cmdRow.quantite : 0;
             const qteAnnulation = annRow ? annRow.quantite : 0;
 
             if (mode === 'annulation' && valeur > qteCommande) {
-                // Tentative d'annuler plus que ce qui est commandé
-                input.value = ancienneValeur; // on remet la valeur précédente
+                input.value = ancienneValeur;
                 afficherStatus('error',
                     `❌ Impossible : tu essaies d'annuler ${valeur} repas alors qu'il n'y en a que ${qteCommande} de commandé(s) pour cette date.`,
                     4000);
@@ -325,7 +407,6 @@
             }
 
             if (mode === 'commande' && valeur < qteAnnulation) {
-                // Tentative de réduire la commande sous le nombre d'annulations existant
                 input.value = ancienneValeur;
                 afficherStatus('error',
                     `❌ Impossible : tu ne peux pas descendre la commande à ${valeur} car ${qteAnnulation} annulation(s) sont déjà enregistrée(s) pour cette date.`,
@@ -337,6 +418,7 @@
 
             const { data: existant } = await supaClient
                 .from(table).select('id')
+                .eq('client_id', clientActif.id)
                 .eq('date', date).eq('categorie_id', categorieId).maybeSingle();
 
             let res;
@@ -346,7 +428,12 @@
                     .eq('id', existant.id);
             } else {
                 res = await supaClient.from(table)
-                    .insert({ date, categorie_id: categorieId, quantite: valeur });
+                    .insert({
+                        client_id: clientActif.id,
+                        date,
+                        categorie_id: categorieId,
+                        quantite: valeur
+                    });
             }
 
             if (res.error) {
@@ -354,7 +441,6 @@
                 afficherStatus('error', '❌ Erreur : ' + res.error.message, 3000);
                 console.error(res.error);
             } else {
-                // Mise à jour de la "valeur de référence" pour le prochain check
                 input.dataset.ancienneValeur = valeur;
                 afficherStatus('success', '✓ Enregistré');
                 recalculerTotaux();
@@ -386,12 +472,43 @@
             if (elSem) elSem.textContent = totalSem;
         }
 
-        // Démarrage
+        // ===== Démarrage =====
         (async () => {
-            const auth = await verifierAuthEtRole(['client_ejc', 'admin']);
-            if (!auth) return;
-            monProfil = auth.profil;
-            afficherMenuComplet('commande-ejc', auth.user.email, auth.profil.role, auth.profil.nom_affiche);
+            const ctx = await chargerContexteClient(['client_ejc', 'admin']);
+            if (!ctx) return;
+            monProfil = ctx.profil;
+            isAdmin = (ctx.profil.role === 'admin');
+
+            afficherMenuComplet('commande-ejc', ctx.user.email, ctx.profil.role, ctx.profil.nom_affiche);
+
+            if (isAdmin) {
+                // Admin : on charge tous les clients et on choisit le 1er par défaut
+                tousLesClients = await chargerTousLesClients(true);
+                if (!tousLesClients.length) {
+                    document.getElementById('contenu').innerHTML = `<div class="empty-cats">
+                        <div style="font-size:48px;">⚠️</div>
+                        <p><strong>Aucun client n'est configuré.</strong></p>
+                        <p>Contacte le développeur pour ajouter des clients dans la base.</p>
+                    </div>`;
+                    return;
+                }
+                clientActif = tousLesClients[0];
+                document.getElementById('titre-page').textContent = `🍴 ${clientActif.nom} — Saisie des repas`;
+                afficherSelecteurClient();
+            } else {
+                // Client EJC : son client est déjà dans le contexte
+                if (!ctx.client) {
+                    document.getElementById('contenu').innerHTML = `<div class="empty-cats">
+                        <div style="font-size:48px;">⚠️</div>
+                        <p><strong>Ton compte n'est rattaché à aucun client.</strong></p>
+                        <p>Contacte l'administrateur pour qu'il rattache ton compte.</p>
+                    </div>`;
+                    return;
+                }
+                clientActif = ctx.client;
+                document.getElementById('titre-page').textContent = `🍴 ${clientActif.nom} — Saisie des repas`;
+            }
+
             charger();
         })();
     </script>

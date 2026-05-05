@@ -15,6 +15,12 @@ const TABLE_PROFILS = 'profils_utilisateurs';
 const TABLE_COMMANDES_EJC = 'commandes_ejc';
 const TABLE_ANNULATIONS_EJC = 'annulations_ejc';
 const TABLE_CATEGORIES_EJC = 'categories_ejc';
+const TABLE_CLIENTS = 'clients';
+
+// ===== CONTEXTE GLOBAL DE L'UTILISATEUR CONNECTÉ =====
+// Rempli par chargerContexteClient() au démarrage de chaque page
+// { user: {...}, profil: {...}, client: {...} | null }
+let CONTEXTE_CLIENT = null;
 
 // ============================================================
 // UTILITAIRES DATES
@@ -74,6 +80,9 @@ function joursOuvres(lundiIso) {
     return result;
 }
 
+// ⚠️ Version legacy (valeurs en dur : mardi 12h S-1)
+// Conservée pour compatibilité avec d'éventuels appels existants.
+// Préférer commandeOuverteClient() pour le multi-clients.
 function commandeOuverte(lundiSemaineConcernee) {
     const lundi = new Date(lundiSemaineConcernee + 'T00:00:00');
     const limite = new Date(lundi);
@@ -82,9 +91,58 @@ function commandeOuverte(lundiSemaineConcernee) {
     return new Date() < limite;
 }
 
+// ⚠️ Version legacy (valeurs en dur : jour J 8h)
 function annulationOuverte(dateIso) {
     const d = new Date(dateIso + 'T08:00:00');
     return new Date() < d;
+}
+
+// ============================================================
+// SEMAINE EJC - VERSIONS PARAMÉTRABLES PAR CLIENT
+// ============================================================
+
+// Calcule la deadline de commande pour la semaine donnée, selon les règles du client
+// client : objet { deadline_jour, deadline_heure } (0=dim, 1=lun, 2=mar, ...)
+// Par défaut : mardi 12h de la semaine S-1 (= 6 jours avant le lundi de la semaine concernée)
+function calculerDeadlineCommande(lundiSemaineConcernee, client) {
+    const dlJour = client?.deadline_jour ?? 2;       // mardi
+    const dlHeure = client?.deadline_heure ?? 12;    // 12h
+    const lundi = new Date(lundiSemaineConcernee + 'T00:00:00');
+    // On part du lundi de la semaine concernée, on remonte d'une semaine, puis on positionne sur le bon jour
+    const lundiSemPrecedente = new Date(lundi);
+    lundiSemPrecedente.setDate(lundi.getDate() - 7);
+    const deadline = new Date(lundiSemPrecedente);
+    // dlJour : 0=dim, 1=lun, 2=mar... → décalage depuis lundi (=1) : (dlJour - 1 + 7) % 7
+    const decalage = (dlJour - 1 + 7) % 7;
+    deadline.setDate(lundiSemPrecedente.getDate() + decalage);
+    deadline.setHours(dlHeure, 0, 0, 0);
+    return deadline;
+}
+
+// Version multi-clients : la commande est-elle encore ouverte ?
+function commandeOuverteClient(lundiSemaineConcernee, client) {
+    return new Date() < calculerDeadlineCommande(lundiSemaineConcernee, client);
+}
+
+// Version multi-clients : l'annulation est-elle encore ouverte ?
+// client : objet { deadline_annulation_heure }
+function annulationOuverteClient(dateIso, client) {
+    const heureLimite = client?.deadline_annulation_heure ?? 8;
+    const d = new Date(dateIso + 'T00:00:00');
+    d.setHours(heureLimite, 0, 0, 0);
+    return new Date() < d;
+}
+
+// Renvoie un objet règles formatées (pour l'affichage)
+function getReglesClient(client) {
+    const jours = ['dimanche', 'lundi', 'mardi', 'mercredi', 'jeudi', 'vendredi', 'samedi'];
+    return {
+        deadlineJour: client?.deadline_jour ?? 2,
+        deadlineJourLibelle: jours[client?.deadline_jour ?? 2],
+        deadlineHeure: client?.deadline_heure ?? 12,
+        deadlineAnnulationHeure: client?.deadline_annulation_heure ?? 8,
+        pctAnnulationJourJ: client?.pct_annulation_jour_j ?? 50
+    };
 }
 
 // ============================================================
@@ -120,6 +178,67 @@ async function verifierAuthEtRole(rolesAutorises) {
     }
 
     return { user: session.user, profil };
+}
+
+// ============================================================
+// CONTEXTE CLIENT - chargement enrichi (multi-clients)
+// ============================================================
+// Version enrichie de verifierAuthEtRole : charge en plus le client lié
+// et remplit la variable globale CONTEXTE_CLIENT.
+//
+// Utilisation type en début de page :
+//     const ctx = await chargerContexteClient(['client_ejc']);
+//     if (!ctx) return; // redirection déjà faite
+//     // ctx.user, ctx.profil, ctx.client
+//     // ou via la globale CONTEXTE_CLIENT
+//
+// Pour un admin : ctx.client vaut null (l'admin n'est pas lié à un client unique)
+
+async function chargerContexteClient(rolesAutorises) {
+    const auth = await verifierAuthEtRole(rolesAutorises);
+    if (!auth) return null;
+
+    let client = null;
+    if (auth.profil.client_id) {
+        const { data, error } = await supaClient
+            .from(TABLE_CLIENTS)
+            .select('*')
+            .eq('id', auth.profil.client_id)
+            .maybeSingle();
+        if (error) {
+            console.error('Erreur chargement client :', error);
+        } else {
+            client = data;
+        }
+    }
+
+    CONTEXTE_CLIENT = {
+        user: auth.user,
+        profil: auth.profil,
+        client: client
+    };
+    return CONTEXTE_CLIENT;
+}
+
+// Renvoie le client courant (raccourci)
+function getClientCourant() {
+    return CONTEXTE_CLIENT?.client || null;
+}
+
+// Charge tous les clients (pour les sélecteurs admin)
+async function chargerTousLesClients(uniquementActifs = true) {
+    let query = supaClient
+        .from(TABLE_CLIENTS)
+        .select('*')
+        .order('nom', { ascending: true });
+    if (uniquementActifs) query = query.eq('actif', true);
+
+    const { data, error } = await query;
+    if (error) {
+        console.error('Erreur chargement clients :', error);
+        return [];
+    }
+    return data || [];
 }
 
 async function deconnexion() {
@@ -227,14 +346,21 @@ async function chargerResidentsActifs() {
 // ============================================================
 // CATÉGORIES EJC - Chargement
 // ============================================================
+// ⚠️ Multi-clients :
+// - Si un clientId est passé : filtre par ce client.
+// - Sinon, RLS fait le filtrage automatique :
+//   * client_ejc → ne voit QUE les catégories de son client
+//   * admin      → voit toutes les catégories de tous les clients
+// Pour les pages admin avec sélecteur, passer explicitement le clientId.
 
-async function chargerCategoriesEjc(uniquementActives = true) {
+async function chargerCategoriesEjc(uniquementActives = true, clientId = null) {
     let query = supaClient
         .from(TABLE_CATEGORIES_EJC)
         .select('*')
         .order('ordre', { ascending: true })
         .order('nom', { ascending: true });
     if (uniquementActives) query = query.eq('actif', true);
+    if (clientId) query = query.eq('client_id', clientId);
 
     const { data, error } = await query;
     if (error) {
@@ -265,7 +391,9 @@ const ALLERGENES_LISTE = [
 function nomAllergene(code) {
     const a = ALLERGENES_LISTE.find(x => x.code === code);
     return a ? `${a.emoji} ${a.nom}` : code;
-}// ============================================================
+}
+
+// ============================================================
 // ABSENCES PROLONGÉES
 // ============================================================
 
