@@ -30,6 +30,18 @@
             font-style: italic;
             margin-left: 8px;
         }
+        .chambre-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 4px;
+            background: #fff3e0;
+            color: #b35900;
+            padding: 3px 10px;
+            border-radius: 12px;
+            font-size: 13px;
+            font-weight: bold;
+            margin-left: 8px;
+        }
         .lieu-mini {
             display: inline-flex;
             align-items: center;
@@ -58,6 +70,17 @@
             .form-lieux-row { grid-template-columns: 1fr; }
         }
         .form-lieux-row .form-group {
+            margin-bottom: 0;
+        }
+        .form-row-2col {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 10px;
+        }
+        @media (max-width: 600px) {
+            .form-row-2col { grid-template-columns: 1fr; }
+        }
+        .form-row-2col .form-group {
             margin-bottom: 0;
         }
         .pdf-zone {
@@ -102,13 +125,21 @@
             <h2 id="modal-titre">Ajouter un résident</h2>
             <form id="form-resident" onsubmit="sauvegarderResident(event)">
                 <input type="hidden" id="resident-id">
-                <div class="form-group">
-                    <label for="prenom">Prénom *</label>
-                    <input type="text" id="prenom" required>
+                <div class="form-row-2col">
+                    <div class="form-group">
+                        <label for="prenom">Prénom *</label>
+                        <input type="text" id="prenom" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="nom">Nom *</label>
+                        <input type="text" id="nom" required>
+                    </div>
                 </div>
+
                 <div class="form-group">
-                    <label for="nom">Nom *</label>
-                    <input type="text" id="nom" required>
+                    <label for="numero_chambre">🚪 Numéro de chambre</label>
+                    <input type="number" id="numero_chambre" min="1" max="9999" placeholder="Ex : 101">
+                    <small style="color:#666;">Optionnel — utilisé pour la livraison des repas en chambre.</small>
                 </div>
 
                 <div class="form-group">
@@ -225,6 +256,10 @@
                     ? `<span class="doc-info">📎 PDF attaché</span>`
                     : `<span class="doc-info-empty">📎 Aucun document</span>`;
 
+                const chambreBadge = r.numero_chambre
+                    ? `<span class="chambre-badge">🚪 Ch. ${r.numero_chambre}</span>`
+                    : '';
+
                 const lieuxRecap = `
                     <div class="lieux-recap">
                         <span class="lieu-mini">🥐 ${nomLieu(r.lieu_defaut_petit_dej_id)}</span>
@@ -235,7 +270,7 @@
                 html += `
                     <div class="resident">
                         <h3>
-                            <span>${r.prenom} ${r.nom} ${docBadge}</span>
+                            <span>${r.prenom} ${r.nom} ${chambreBadge} ${docBadge}</span>
                             <span class="resident-actions">
                                 <button class="btn-print" onclick="ouvrirModalDoc(${r.id})">📎 Document</button>
                                 <button class="btn-edit" onclick="modifierResident(${r.id})">✏️ Modifier</button>
@@ -259,7 +294,8 @@
                 (r.prenom||'').toLowerCase().includes(t) ||
                 (r.nom||'').toLowerCase().includes(t) ||
                 (r.allergies||'').toLowerCase().includes(t) ||
-                (r.intolerances||'').toLowerCase().includes(t)
+                (r.intolerances||'').toLowerCase().includes(t) ||
+                String(r.numero_chambre || '').includes(t)
             ));
         });
 
@@ -267,6 +303,7 @@
             document.getElementById('modal-titre').textContent = 'Ajouter un résident';
             document.getElementById('form-resident').reset();
             document.getElementById('resident-id').value = '';
+            document.getElementById('numero_chambre').value = '';
             document.getElementById('lieu_petit_dej').value = '';
             document.getElementById('lieu_dejeuner').value = '';
             document.getElementById('lieu_diner').value = '';
@@ -280,6 +317,7 @@
             document.getElementById('resident-id').value = r.id;
             document.getElementById('prenom').value = r.prenom || '';
             document.getElementById('nom').value = r.nom || '';
+            document.getElementById('numero_chambre').value = r.numero_chambre || '';
             document.getElementById('lieu_petit_dej').value = r.lieu_defaut_petit_dej_id || '';
             document.getElementById('lieu_dejeuner').value = r.lieu_defaut_dejeuner_id || '';
             document.getElementById('lieu_diner').value = r.lieu_defaut_diner_id || '';
@@ -300,9 +338,11 @@
             const lieuPD = document.getElementById('lieu_petit_dej').value;
             const lieuDJ = document.getElementById('lieu_dejeuner').value;
             const lieuDI = document.getElementById('lieu_diner').value;
+            const chambreVal = document.getElementById('numero_chambre').value.trim();
             const donnees = {
                 prenom: document.getElementById('prenom').value.trim(),
                 nom: document.getElementById('nom').value.trim(),
+                numero_chambre: chambreVal ? parseInt(chambreVal) : null,
                 lieu_defaut_petit_dej_id: lieuPD ? parseInt(lieuPD) : null,
                 lieu_defaut_dejeuner_id: lieuDJ ? parseInt(lieuDJ) : null,
                 lieu_defaut_diner_id: lieuDI ? parseInt(lieuDI) : null,

@@ -90,6 +90,26 @@
             font-size: 13px;
             margin-left: 6px;
         }
+        .chambre-tag {
+            display: inline-block;
+            background: #b35900;
+            color: white;
+            padding: 2px 10px;
+            border-radius: 12px;
+            font-size: 13px;
+            font-weight: bold;
+            margin-left: 6px;
+        }
+        .chambre-tag-manquant {
+            display: inline-block;
+            background: #c00;
+            color: white;
+            padding: 2px 10px;
+            border-radius: 12px;
+            font-size: 13px;
+            font-weight: bold;
+            margin-left: 6px;
+        }
         .vue-toggle {
             display: inline-flex;
             border: 2px solid #2c5530;
@@ -116,11 +136,19 @@
             border-radius: 6px;
             margin-bottom: 15px;
         }
+        .lieu-section.lieu-section-chambre {
+            background: #fff8f0;
+            border-left-color: #b35900;
+        }
         .lieu-section h3 {
             margin-top: 0;
             color: #2c5530;
             border-bottom: 1px solid #c8d8c8;
             padding-bottom: 8px;
+        }
+        .lieu-section.lieu-section-chambre h3 {
+            color: #b35900;
+            border-bottom-color: #e8c8a8;
         }
         .ejc-cat-line {
             padding: 6px 0;
@@ -217,8 +245,18 @@
                 background: white;
                 border-left: 3px solid #000;
             }
+            .lieu-section.lieu-section-chambre {
+                background: white;
+                border-left: 3px solid #000;
+            }
             .repas-section {
                 page-break-inside: avoid;
+            }
+            .chambre-tag, .chambre-tag-manquant {
+                background: white !important;
+                color: black !important;
+                border: 1px solid #000;
+                font-weight: bold;
             }
             .pied-page { font-size: 9pt; }
         }
@@ -295,6 +333,27 @@
             if (!id) return null;
             const l = lieuxDisponibles.find(x => x.id === id);
             return l ? l.nom : null;
+        }
+
+        // Détecte si un lieu est de type "chambre" via son nom (insensible à la casse)
+        function estLieuChambre(idOuNom) {
+            let nom = null;
+            if (typeof idOuNom === 'string') {
+                nom = idOuNom;
+            } else if (idOuNom != null) {
+                nom = nomLieu(idOuNom);
+            }
+            if (!nom) return false;
+            return nom.toLowerCase().includes('chambre');
+        }
+
+        // Retourne le tag de chambre à afficher (ou chaîne vide si non pertinent)
+        function tagChambreSiBesoin(resident, lieuId) {
+            if (!estLieuChambre(lieuId)) return '';
+            if (resident.numero_chambre) {
+                return `<span class="chambre-tag">🚪 Ch. ${resident.numero_chambre}</span>`;
+            }
+            return `<span class="chambre-tag-manquant">🚪 Chambre non renseignée</span>`;
         }
 
         function lieuDefautPourRepas(resident, repas) {
@@ -495,7 +554,8 @@
                                 const lieuTag = lieu
                                     ? `<span class="lieu-tag">📍 ${lieu}</span>`
                                     : `<span class="lieu-tag-aucun">📍 Lieu non défini</span>`;
-                                html += `<li><strong>${r.prenom} ${r.nom}</strong> ${lieuTag} ${tagsResident(r)}</li>`;
+                                const chambreTag = tagChambreSiBesoin(r, r.lieu_effectif_id);
+                                html += `<li><strong>${r.prenom} ${r.nom}</strong> ${lieuTag} ${chambreTag} ${tagsResident(r)}</li>`;
                             }
                             html += '</ul>';
                         }
@@ -519,11 +579,33 @@
                             for (const lieu of lieuxDisponibles) {
                                 const liste = groupes[lieu.id];
                                 if (!liste || !liste.length) continue;
-                                html += `<div class="lieu-section print-section">`;
-                                html += `<h3>📍 ${lieu.nom} — ${liste.length} résident(s)</h3>`;
+                                const estChambre = estLieuChambre(lieu.nom);
+                                const classeSection = estChambre ? 'lieu-section lieu-section-chambre print-section' : 'lieu-section print-section';
+                                const icone = estChambre ? '🚪' : '📍';
+                                html += `<div class="${classeSection}">`;
+                                html += `<h3>${icone} ${lieu.nom} — ${liste.length} résident(s)</h3>`;
+
+                                // Tri : si chambre, on trie par numéro de chambre (les non renseignés à la fin)
+                                let listeTriee = liste;
+                                if (estChambre) {
+                                    listeTriee = [...liste].sort((a, b) => {
+                                        const na = a.numero_chambre;
+                                        const nb = b.numero_chambre;
+                                        if (na == null && nb == null) return 0;
+                                        if (na == null) return 1;
+                                        if (nb == null) return -1;
+                                        return na - nb;
+                                    });
+                                }
+
                                 html += '<ul class="print-list">';
-                                for (const r of liste) {
-                                    html += `<li><strong>${r.prenom} ${r.nom}</strong> ${tagsResident(r)}</li>`;
+                                for (const r of listeTriee) {
+                                    const chambreTag = estChambre
+                                        ? (r.numero_chambre
+                                            ? `<span class="chambre-tag">🚪 Ch. ${r.numero_chambre}</span>`
+                                            : `<span class="chambre-tag-manquant">🚪 Chambre non renseignée</span>`)
+                                        : '';
+                                    html += `<li><strong>${r.prenom} ${r.nom}</strong> ${chambreTag} ${tagsResident(r)}</li>`;
                                 }
                                 html += '</ul></div>';
                             }
