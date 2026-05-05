@@ -6,6 +6,35 @@
     <title>Statistiques - Restauration Les Bouleaux</title>
     <link rel="stylesheet" href="shared.css">
     <style>
+        /* Bandeau admin sélecteur de client */
+        .bandeau-client-admin {
+            background: #fff3cd;
+            border: 1px solid #ffd966;
+            border-radius: 8px;
+            padding: 12px 15px;
+            margin-bottom: 20px;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            flex-wrap: wrap;
+        }
+        .bandeau-client-admin label {
+            font-weight: bold;
+            color: #856404;
+            margin: 0;
+        }
+        .bandeau-client-admin select {
+            padding: 6px 10px;
+            border: 1px solid #ccc;
+            border-radius: 6px;
+            font-size: 14px;
+            background: white;
+        }
+        .bandeau-client-admin .info {
+            color: #856404;
+            font-size: 13px;
+        }
+
         .stats-toolbar {
             display: flex;
             gap: 15px;
@@ -54,6 +83,9 @@
             box-shadow: 0 2px 4px rgba(0,0,0,0.06);
             border-top: 4px solid #2c5530;
         }
+        .stat-card.client-card {
+            border-top-color: #d4825a;
+        }
         .stat-card .label {
             color: #666;
             font-size: 13px;
@@ -65,6 +97,9 @@
             font-weight: bold;
             color: #2c5530;
             margin: 8px 0 0 0;
+        }
+        .stat-card.client-card .valeur {
+            color: #d4825a;
         }
         .stat-card .sub {
             color: #888;
@@ -84,6 +119,10 @@
             border-bottom: 2px solid #e0e8e0;
             padding-bottom: 10px;
             margin-top: 0;
+        }
+        .section-stats.section-clients h3 {
+            color: #b35a2a;
+            border-bottom-color: #f0d8c0;
         }
 
         .barre-container {
@@ -121,6 +160,9 @@
             padding: 10px;
             text-align: left;
         }
+        table.stats.table-clients th {
+            background: #b35a2a;
+        }
         table.stats td {
             padding: 8px 10px;
             border-bottom: 1px solid #eee;
@@ -129,6 +171,10 @@
         .pourcent {
             font-weight: bold;
             color: #2c5530;
+        }
+        .pourcent-client {
+            font-weight: bold;
+            color: #b35a2a;
         }
 
         .legende {
@@ -150,6 +196,49 @@
             height: 14px;
             border-radius: 3px;
         }
+
+        /* Cartes par client (vue agrégée) */
+        .cartes-par-client {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+            gap: 15px;
+            margin-top: 15px;
+        }
+        .carte-client {
+            background: linear-gradient(135deg, #fff8f0 0%, #fff 100%);
+            border-left: 4px solid #d4825a;
+            padding: 15px;
+            border-radius: 8px;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.06);
+        }
+        .carte-client h4 {
+            margin: 0 0 10px 0;
+            color: #b35a2a;
+            font-size: 16px;
+        }
+        .carte-client .ligne {
+            display: flex;
+            justify-content: space-between;
+            padding: 4px 0;
+            font-size: 14px;
+            border-bottom: 1px dashed #f0e0d0;
+        }
+        .carte-client .ligne:last-child { border-bottom: none; }
+        .carte-client .label-petit { color: #888; }
+        .carte-client .valeur-petit { font-weight: bold; color: #b35a2a; }
+        .carte-client .net {
+            margin-top: 10px;
+            padding-top: 10px;
+            border-top: 2px solid #d4825a;
+            display: flex;
+            justify-content: space-between;
+            font-size: 16px;
+        }
+        .carte-client .net-valeur {
+            font-weight: bold;
+            color: #2c5530;
+            font-size: 22px;
+        }
     </style>
 </head>
 <body>
@@ -159,9 +248,18 @@
 
     <h2>📊 Statistiques</h2>
 
+    <!-- Bandeau ADMIN sélecteur de client (visible uniquement pour admin) -->
+    <div id="bandeau-client" class="bandeau-client-admin" style="display:none;">
+        <label>👤 Vue clients externes :</label>
+        <select id="select-client" onchange="changerClient()">
+            <option value="">🌍 Tous les clients (agrégé)</option>
+        </select>
+        <span class="info" id="info-client"></span>
+    </div>
+
     <div class="stats-toolbar">
         <div>
-            <label>Vue :</label>
+            <label>Vue résidents :</label>
             <select id="vue-mode" onchange="changerVue()">
                 <option value="ensemble">Tous les résidents</option>
                 <option value="resident">Un résident en particulier</option>
@@ -200,6 +298,9 @@
     <script>
         let lieuxDisponibles = [];
         let tousResidents = [];
+        let tousClients = [];        // Liste des clients (admin)
+        let clientCourantId = null;  // null = "Tous les clients"
+        let categoriesParClient = {}; // {clientId: [{id, nom, ordre}, ...]}
 
         async function chargerInitial() {
             const { data: lieux } = await supaClient
@@ -216,7 +317,41 @@
                 sel.innerHTML += `<option value="${r.id}">${r.prenom} ${r.nom}</option>`;
             }
 
+            // Multi-clients : charger la liste des clients (admin only)
+            tousClients = await chargerTousLesClients();
+            const selClient = document.getElementById('select-client');
+            for (const c of tousClients) {
+                selClient.innerHTML += `<option value="${c.id}">${c.nom}</option>`;
+            }
+            // On affiche le bandeau si plus de 0 clients récupérés (admin)
+            if (tousClients.length > 0) {
+                document.getElementById('bandeau-client').style.display = 'flex';
+            }
+
+            // Pré-charger les catégories par client (pour l'affichage du top 5)
+            for (const c of tousClients) {
+                const { data: cats } = await supaClient
+                    .from(TABLE_CATEGORIES_EJC)
+                    .select('*')
+                    .eq('client_id', c.id)
+                    .order('ordre', { ascending: true });
+                categoriesParClient[c.id] = cats || [];
+            }
+
             periodePredefinie('mois');
+        }
+
+        function changerClient() {
+            const v = document.getElementById('select-client').value;
+            clientCourantId = v ? parseInt(v) : null;
+            const info = document.getElementById('info-client');
+            if (clientCourantId) {
+                const c = tousClients.find(x => x.id === clientCourantId);
+                info.textContent = c ? `Affichage des stats pour ${c.nom}` : '';
+            } else {
+                info.textContent = `Vue agrégée des ${tousClients.length} clients`;
+            }
+            genererStats();
         }
 
         function changerVue() {
@@ -289,6 +424,7 @@
             const contenu = document.getElementById('contenu');
             contenu.innerHTML = '<p class="loading">⏳ Calcul des statistiques...</p>';
 
+            // 1) Présences résidents (inchangé, pas de filtre client)
             const { data: presences, error } = await supaClient
                 .from(TABLE_PRESENCES)
                 .select('*')
@@ -300,16 +436,25 @@
                 return;
             }
 
-            const { data: ejcCmd } = await supaClient
+            // 2) Commandes/annulations clients externes (filtre client si sélectionné)
+            let qCmd = supaClient
                 .from(TABLE_COMMANDES_EJC)
                 .select('*')
                 .gte('date', dateDebut)
                 .lte('date', dateFin);
-            const { data: ejcAnn } = await supaClient
+            let qAnn = supaClient
                 .from(TABLE_ANNULATIONS_EJC)
                 .select('*')
                 .gte('date', dateDebut)
                 .lte('date', dateFin);
+
+            if (clientCourantId) {
+                qCmd = qCmd.eq('client_id', clientCourantId);
+                qAnn = qAnn.eq('client_id', clientCourantId);
+            }
+
+            const { data: ejcCmd } = await qCmd;
+            const { data: ejcAnn } = await qAnn;
 
             const jours = nbJoursEntre(dateDebut, dateFin);
 
@@ -342,6 +487,7 @@
             const { dateDebut, dateFin, jours, presences, ejcCmd, ejcAnn, residents, vueGlobale } = ctx;
             const repasPossibles = ['petit_dej', 'dejeuner', 'diner'];
 
+            // ===== STATS RÉSIDENTS =====
             const presMap = {};
             for (const p of presences) {
                 presMap[`${p.resident_id}_${p.date}_${p.repas}`] = p;
@@ -402,15 +548,54 @@
             }
             const totalAvecLieu = Object.values(globalParLieu).reduce((s, x) => s + x, 0) + globalAucunLieu;
 
+            // ===== STATS CLIENTS EXTERNES =====
+            const statsParClient = {};
+
+            for (const c of tousClients) {
+                statsParClient[c.id] = {
+                    client: c,
+                    cmd: 0,
+                    ann: 0,
+                    parCategorie: {},
+                    parDate: {}
+                };
+            }
+
+            for (const cmd of ejcCmd) {
+                const cid = cmd.client_id;
+                if (!statsParClient[cid]) continue;
+                const q = cmd.quantite || 0;
+                statsParClient[cid].cmd += q;
+                statsParClient[cid].parCategorie[cmd.categorie_id] =
+                    (statsParClient[cid].parCategorie[cmd.categorie_id] || 0) + q;
+                statsParClient[cid].parDate[cmd.date] =
+                    (statsParClient[cid].parDate[cmd.date] || 0) + q;
+            }
+            for (const ann of ejcAnn) {
+                const cid = ann.client_id;
+                if (!statsParClient[cid]) continue;
+                const q = ann.quantite || 0;
+                statsParClient[cid].ann += q;
+                statsParClient[cid].parCategorie[ann.categorie_id] =
+                    (statsParClient[cid].parCategorie[ann.categorie_id] || 0) - q;
+                statsParClient[cid].parDate[ann.date] =
+                    (statsParClient[cid].parDate[ann.date] || 0) - q;
+            }
+
             let totalEjcCmd = 0, totalEjcAnn = 0;
             for (const c of ejcCmd) totalEjcCmd += (c.quantite || 0);
             for (const a of ejcAnn) totalEjcAnn += (a.quantite || 0);
             const totalEjcNet = totalEjcCmd - totalEjcAnn;
 
+            // ===== RENDU HTML =====
             const contenu = document.getElementById('contenu');
             let html = `
                 <h3 style="margin-top:0;">Période : ${dateFr(dateDebut)} → ${dateFr(dateFin)} <span style="color:#888;font-weight:normal;">(${jours} jour${jours>1?'s':''})</span></h3>
             `;
+
+            const labelClientCarte = clientCourantId
+                ? (tousClients.find(x => x.id === clientCourantId)?.nom || 'Client')
+                : 'Repas clients (net)';
 
             html += `
                 <div class="stats-cards">
@@ -424,15 +609,15 @@
                         <div class="valeur">${tauxPresence}%</div>
                         <div class="sub">${totalAbsent} absence(s)</div>
                     </div>
-                    <div class="stat-card">
-                        <div class="label">Repas EJC Péry (net)</div>
+                    <div class="stat-card client-card">
+                        <div class="label">${clientCourantId ? labelClientCarte + ' (net)' : 'Repas clients (net)'}</div>
                         <div class="valeur">${Math.max(0, totalEjcNet)}</div>
                         <div class="sub">${totalEjcCmd} cmd − ${totalEjcAnn} ann</div>
                     </div>
                     <div class="stat-card">
                         <div class="label">Total repas servis</div>
                         <div class="valeur">${totalPresent + Math.max(0, totalEjcNet)}</div>
-                        <div class="sub">résidents + EJC</div>
+                        <div class="sub">résidents + clients</div>
                     </div>
                 </div>
             `;
@@ -541,7 +726,192 @@
                 html += `</div>`;
             }
 
+            // ===== Section CLIENTS EXTERNES (multi-clients) =====
+            html += renderStatsClients(statsParClient, totalEjcCmd, totalEjcAnn, totalEjcNet);
+
             contenu.innerHTML = html;
+        }
+
+        function renderStatsClients(statsParClient, totalCmd, totalAnn, totalNet) {
+            let clientsAAfficher;
+            if (clientCourantId) {
+                clientsAAfficher = tousClients.filter(c => c.id === clientCourantId);
+            } else {
+                clientsAAfficher = tousClients;
+            }
+
+            if (clientsAAfficher.length === 0) {
+                return '';
+            }
+
+            const titreSection = clientCourantId
+                ? `🍴 Statistiques pour ${clientsAAfficher[0].nom}`
+                : `🍴 Statistiques clients externes (vue agrégée)`;
+
+            let html = `<div class="section-stats section-clients">
+                <h3>${titreSection}</h3>`;
+
+            if (totalCmd === 0 && totalAnn === 0) {
+                html += `<p style="color:#888;">Aucune commande sur cette période.</p>`;
+                html += `</div>`;
+                return html;
+            }
+
+            if (!clientCourantId) {
+                // ----- VUE AGRÉGÉE (tous les clients) -----
+                html += `<h4 style="color:#b35a2a;margin-top:0;">📊 Comparatif par client</h4>`;
+                html += `<table class="stats table-clients">
+                    <thead>
+                        <tr>
+                            <th>Client</th>
+                            <th style="text-align:right;">Commandes</th>
+                            <th style="text-align:right;">Annulations</th>
+                            <th style="text-align:right;">Net</th>
+                            <th style="text-align:right;">Part du total</th>
+                            <th>Top catégorie</th>
+                        </tr>
+                    </thead>
+                    <tbody>`;
+
+                const lignes = clientsAAfficher.map(c => {
+                    const s = statsParClient[c.id];
+                    const net = s.cmd - s.ann;
+                    const part = totalNet > 0 ? Math.round((Math.max(0,net) / Math.max(1,totalNet)) * 100) : 0;
+                    const cats = categoriesParClient[c.id] || [];
+                    let topCat = '—';
+                    let topQte = 0;
+                    for (const [catId, qte] of Object.entries(s.parCategorie)) {
+                        if (qte > topQte) {
+                            const cat = cats.find(x => x.id === parseInt(catId));
+                            if (cat) {
+                                topCat = cat.nom;
+                                topQte = qte;
+                            }
+                        }
+                    }
+                    return { client: c, stats: s, net, part, topCat, topQte };
+                }).sort((a,b) => b.net - a.net);
+
+                for (const l of lignes) {
+                    html += `<tr>
+                        <td><strong>${l.client.nom}</strong></td>
+                        <td style="text-align:right;">${l.stats.cmd}</td>
+                        <td style="text-align:right;">${l.stats.ann}</td>
+                        <td style="text-align:right;"><strong style="color:#2c5530;">${Math.max(0,l.net)}</strong></td>
+                        <td style="text-align:right;" class="pourcent-client">${l.part}%</td>
+                        <td>${l.topCat !== '—' ? `${l.topCat} <span style="color:#888;">(${l.topQte})</span>` : '<span style="color:#999;">—</span>'}</td>
+                    </tr>`;
+                }
+                html += `<tr style="background:#fff8f0;font-weight:bold;">
+                    <td>TOTAL</td>
+                    <td style="text-align:right;">${totalCmd}</td>
+                    <td style="text-align:right;">${totalAnn}</td>
+                    <td style="text-align:right;color:#2c5530;">${Math.max(0,totalNet)}</td>
+                    <td style="text-align:right;">100%</td>
+                    <td></td>
+                </tr>`;
+                html += `</tbody></table>`;
+
+                html += `<h4 style="color:#b35a2a;margin-top:25px;">🎴 Détail par client</h4>`;
+                html += `<div class="cartes-par-client">`;
+                for (const l of lignes) {
+                    const s = l.stats;
+                    const tauxAnn = s.cmd > 0 ? Math.round((s.ann / s.cmd) * 100) : 0;
+                    html += `<div class="carte-client">
+                        <h4>${l.client.nom}</h4>
+                        <div class="ligne"><span class="label-petit">Commandes</span><span class="valeur-petit">${s.cmd}</span></div>
+                        <div class="ligne"><span class="label-petit">Annulations</span><span class="valeur-petit">${s.ann}</span></div>
+                        <div class="ligne"><span class="label-petit">Taux d'annulation</span><span class="valeur-petit">${tauxAnn}%</span></div>
+                        <div class="ligne"><span class="label-petit">Top catégorie</span><span class="valeur-petit">${l.topCat !== '—' ? l.topCat : '—'}</span></div>
+                        <div class="net">
+                            <span>Net :</span>
+                            <span class="net-valeur">${Math.max(0,l.net)}</span>
+                        </div>
+                    </div>`;
+                }
+                html += `</div>`;
+
+            } else {
+                // ----- VUE CLIENT UNIQUE -----
+                const c = clientsAAfficher[0];
+                const s = statsParClient[c.id];
+                const tauxAnn = s.cmd > 0 ? Math.round((s.ann / s.cmd) * 100) : 0;
+                const cats = categoriesParClient[c.id] || [];
+
+                const topCats = Object.entries(s.parCategorie)
+                    .map(([catId, qte]) => {
+                        const cat = cats.find(x => x.id === parseInt(catId));
+                        return { id: parseInt(catId), nom: cat ? cat.nom : `Catégorie #${catId}`, qte };
+                    })
+                    .filter(x => x.qte > 0)
+                    .sort((a,b) => b.qte - a.qte)
+                    .slice(0, 5);
+
+                let jourMax = null;
+                let qteMax = 0;
+                for (const [date, qte] of Object.entries(s.parDate)) {
+                    if (qte > qteMax) {
+                        qteMax = qte;
+                        jourMax = date;
+                    }
+                }
+
+                html += `<div class="stats-cards" style="margin-bottom:15px;">
+                    <div class="stat-card client-card">
+                        <div class="label">Commandes</div>
+                        <div class="valeur">${s.cmd}</div>
+                        <div class="sub">brut</div>
+                    </div>
+                    <div class="stat-card client-card">
+                        <div class="label">Annulations</div>
+                        <div class="valeur">${s.ann}</div>
+                        <div class="sub">${tauxAnn}% du brut</div>
+                    </div>
+                    <div class="stat-card client-card">
+                        <div class="label">Net facturable</div>
+                        <div class="valeur">${Math.max(0, s.cmd - s.ann)}</div>
+                        <div class="sub">cmd − annulations</div>
+                    </div>
+                    <div class="stat-card client-card">
+                        <div class="label">Jour le plus chargé</div>
+                        <div class="valeur" style="font-size:18px;">${jourMax ? dateFr(jourMax) : '—'}</div>
+                        <div class="sub">${jourMax ? Math.max(0,qteMax) + ' repas (net)' : ''}</div>
+                    </div>
+                </div>`;
+
+                html += `<h4 style="color:#b35a2a;margin-top:20px;">🏆 Top 5 catégories les plus commandées</h4>`;
+                if (topCats.length === 0) {
+                    html += `<p style="color:#888;">Aucune donnée.</p>`;
+                } else {
+                    const totalTopCats = topCats.reduce((sum, x) => sum + x.qte, 0);
+                    html += `<table class="stats table-clients">
+                        <thead>
+                            <tr>
+                                <th>Rang</th>
+                                <th>Catégorie</th>
+                                <th style="text-align:right;">Quantité (net)</th>
+                                <th style="text-align:right;">% du top 5</th>
+                            </tr>
+                        </thead>
+                        <tbody>`;
+                    let rang = 1;
+                    for (const t of topCats) {
+                        const pct = totalTopCats > 0 ? Math.round((t.qte / totalTopCats) * 100) : 0;
+                        const medaille = rang === 1 ? '🥇' : rang === 2 ? '🥈' : rang === 3 ? '🥉' : '  ';
+                        html += `<tr>
+                            <td>${medaille} ${rang}</td>
+                            <td><strong>${t.nom}</strong></td>
+                            <td style="text-align:right;">${t.qte}</td>
+                            <td style="text-align:right;" class="pourcent-client">${pct}%</td>
+                        </tr>`;
+                        rang++;
+                    }
+                    html += `</tbody></table>`;
+                }
+            }
+
+            html += `</div>`;
+            return html;
         }
 
         function renderBarreLieux(parLieu, aucunLieu, total) {
