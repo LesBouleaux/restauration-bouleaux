@@ -140,7 +140,6 @@
             color: white;
             font-weight: bold;
             font-size: 12px;
-            min-width: 30px;
             transition: width 0.3s;
         }
         .barre-restaurant { background: #2c5530; }
@@ -298,9 +297,9 @@
     <script>
         let lieuxDisponibles = [];
         let tousResidents = [];
-        let tousClients = [];        // Liste des clients (admin)
-        let clientCourantId = null;  // null = "Tous les clients"
-        let categoriesParClient = {}; // {clientId: [{id, nom, ordre}, ...]}
+        let tousClients = [];
+        let clientCourantId = null;
+        let categoriesParClient = {};
 
         async function chargerInitial() {
             const { data: lieux } = await supaClient
@@ -317,18 +316,15 @@
                 sel.innerHTML += `<option value="${r.id}">${r.prenom} ${r.nom}</option>`;
             }
 
-            // Multi-clients : charger la liste des clients (admin only)
             tousClients = await chargerTousLesClients();
             const selClient = document.getElementById('select-client');
             for (const c of tousClients) {
                 selClient.innerHTML += `<option value="${c.id}">${c.nom}</option>`;
             }
-            // On affiche le bandeau si plus de 0 clients récupérés (admin)
             if (tousClients.length > 0) {
                 document.getElementById('bandeau-client').style.display = 'flex';
             }
 
-            // Pré-charger les catégories par client (pour l'affichage du top 5)
             for (const c of tousClients) {
                 const { data: cats } = await supaClient
                     .from(TABLE_CATEGORIES_EJC)
@@ -424,7 +420,6 @@
             const contenu = document.getElementById('contenu');
             contenu.innerHTML = '<p class="loading">⏳ Calcul des statistiques...</p>';
 
-            // 1) Présences résidents (inchangé, pas de filtre client)
             const { data: presences, error } = await supaClient
                 .from(TABLE_PRESENCES)
                 .select('*')
@@ -436,7 +431,6 @@
                 return;
             }
 
-            // 2) Commandes/annulations clients externes (filtre client si sélectionné)
             let qCmd = supaClient
                 .from(TABLE_COMMANDES_EJC)
                 .select('*')
@@ -487,7 +481,6 @@
             const { dateDebut, dateFin, jours, presences, ejcCmd, ejcAnn, residents, vueGlobale } = ctx;
             const repasPossibles = ['petit_dej', 'dejeuner', 'diner'];
 
-            // ===== STATS RÉSIDENTS =====
             const presMap = {};
             for (const p of presences) {
                 presMap[`${p.resident_id}_${p.date}_${p.repas}`] = p;
@@ -548,7 +541,6 @@
             }
             const totalAvecLieu = Object.values(globalParLieu).reduce((s, x) => s + x, 0) + globalAucunLieu;
 
-            // ===== STATS CLIENTS EXTERNES =====
             const statsParClient = {};
 
             for (const c of tousClients) {
@@ -587,7 +579,6 @@
             for (const a of ejcAnn) totalEjcAnn += (a.quantite || 0);
             const totalEjcNet = totalEjcCmd - totalEjcAnn;
 
-            // ===== RENDU HTML =====
             const contenu = document.getElementById('contenu');
             let html = `
                 <h3 style="margin-top:0;">Période : ${dateFr(dateDebut)} → ${dateFr(dateFin)} <span style="color:#888;font-weight:normal;">(${jours} jour${jours>1?'s':''})</span></h3>
@@ -712,10 +703,14 @@
                 if (s.total > 0) {
                     const pctP = Math.round((s.nbPresent / s.total) * 100);
                     const pctA = 100 - pctP;
-                    html += `<div class="barre-container">
-                        <div class="barre-segment barre-present" style="width:${pctP}%;" title="${s.nbPresent} présent">${pctP > 8 ? pctP + '%' : ''}</div>
-                        <div class="barre-segment barre-absent" style="width:${pctA}%;" title="${s.nbAbsent} absent">${pctA > 8 ? pctA + '%' : ''}</div>
-                    </div>
+                    html += `<div class="barre-container">`;
+                    if (pctP > 0) {
+                        html += `<div class="barre-segment barre-present" style="width:${pctP}%;" title="${s.nbPresent} présent">${pctP > 8 ? pctP + '%' : ''}</div>`;
+                    }
+                    if (pctA > 0) {
+                        html += `<div class="barre-segment barre-absent" style="width:${pctA}%;" title="${s.nbAbsent} absent">${pctA > 8 ? pctA + '%' : ''}</div>`;
+                    }
+                    html += `</div>
                     <div class="legende">
                         <div class="legende-item"><span class="legende-puce" style="background:#2c5530;"></span>Présent (${s.nbPresent})</div>
                         <div class="legende-item"><span class="legende-puce" style="background:#c44;"></span>Absent (${s.nbAbsent})</div>
@@ -726,7 +721,6 @@
                 html += `</div>`;
             }
 
-            // ===== Section CLIENTS EXTERNES (multi-clients) =====
             html += renderStatsClients(statsParClient, totalEjcCmd, totalEjcAnn, totalEjcNet);
 
             contenu.innerHTML = html;
@@ -758,7 +752,6 @@
             }
 
             if (!clientCourantId) {
-                // ----- VUE AGRÉGÉE (tous les clients) -----
                 html += `<h4 style="color:#b35a2a;margin-top:0;">📊 Comparatif par client</h4>`;
                 html += `<table class="stats table-clients">
                     <thead>
@@ -832,7 +825,6 @@
                 html += `</div>`;
 
             } else {
-                // ----- VUE CLIENT UNIQUE -----
                 const c = clientsAAfficher[0];
                 const s = statsParClient[c.id];
                 const tauxAnn = s.cmd > 0 ? Math.round((s.ann / s.cmd) * 100) : 0;
@@ -925,14 +917,18 @@
                 if (n > 0) {
                     const pct = (n / total) * 100;
                     const cls = couleurs[i % couleurs.length];
-                    html += `<div class="barre-segment ${cls}" style="width:${pct}%;" title="${lieu.nom} : ${n}">${pct > 8 ? Math.round(pct)+'%' : ''}</div>`;
+                    if (pct > 0) {
+                        html += `<div class="barre-segment ${cls}" style="width:${pct}%;" title="${lieu.nom} : ${n}">${pct > 8 ? Math.round(pct)+'%' : ''}</div>`;
+                    }
                     items.push({ nom: lieu.nom, n, cls });
                     i++;
                 }
             }
             if (aucunLieu > 0) {
                 const pct = (aucunLieu / total) * 100;
-                html += `<div class="barre-segment barre-aucun" style="width:${pct}%;" title="Non défini : ${aucunLieu}">${pct > 8 ? Math.round(pct)+'%' : ''}</div>`;
+                if (pct > 0) {
+                    html += `<div class="barre-segment barre-aucun" style="width:${pct}%;" title="Non défini : ${aucunLieu}">${pct > 8 ? Math.round(pct)+'%' : ''}</div>`;
+                }
                 items.push({ nom: 'Non défini', n: aucunLieu, cls: 'barre-aucun' });
             }
             html += '</div>';
