@@ -347,15 +347,6 @@
             return nom.toLowerCase().includes('chambre');
         }
 
-        // Retourne le tag de chambre à afficher (ou chaîne vide si non pertinent)
-        function tagChambreSiBesoin(resident, lieuId) {
-            if (!estLieuChambre(lieuId)) return '';
-            if (resident.numero_chambre) {
-                return `<span class="chambre-tag">🚪 Ch. ${resident.numero_chambre}</span>`;
-            }
-            return `<span class="chambre-tag-manquant">🚪 Chambre non renseignée</span>`;
-        }
-
         function lieuDefautPourRepas(resident, repas) {
             if (repas === 'petit_dej') return resident.lieu_defaut_petit_dej_id || null;
             if (repas === 'dejeuner') return resident.lieu_defaut_dejeuner_id || null;
@@ -370,9 +361,21 @@
             if (donneesServiceCache) afficherService();
         }
 
+        // Construit le texte des allergies (allergènes UE + texte libre, style EJC)
+        function texteAllergiesResident(r) {
+            const parts = [];
+            if (r.allergenes && r.allergenes.length) {
+                for (const code of r.allergenes) parts.push(nomAllergene(code));
+            }
+            const autres = (r.allergies || '').trim();
+            if (autres) parts.push(autres);
+            return parts.join(' · ');
+        }
+
         function tagsResident(r) {
             const tags = [];
-            if (r.allergies) tags.push(`<span class="tag tag-allergie">⚠️ ${r.allergies}</span>`);
+            const allergiesTxt = texteAllergiesResident(r);
+            if (allergiesTxt) tags.push(`<span class="tag tag-allergie">⚠️ Sans : ${allergiesTxt}</span>`);
             if (r.intolerances) tags.push(`<span class="tag tag-intolerance">🚫 ${r.intolerances}</span>`);
             if (r.aversions) tags.push(`<span class="tag tag-aversion">Non-goûts : ${r.aversions}</span>`);
             return tags.join(' ');
@@ -554,7 +557,11 @@
                                 const lieuTag = lieu
                                     ? `<span class="lieu-tag">📍 ${lieu}</span>`
                                     : `<span class="lieu-tag-aucun">📍 Lieu non défini</span>`;
-                                const chambreTag = tagChambreSiBesoin(r, r.lieu_effectif_id);
+                                const chambreTag = estLieuChambre(r.lieu_effectif_id)
+                                    ? (r.numero_chambre
+                                        ? `<span class="chambre-tag">🚪 Ch. ${r.numero_chambre}</span>`
+                                        : `<span class="chambre-tag-manquant">🚪 Chambre non renseignée</span>`)
+                                    : '';
                                 html += `<li><strong>${r.prenom} ${r.nom}</strong> ${lieuTag} ${chambreTag} ${tagsResident(r)}</li>`;
                             }
                             html += '</ul>';

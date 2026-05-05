@@ -491,6 +491,22 @@
             });
         }
 
+        // Construit le texte des allergies (allergènes UE + texte libre, style EJC)
+        function texteAllergiesResident(r) {
+            const parts = [];
+            if (r.allergenes && r.allergenes.length) {
+                for (const code of r.allergenes) parts.push(nomAllergene(code));
+            }
+            const autres = (r.allergies || '').trim();
+            if (autres) parts.push(autres);
+            return parts.join(' · ');
+        }
+
+        // Indique si un résident a une allergie (cases cochées OU texte libre)
+        function aDesAllergies(r) {
+            return (r.allergenes && r.allergenes.length > 0) || (r.allergies && r.allergies.trim().length > 0);
+        }
+
         // ===== GESTION DES FILTRES =====
         function toutCocher(type, valeur) {
             const selector = type === 'repas' ? '.filtre-repas' : '.filtre-public';
@@ -585,7 +601,7 @@
                     });
                 }
 
-                const avecAllergie = presentsForRepas.filter(r => r.allergies);
+                const avecAllergie = presentsForRepas.filter(r => aDesAllergies(r));
                 const avecIntolerance = presentsForRepas.filter(r => r.intolerances);
                 const avecNonGout = presentsForRepas.filter(r => r.aversions);
 
@@ -670,9 +686,10 @@
                         html += `<div class="adapt-titre">⚠️ Adaptations résidents</div>
                         <ul class="adapt-liste">`;
                         for (const r of avecAllergie) {
+                            const txt = texteAllergiesResident(r);
                             html += `<li class="adapt-item adapt-allergie">
                                 <span class="badge">⚠ ALLERGIE</span>
-                                <strong>${r.prenom} ${r.nom}</strong> — ${r.allergies}
+                                <strong>${r.prenom} ${r.nom}</strong> — Sans : ${txt}
                             </li>`;
                         }
                         for (const r of avecIntolerance) {
