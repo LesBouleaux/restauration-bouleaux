@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+ <!DOCTYPE html>
 <html lang="fr">
 <head>
     <meta charset="UTF-8">
@@ -57,6 +57,19 @@
             cursor: pointer;
         }
         .btn-tout:hover { background: #f0f8f0; }
+        .filtre-groupe select {
+            padding: 6px 12px;
+            border: 1px solid #2c5530;
+            border-radius: 16px;
+            font-size: 13px;
+            background: white;
+            cursor: pointer;
+            font-weight: 600;
+            color: #2c5530;
+            min-width: 180px;
+        }
+        .filtre-groupe select:hover { background: #f0f8f0; }
+        .filtre-groupe select:focus { outline: 2px solid #2c5530; outline-offset: 1px; }
 
         .filtre-info-vide {
             background: #fff3cd;
@@ -69,7 +82,7 @@
         }
 
         /* ============================================================
-           STYLES SERVICE (existants + ajustements)
+           STYLES SERVICE
            ============================================================ */
         .lieu-tag {
             display: inline-block;
@@ -110,6 +123,31 @@
             font-weight: bold;
             margin-left: 6px;
         }
+        .texture-tag {
+            display: inline-block;
+            background: #d4762b;
+            color: white;
+            padding: 2px 10px;
+            border-radius: 12px;
+            font-size: 13px;
+            font-weight: bold;
+            margin-left: 6px;
+        }
+        .unite-tag {
+            display: inline-block;
+            background: #555;
+            color: white;
+            padding: 2px 10px;
+            border-radius: 12px;
+            font-size: 11px;
+            font-weight: bold;
+            margin-left: 6px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+        .unite-tag.bouleaux { background: #2c5530; }
+        .unite-tag.passerelle { background: #1976d2; }
+
         .vue-toggle {
             display: inline-flex;
             border: 2px solid #2c5530;
@@ -150,23 +188,18 @@
             color: #b35900;
             border-bottom-color: #e8c8a8;
         }
-        .ejc-cat-line {
-            padding: 6px 0;
-        }
+        .ejc-cat-line { padding: 6px 0; }
         .ejc-cat-allergenes {
             font-size: 12px;
             color: #856404;
             margin-top: 2px;
         }
-
-        /* Mention absence prolongée dans la section absents */
         .absence-prolongee-mention {
             color: #b35900;
             font-size: 12px;
             margin-left: 4px;
         }
 
-        /* Conteneur global doc */
         .service-doc {
             background: white;
             padding: 20px;
@@ -256,18 +289,14 @@
                 background: white;
                 border-left: 3px solid #000;
             }
-            .repas-section {
-                page-break-inside: avoid;
-            }
-            .chambre-tag, .chambre-tag-manquant {
+            .repas-section { page-break-inside: avoid; }
+            .chambre-tag, .chambre-tag-manquant, .texture-tag, .unite-tag {
                 background: white !important;
                 color: black !important;
                 border: 1px solid #000;
                 font-weight: bold;
             }
-            .absence-prolongee-mention {
-                color: black !important;
-            }
+            .absence-prolongee-mention { color: black !important; }
             .pied-page { font-size: 9pt; }
         }
     </style>
@@ -303,11 +332,21 @@
             <button class="btn-tout" onclick="toutCocher('repas', false)">Rien</button>
         </div>
         <div class="filtre-groupe">
-            <span class="filtre-titre">👥 Public :</span>
-            <label class="filtre-checkbox"><input type="checkbox" class="filtre-public" value="residents" checked onchange="genererService()"> 🏠 Résidents</label>
-            <label class="filtre-checkbox"><input type="checkbox" class="filtre-public" value="ejc" checked onchange="genererService()"> 🍴 EJC</label>
-            <button class="btn-tout" onclick="toutCocher('public', true)">Tout</button>
-            <button class="btn-tout" onclick="toutCocher('public', false)">Rien</button>
+            <span class="filtre-titre">👥 Résidents :</span>
+            <select id="select-residents" onchange="genererService()">
+                <option value="toutes" selected>🏘️ Tout le monde</option>
+                <option value="bouleaux">🏠 Bouleaux</option>
+                <option value="passerelle">🌉 Passerelle</option>
+                <option value="aucun">⛔ Aucun</option>
+            </select>
+        </div>
+        <div class="filtre-groupe">
+            <span class="filtre-titre">🍴 Clients externes :</span>
+            <select id="select-clients" onchange="genererService()">
+                <option value="tous" selected>🍽️ Tout le monde</option>
+                <option value="aucun">⛔ Aucun</option>
+                <!-- Clients chargés dynamiquement -->
+            </select>
         </div>
     </div>
 
@@ -321,8 +360,8 @@
         let vueActuelle = 'liste';
         let donneesServiceCache = null;
         let lieuxDisponibles = [];
+        let tousLesClients = [];
 
-        // ===== UTILITAIRES =====
         function heureMaintenant() {
             return new Date().toLocaleString('fr-FR', {
                 day: '2-digit', month: '2-digit', year: 'numeric',
@@ -345,7 +384,6 @@
             return l ? l.nom : null;
         }
 
-        // Détecte si un lieu est de type "chambre" via son nom (insensible à la casse)
         function estLieuChambre(idOuNom) {
             let nom = null;
             if (typeof idOuNom === 'string') {
@@ -371,7 +409,6 @@
             if (donneesServiceCache) afficherService();
         }
 
-        // Construit le texte des allergies (allergènes UE + texte libre, style EJC)
         function texteAllergiesResident(r) {
             const parts = [];
             if (r.allergenes && r.allergenes.length) {
@@ -391,30 +428,65 @@
             return tags.join(' ');
         }
 
+        function textureTag(r) {
+            const tx = r.texture_effective || TEXTURE_DEFAUT;
+            if (tx === TEXTURE_DEFAUT) return '';
+            return `<span class="texture-tag">${nomTexture(tx)}</span>`;
+        }
+
+        function uniteTag(r) {
+            if (residentsSelection() !== 'toutes') return '';
+            if (!r.unite) return '';
+            const cls = r.unite === 'bouleaux' ? 'bouleaux' : 'passerelle';
+            return `<span class="unite-tag ${cls}">${nomUniteSansEmoji(r.unite)}</span>`;
+        }
+
         // ===== FILTRES =====
         function toutCocher(type, valeur) {
-            const selector = type === 'repas' ? '.filtre-repas' : '.filtre-public';
-            document.querySelectorAll(selector).forEach(cb => cb.checked = valeur);
-            genererService();
+            if (type === 'repas') {
+                document.querySelectorAll('.filtre-repas').forEach(cb => cb.checked = valeur);
+                genererService();
+            }
         }
 
         function repasSelectionnes() {
             return Array.from(document.querySelectorAll('.filtre-repas:checked')).map(cb => cb.value);
         }
 
-        function publicSelectionne() {
-            return Array.from(document.querySelectorAll('.filtre-public:checked')).map(cb => cb.value);
+        function residentsSelection() {
+            const sel = document.getElementById('select-residents');
+            return sel ? sel.value : 'toutes';
+        }
+
+        function clientSelection() {
+            const sel = document.getElementById('select-clients');
+            return sel ? sel.value : 'tous';
         }
 
         function texteRappelFiltres() {
             const repas = repasSelectionnes();
-            const pub = publicSelectionne();
+            const residentsChoix = residentsSelection();
+            const clientChoix = clientSelection();
             const labelsRepas = { petit_dej: 'Petit-déjeuner', dejeuner: 'Déjeuner', diner: 'Dîner' };
-            const labelsPub = { residents: 'Résidents', ejc: 'EJC' };
+            const labelsResidents = {
+                toutes: 'Tous résidents',
+                bouleaux: 'Résidents Bouleaux',
+                passerelle: 'Résidents Passerelle',
+                aucun: 'Aucun résident'
+            };
+
             const r = repas.length === 3 ? 'Tous les repas' : repas.map(x => labelsRepas[x]).join(', ');
-            const p = pub.length === 2 ? 'résidents + EJC' : pub.map(x => labelsPub[x]).join(' + ');
+
+            let cTxt;
+            if (clientChoix === 'tous') cTxt = 'Tous clients ext.';
+            else if (clientChoix === 'aucun') cTxt = 'Aucun client ext.';
+            else {
+                const c = tousLesClients.find(x => x.id === clientChoix);
+                cTxt = c ? c.nom : 'Client inconnu';
+            }
+
             const v = vueActuelle === 'lieu' ? 'Vue par lieu' : 'Vue liste';
-            return `Filtres : ${r} — ${p} — ${v}`;
+            return `Filtres : ${r} — ${labelsResidents[residentsChoix]} — ${cTxt} — ${v}`;
         }
 
         // ===== CHARGEMENT DES DONNÉES =====
@@ -423,13 +495,16 @@
             const contenu = document.getElementById('contenu');
 
             const repasFiltres = repasSelectionnes();
-            const publicFiltres = publicSelectionne();
+            const residentsChoix = residentsSelection();
+            const clientChoix = clientSelection();
 
-            // Garde-fou : aucune sélection
-            if (repasFiltres.length === 0 || publicFiltres.length === 0) {
+            const inclureResidents = residentsChoix !== 'aucun';
+            const inclureEjc = clientChoix !== 'aucun';
+
+            if (repasFiltres.length === 0 || (!inclureResidents && !inclureEjc)) {
                 contenu.innerHTML = `<div class="filtre-info-vide">
                     ⚠️ <strong>Aucun élément à afficher</strong><br>
-                    Sélectionne au moins un repas et au moins un public (résidents et/ou EJC).
+                    Sélectionne au moins un repas et au moins une source de mangeurs (résidents ou clients externes).
                 </div>`;
                 donneesServiceCache = null;
                 return;
@@ -438,36 +513,43 @@
             contenu.innerHTML = '<p class="loading">⏳ Chargement...</p>';
             await chargerLieux();
 
-            const inclureResidents = publicFiltres.includes('residents');
-            const inclureEjc = publicFiltres.includes('ejc');
-
-            // Charger les résidents et présences (uniquement si nécessaire)
+            // Résidents (filtrés par unité si besoin)
             let residents = [];
             let toutesPresences = [];
             let absences = [];
             if (inclureResidents) {
-                residents = await chargerResidentsActifs();
+                if (residentsChoix === 'toutes') {
+                    residents = await chargerResidentsActifs();
+                } else {
+                    residents = await chargerResidentsActifs(residentsChoix);
+                }
                 const { data: presences } = await supaClient
                     .from(TABLE_PRESENCES).select('*').eq('date', date);
                 toutesPresences = presences || [];
                 absences = await chargerAbsencesPourDate(date);
             }
 
-            // Charger EJC (uniquement si nécessaire)
+            // Clients externes (filtrés par client si choix précis)
             let categoriesEjc = [];
-            let cmdMap = {};
-            let annMap = {};
+            let commandesArr = [];
+            let annulationsArr = [];
             if (inclureEjc) {
                 categoriesEjc = await chargerCategoriesEjc(false);
                 const { data: cmdArr } = await supaClient
                     .from(TABLE_COMMANDES_EJC).select('*').eq('date', date);
                 const { data: annArr } = await supaClient
                     .from(TABLE_ANNULATIONS_EJC).select('*').eq('date', date);
-                for (const c of (cmdArr || [])) cmdMap[c.categorie_id] = c.quantite;
-                for (const a of (annArr || [])) annMap[a.categorie_id] = a.quantite;
+
+                // ⭐ FIX UUID : on compare en string directement (pas de parseInt)
+                if (clientChoix !== 'tous' && clientChoix !== 'aucun') {
+                    commandesArr = (cmdArr || []).filter(c => c.client_id === clientChoix);
+                    annulationsArr = (annArr || []).filter(a => a.client_id === clientChoix);
+                } else {
+                    commandesArr = cmdArr || [];
+                    annulationsArr = annArr || [];
+                }
             }
 
-            // Construire les données par repas
             const donneesParRepas = [];
             for (const repas of repasFiltres) {
                 const dataRepas = {
@@ -475,55 +557,102 @@
                     libelle: libelleRepas(repas),
                     presents: [],
                     absents: [],
-                    detailEjc: '',
+                    blocsEjc: [],
                     totalEjcNet: 0
                 };
 
                 if (inclureResidents) {
                     const presencesRepas = toutesPresences.filter(p => p.repas === repas);
                     for (const r of residents) {
-                        // Vérifier d'abord si en absence prolongée
                         const absence = estEnAbsenceProlongee(absences, r.id, date, repas);
                         if (absence) {
                             dataRepas.absents.push({ ...r, _absenceProlongee: absence });
                             continue;
                         }
-                        // Sinon, logique habituelle
                         const p = presencesRepas.find(x => x.resident_id === r.id);
                         const estPresent = p ? p.present : true;
                         if (estPresent) {
                             const lieuDefautRepas = lieuDefautPourRepas(r, repas);
                             const lieuEffectifId = (p && p.lieu_id != null) ? p.lieu_id : lieuDefautRepas;
-                            dataRepas.presents.push({ ...r, lieu_effectif_id: lieuEffectifId });
+                            const textureEffective = (p && p.texture)
+                                ? p.texture
+                                : getTextureDefautResident(r, repas);
+                            dataRepas.presents.push({
+                                ...r,
+                                lieu_effectif_id: lieuEffectifId,
+                                texture_effective: textureEffective
+                            });
                         } else {
                             dataRepas.absents.push(r);
                         }
                     }
                 }
 
-                // EJC uniquement pour le déjeuner
+                // Clients externes uniquement pour le déjeuner
                 if (inclureEjc && repas === 'dejeuner') {
-                    const lignes = [];
-                    const catsTriees = [...categoriesEjc].sort((a, b) => a.ordre - b.ordre);
-                    for (const cat of catsTriees) {
-                        const cmd = cmdMap[cat.id] || 0;
-                        const ann = annMap[cat.id] || 0;
-                        const net = cmd - ann;
-                        if (net > 0) {
-                            dataRepas.totalEjcNet += net;
+                    // ⭐ FIX UUID : on utilise '::' comme séparateur pour ne pas se mélanger avec les tirets des UUID
+                    const cmdMap = {};
+                    const annMap = {};
+                    for (const c of commandesArr) {
+                        const k = `${c.client_id}::${c.categorie_id}`;
+                        cmdMap[k] = (cmdMap[k] || 0) + (c.quantite || 0);
+                    }
+                    for (const a of annulationsArr) {
+                        const k = `${a.client_id}::${a.categorie_id}`;
+                        annMap[k] = (annMap[k] || 0) + (a.quantite || 0);
+                    }
+
+                    const blocsParClient = {};
+                    for (const cle in cmdMap) {
+                        // ⭐ FIX UUID : split sur '::', client_id reste une string (UUID), seul categorie_id devient int
+                        const parts = cle.split('::');
+                        const clientId = parts[0];
+                        const catId = parseInt(parts[1]);
+                        const net = (cmdMap[cle] || 0) - (annMap[cle] || 0);
+                        if (net <= 0) continue;
+                        const cat = categoriesEjc.find(c => c.id === catId);
+                        if (!blocsParClient[clientId]) {
+                            blocsParClient[clientId] = { client_id: clientId, lignes: [], total: 0 };
+                        }
+                        blocsParClient[clientId].lignes.push({
+                            categorie: cat,
+                            quantite: net
+                        });
+                        blocsParClient[clientId].total += net;
+                        dataRepas.totalEjcNet += net;
+                    }
+
+                    for (const clientId in blocsParClient) {
+                        const bloc = blocsParClient[clientId];
+                        // ⭐ FIX UUID : compare en string
+                        const client = tousLesClients.find(c => c.id === clientId);
+                        const nomClient = client ? client.nom : `Client inconnu`;
+
+                        const lignesTriees = bloc.lignes.sort((a, b) => {
+                            const oa = a.categorie ? (a.categorie.ordre || 999) : 999;
+                            const ob = b.categorie ? (b.categorie.ordre || 999) : 999;
+                            return oa - ob;
+                        });
+
+                        const lignesHtml = lignesTriees.map(l => {
+                            const nomCat = l.categorie ? l.categorie.nom : 'Catégorie inconnue';
                             let allergenesTxt = '';
-                            if (cat.allergenes && cat.allergenes.length) {
-                                const list = cat.allergenes.map(a => nomAllergene(a)).join(' · ');
+                            if (l.categorie && l.categorie.allergenes && l.categorie.allergenes.length) {
+                                const list = l.categorie.allergenes.map(a => nomAllergene(a)).join(' · ');
                                 allergenesTxt = `<div class="ejc-cat-allergenes">🚫 Sans : ${list}</div>`;
                             }
-                            lignes.push(`<li class="ejc-cat-line">
-                                <strong>${cat.nom}</strong> : <strong>${net}</strong> portion(s)
+                            return `<li class="ejc-cat-line">
+                                <strong>${nomCat}</strong> : <strong>${l.quantite}</strong> portion(s)
                                 ${allergenesTxt}
-                            </li>`);
-                        }
-                    }
-                    if (lignes.length) {
-                        dataRepas.detailEjc = `<div class="print-section"><h3>🍴 EJC Péry — ${dataRepas.totalEjcNet} portion(s)</h3><ul class="print-list">${lignes.join('')}</ul></div>`;
+                            </li>`;
+                        }).join('');
+
+                        dataRepas.blocsEjc.push(
+                            `<div class="print-section">
+                                <h3>🍴 ${nomClient} — ${bloc.total} portion(s)</h3>
+                                <ul class="print-list">${lignesHtml}</ul>
+                            </div>`
+                        );
                     }
                 }
 
@@ -553,17 +682,15 @@
 
                 blocsAffiches++;
 
-                // En-tête du repas
                 html += `<div class="repas-section">
                     <h2 class="titre-repas">${dr.libelle}</h2>
                     <p class="resume-repas">`;
                 const partsResume = [];
                 if (inclureResidents) partsResume.push(`<strong>${dr.presents.length}</strong> résident(s) à servir`);
-                if (inclureEjc && dr.totalEjcNet > 0) partsResume.push(`<strong>${dr.totalEjcNet}</strong> EJC Péry`);
+                if (inclureEjc && dr.totalEjcNet > 0) partsResume.push(`<strong>${dr.totalEjcNet}</strong> client(s) externe(s)`);
                 if (inclureResidents && dr.absents.length > 0) partsResume.push(`<strong>${dr.absents.length}</strong> absent(s)`);
                 html += partsResume.join(' · ') + '</p>';
 
-                // ===== AFFICHAGE DES RÉSIDENTS =====
                 if (inclureResidents) {
                     if (vueActuelle === 'liste') {
                         html += '<div class="print-section"><h3>✅ Résidents présents</h3>';
@@ -581,13 +708,12 @@
                                         ? `<span class="chambre-tag">🚪 Ch. ${r.numero_chambre}</span>`
                                         : `<span class="chambre-tag-manquant">🚪 Chambre non renseignée</span>`)
                                     : '';
-                                html += `<li><strong>${r.prenom} ${r.nom}</strong> ${lieuTag} ${chambreTag} ${tagsResident(r)}</li>`;
+                                html += `<li><strong>${r.prenom} ${r.nom}</strong> ${uniteTag(r)} ${lieuTag} ${chambreTag} ${textureTag(r)} ${tagsResident(r)}</li>`;
                             }
                             html += '</ul>';
                         }
                         html += '</div>';
                     } else {
-                        // Vue par lieu
                         const groupes = {};
                         const sansLieu = [];
                         for (const r of dr.presents) {
@@ -611,7 +737,6 @@
                                 html += `<div class="${classeSection}">`;
                                 html += `<h3>${icone} ${lieu.nom} — ${liste.length} résident(s)</h3>`;
 
-                                // Tri : si chambre, on trie par numéro de chambre (les non renseignés à la fin)
                                 let listeTriee = liste;
                                 if (estChambre) {
                                     listeTriee = [...liste].sort((a, b) => {
@@ -631,7 +756,7 @@
                                             ? `<span class="chambre-tag">🚪 Ch. ${r.numero_chambre}</span>`
                                             : `<span class="chambre-tag-manquant">🚪 Chambre non renseignée</span>`)
                                         : '';
-                                    html += `<li><strong>${r.prenom} ${r.nom}</strong> ${chambreTag} ${tagsResident(r)}</li>`;
+                                    html += `<li><strong>${r.prenom} ${r.nom}</strong> ${uniteTag(r)} ${chambreTag} ${textureTag(r)} ${tagsResident(r)}</li>`;
                                 }
                                 html += '</ul></div>';
                             }
@@ -640,7 +765,7 @@
                                 html += `<h3>❓ Lieu non défini — ${sansLieu.length} résident(s)</h3>`;
                                 html += '<ul class="print-list">';
                                 for (const r of sansLieu) {
-                                    html += `<li><strong>${r.prenom} ${r.nom}</strong> ${tagsResident(r)}</li>`;
+                                    html += `<li><strong>${r.prenom} ${r.nom}</strong> ${uniteTag(r)} ${textureTag(r)} ${tagsResident(r)}</li>`;
                                 }
                                 html += '</ul></div>';
                             }
@@ -648,28 +773,27 @@
                     }
                 }
 
-                // ===== EJC =====
-                if (inclureEjc && dr.detailEjc) {
-                    html += dr.detailEjc;
+                if (inclureEjc && dr.blocsEjc.length) {
+                    for (const bloc of dr.blocsEjc) {
+                        html += bloc;
+                    }
                 }
 
-                // ===== ABSENTS =====
                 if (inclureResidents && dr.absents.length) {
                     html += '<div class="print-section"><h3>❌ Absents</h3><ul class="print-list">';
                     for (const r of dr.absents) {
                         if (r._absenceProlongee) {
-                            html += `<li>${r.prenom} ${r.nom} <span class="absence-prolongee-mention">🏥 Absence prolongée jusqu'au ${dateFr(r._absenceProlongee.date_fin)}</span></li>`;
+                            html += `<li>${r.prenom} ${r.nom} ${uniteTag(r)} <span class="absence-prolongee-mention">🏥 Absence prolongée jusqu'au ${dateFr(r._absenceProlongee.date_fin)}</span></li>`;
                         } else {
-                            html += `<li>${r.prenom} ${r.nom}</li>`;
+                            html += `<li>${r.prenom} ${r.nom} ${uniteTag(r)}</li>`;
                         }
                     }
                     html += '</ul></div>';
                 }
 
-                html += '</div>'; // /repas-section
+                html += '</div>';
             }
 
-            // Aucun bloc affiché
             if (blocsAffiches === 0) {
                 html += `<div class="filtre-info-vide">
                     Aucune donnée à afficher pour les filtres sélectionnés à cette date.
@@ -677,17 +801,29 @@
             }
 
             html += `<div class="pied-page">Document généré le ${heureMaintenant()} — Restauration Les Bouleaux, Corgémont</div>`;
-            html += '</div>'; // /service-doc
+            html += '</div>';
 
             contenu.innerHTML = html;
         }
 
-        // Démarrage protégé par auth (admin uniquement)
+        // ===== INIT =====
+        async function remplirSelectClients() {
+            tousLesClients = await chargerTousLesClients(true);
+            const sel = document.getElementById('select-clients');
+            for (const c of tousLesClients) {
+                const opt = document.createElement('option');
+                opt.value = c.id;
+                opt.textContent = `🍴 ${c.nom}`;
+                sel.appendChild(opt);
+            }
+        }
+
         (async () => {
             const auth = await verifierAuthEtRole(['admin']);
             if (!auth) return;
             afficherMenuComplet('service', auth.user.email, auth.profil.role, auth.profil.nom_affiche);
             document.getElementById('date-srv').value = aujourdhui();
+            await remplirSelectClients();
             genererService();
         })();
     </script>

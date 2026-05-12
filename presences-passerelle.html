@@ -1,12 +1,27 @@
- <!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="fr">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Présences - Restauration Les Bouleaux</title>
+    <title>Présences Passerelle - Restauration Les Bouleaux</title>
     <link rel="stylesheet" href="shared.css">
     <style>
-        select.lieu-select {
+        /* Bandeau identité unité — BLEU pour Passerelle */
+        .bandeau-unite {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            padding: 12px 16px;
+            border-radius: 8px;
+            margin: 10px 0 20px 0;
+            font-weight: 600;
+            background: #e3f2fd;
+            color: #0d47a1;
+            border-left: 5px solid #1976d2;
+        }
+        .bandeau-unite .emoji-grand { font-size: 28px; }
+
+        select.lieu-select, select.texture-select {
             padding: 6px 10px;
             border: 1px solid #ccc;
             border-radius: 6px;
@@ -14,7 +29,7 @@
             background: white;
             cursor: pointer;
         }
-        select.lieu-select:disabled {
+        select.lieu-select:disabled, select.texture-select:disabled {
             background: #f5f5f5;
             color: #999;
             cursor: not-allowed;
@@ -22,6 +37,11 @@
         select.lieu-select.modifie {
             border-color: #2c5530;
             background: #f0f8f0;
+            font-weight: bold;
+        }
+        select.texture-select.modifie {
+            border-color: #d4762b;
+            background: #fff5e8;
             font-weight: bold;
         }
 
@@ -51,38 +71,16 @@
             margin: 4px 0;
             flex-wrap: wrap;
         }
-        .bandeau-absence-info {
-            flex: 1;
-            min-width: 200px;
-        }
-        .bandeau-absence-nom {
-            font-weight: 700;
-            color: #333;
-        }
-        .bandeau-absence-dates {
-            color: #666;
-            font-size: 13px;
-        }
-        .bandeau-absence-motif {
-            color: #888;
-            font-size: 12px;
-            font-style: italic;
-        }
-        .bandeau-absence-actions {
-            display: flex;
-            gap: 6px;
-        }
+        .bandeau-absence-info { flex: 1; min-width: 200px; }
+        .bandeau-absence-nom { font-weight: 700; color: #333; }
+        .bandeau-absence-dates { color: #666; font-size: 13px; }
+        .bandeau-absence-motif { color: #888; font-size: 12px; font-style: italic; }
+        .bandeau-absence-actions { display: flex; gap: 6px; }
 
         /* Ligne de résident en absence prolongée */
-        tr.absence-prolongee {
-            background: #fff8f0 !important;
-        }
-        tr.absence-prolongee td {
-            color: #888;
-        }
-        tr.absence-prolongee strong {
-            color: #555;
-        }
+        tr.absence-prolongee { background: #fff8f0 !important; }
+        tr.absence-prolongee td { color: #888; }
+        tr.absence-prolongee strong { color: #555; }
         .badge-absence {
             display: inline-block;
             background: #b35900;
@@ -95,7 +93,6 @@
             cursor: help;
         }
 
-        /* Bouton absence prolongée */
         .btn-absence {
             background: #fff3e0;
             color: #b35900;
@@ -106,9 +103,7 @@
             cursor: pointer;
             white-space: nowrap;
         }
-        .btn-absence:hover {
-            background: #ffe4c4;
-        }
+        .btn-absence:hover { background: #ffe4c4; }
         .btn-retour {
             background: #d4e7d6;
             color: #1f3a22;
@@ -119,9 +114,7 @@
             cursor: pointer;
             white-space: nowrap;
         }
-        .btn-retour:hover {
-            background: #b8d4ba;
-        }
+        .btn-retour:hover { background: #b8d4ba; }
 
         /* Modal absence */
         .form-row-2col {
@@ -132,9 +125,7 @@
         @media (max-width: 600px) {
             .form-row-2col { grid-template-columns: 1fr; }
         }
-        .form-row-2col .form-group {
-            margin-bottom: 0;
-        }
+        .form-row-2col .form-group { margin-bottom: 0; }
         .repas-checkboxes {
             display: flex;
             gap: 12px;
@@ -159,7 +150,15 @@
     <h1>🍽️ Restauration Les Bouleaux</h1>
     <div id="menu"></div>
 
-    <h2>Saisie des présences</h2>
+    <h2>✅ Saisie des présences — Passerelle</h2>
+
+    <div class="bandeau-unite">
+        <span class="emoji-grand">🌉</span>
+        <div>
+            <strong>Unité Passerelle</strong><br>
+            <small>Cet onglet gère uniquement les présences des résidents de l'unité Passerelle.</small>
+        </div>
+    </div>
 
     <div class="toolbar">
         <label><strong>Date :</strong></label>
@@ -252,16 +251,21 @@
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script src="shared.js"></script>
     <script>
+        const UNITE_COURANTE = 'passerelle';
+        const PAGE_ACTIVE = 'presences-passerelle';
+
         let lieuxDisponibles = [];
         let residentsCache = [];
         let absencesPourDate = [];
         let userAuth = null;
 
+        // ⭐ FILTRAGE DES LIEUX PAR UNITÉ
         async function chargerLieux() {
             const { data, error } = await supaClient
                 .from('lieux_repas')
                 .select('*')
                 .eq('actif', true)
+                .or(`unite.is.null,unite.eq.${UNITE_COURANTE}`)
                 .order('ordre', { ascending: true });
             if (error) console.error(error);
             lieuxDisponibles = data || [];
@@ -272,6 +276,15 @@
             for (const l of lieuxDisponibles) {
                 const sel = l.id === lieuSelectionneId ? 'selected' : '';
                 opts += `<option value="${l.id}" ${sel}>${l.nom}</option>`;
+            }
+            return opts;
+        }
+
+        function optionsTextures(textureSelectionnee) {
+            let opts = '';
+            for (const t of TEXTURES_LISTE) {
+                const sel = t.code === textureSelectionnee ? 'selected' : '';
+                opts += `<option value="${t.code}" ${sel}>${t.emoji} ${t.nom}</option>`;
             }
             return opts;
         }
@@ -300,17 +313,17 @@
             contenu.innerHTML = '<p class="loading">⏳ Chargement...</p>';
 
             await chargerLieux();
-            residentsCache = await chargerResidentsActifs();
+            residentsCache = await chargerResidentsActifs(UNITE_COURANTE);
             if (!residentsCache.length) {
-                contenu.innerHTML = '<p class="info-msg">Aucun résident.</p>';
+                contenu.innerHTML = `<p class="info-msg">Aucun résident dans l'unité ${nomUniteSansEmoji(UNITE_COURANTE)}.</p>`;
                 document.getElementById('bandeau-absences').innerHTML = '';
                 return;
             }
 
-            // Charger les absences prolongées qui couvrent cette date
-            absencesPourDate = await chargerAbsencesPourDate(date);
+            const toutesAbsences = await chargerAbsencesPourDate(date);
+            const idsResidentsUnite = new Set(residentsCache.map(r => r.id));
+            absencesPourDate = toutesAbsences.filter(a => idsResidentsUnite.has(a.resident_id));
 
-            // Charger les présences enregistrées manuellement
             const { data: presences, error } = await supaClient
                 .from(TABLE_PRESENCES)
                 .select('*')
@@ -323,31 +336,32 @@
 
             const map = {};
             for (const p of (presences || [])) {
-                map[p.resident_id] = { present: p.present, lieu_id: p.lieu_id };
+                map[p.resident_id] = {
+                    present: p.present,
+                    lieu_id: p.lieu_id,
+                    texture: p.texture || TEXTURE_DEFAUT
+                };
             }
 
-            // Afficher le bandeau d'absences prolongées (toutes, peu importe le repas)
             afficherBandeauAbsences(date);
 
-            // Construire le tableau
             let html = `
-                <p>${dateFr(date)} — ${libelleRepas(repas)}</p>
+                <p>${dateFr(date)} — ${libelleRepas(repas)} — Unité ${nomUniteSansEmoji(UNITE_COURANTE)}</p>
                 <table class="presences">
                     <thead>
                         <tr>
                             <th>Résident</th>
                             <th class="col-center">Présent</th>
                             <th>📍 Lieu</th>
+                            <th>🥣 Texture</th>
                             <th>Allergies / Intolérances</th>
                         </tr>
                     </thead>
                     <tbody>`;
             for (const r of residentsCache) {
-                // Vérifier si le résident est en absence prolongée pour (date, repas)
                 const absence = estEnAbsenceProlongee(absencesPourDate, r.id, date, repas);
 
                 if (absence) {
-                    // Ligne en absence prolongée : non modifiable
                     const motifTxt = absence.motif ? `Motif : ${absence.motif.replace(/"/g, '&quot;')}` : 'Aucun motif renseigné';
                     const tooltip = `Absence du ${dateFr(absence.date_debut)} au ${dateFr(absence.date_fin)}\n${motifTxt}`;
                     html += `
@@ -360,18 +374,23 @@
                                 <input type="checkbox" disabled>
                             </td>
                             <td><em>— absent jusqu'au ${dateFr(absence.date_fin)} —</em></td>
+                            <td><em>—</em></td>
                             <td>${tagsResidentBref(r)}</td>
                         </tr>`;
                     continue;
                 }
 
-                // Ligne normale
                 const data = map[r.id];
                 const present = data ? data.present : true;
                 const lieuDefautRepas = lieuDefautPourRepas(r, repas);
                 const lieuId = data && data.lieu_id != null ? data.lieu_id : lieuDefautRepas;
-                const estModifie = lieuId && lieuDefautRepas && lieuId !== lieuDefautRepas;
-                const classModif = estModifie ? 'modifie' : '';
+                const estModifieLieu = lieuId && lieuDefautRepas && lieuId !== lieuDefautRepas;
+                const classModifLieu = estModifieLieu ? 'modifie' : '';
+
+                const textureDefautRepas = getTextureDefautResident(r, repas);
+                const textureCourante = data ? data.texture : textureDefautRepas;
+                const estModifieTexture = textureCourante !== textureDefautRepas;
+                const classModifTexture = estModifieTexture ? 'modifie' : '';
 
                 html += `
                     <tr>
@@ -383,12 +402,21 @@
                                    onchange="enregistrerPresence(${r.id}, this.checked)">
                         </td>
                         <td>
-                            <select class="lieu-select ${classModif}"
+                            <select class="lieu-select ${classModifLieu}"
                                     data-resident-id="${r.id}"
                                     data-defaut="${lieuDefautRepas || ''}"
                                     ${present ? '' : 'disabled'}
                                     onchange="enregistrerLieu(${r.id}, this.value, this)">
                                 ${optionsLieux(lieuId)}
+                            </select>
+                        </td>
+                        <td>
+                            <select class="texture-select ${classModifTexture}"
+                                    data-resident-id="${r.id}"
+                                    data-defaut="${textureDefautRepas}"
+                                    ${present ? '' : 'disabled'}
+                                    onchange="enregistrerTexture(${r.id}, this.value, this)">
+                                ${optionsTextures(textureCourante)}
                             </select>
                         </td>
                         <td>${tagsResidentBref(r)}</td>
@@ -400,12 +428,10 @@
 
         function tagsResidentBref(r) {
             const tags = [];
-            // Allergies UE
             if (r.allergenes && r.allergenes.length) {
                 const list = r.allergenes.map(c => nomAllergene(c)).join(' · ');
                 tags.push(`<span class="tag tag-allergie">⚠️ ${list}</span>`);
             }
-            // Allergies texte libre
             if (r.allergies && r.allergies.trim()) {
                 tags.push(`<span class="tag tag-allergie">⚠️ ${r.allergies}</span>`);
             }
@@ -420,7 +446,7 @@
                 return;
             }
             let html = `<div class="bandeau-absences">
-                <h3>📌 ${absencesPourDate.length} absence(s) prolongée(s) en cours au ${dateFr(date)}</h3>`;
+                <h3>📌 ${absencesPourDate.length} absence(s) prolongée(s) en cours au ${dateFr(date)} — ${nomUniteSansEmoji(UNITE_COURANTE)}</h3>`;
             for (const a of absencesPourDate) {
                 const repasTxt = (a.repas_concernes || []).length === 3
                     ? 'tous les repas'
@@ -443,14 +469,21 @@
             zone.innerHTML = html;
         }
 
-        async function enregistrerPresence(residentId, present) {
+        function lireValeursLigne(residentId) {
+            const checkbox = document.querySelector(`input[type="checkbox"][data-resident-id="${residentId}"]`);
+            const selectLieu = document.querySelector(`select.lieu-select[data-resident-id="${residentId}"]`);
+            const selectTexture = document.querySelector(`select.texture-select[data-resident-id="${residentId}"]`);
+            return {
+                present: checkbox ? checkbox.checked : true,
+                lieuId: selectLieu && selectLieu.value ? parseInt(selectLieu.value) : null,
+                texture: selectTexture ? selectTexture.value : TEXTURE_DEFAUT
+            };
+        }
+
+        async function persisterLigne(residentId) {
             const date = document.getElementById('date-saisie').value;
             const repas = document.getElementById('repas-saisie').value;
-
-            const selectLieu = document.querySelector(`select.lieu-select[data-resident-id="${residentId}"]`);
-            const lieuId = selectLieu && selectLieu.value ? parseInt(selectLieu.value) : null;
-
-            if (selectLieu) selectLieu.disabled = !present;
+            const vals = lireValeursLigne(residentId);
 
             await supaClient.from(TABLE_PRESENCES).delete()
                 .eq('resident_id', residentId).eq('date', date).eq('repas', repas);
@@ -459,8 +492,9 @@
                 resident_id: residentId,
                 date,
                 repas,
-                present,
-                lieu_id: present ? lieuId : null
+                present: vals.present,
+                lieu_id: vals.present ? vals.lieuId : null,
+                texture: vals.texture
             });
 
             const msg = document.getElementById('message');
@@ -472,45 +506,38 @@
             }
         }
 
+        async function enregistrerPresence(residentId, present) {
+            const selectLieu = document.querySelector(`select.lieu-select[data-resident-id="${residentId}"]`);
+            const selectTexture = document.querySelector(`select.texture-select[data-resident-id="${residentId}"]`);
+            if (selectLieu) selectLieu.disabled = !present;
+            if (selectTexture) selectTexture.disabled = !present;
+            await persisterLigne(residentId);
+        }
+
         async function enregistrerLieu(residentId, lieuValue, selectEl) {
-            const date = document.getElementById('date-saisie').value;
-            const repas = document.getElementById('repas-saisie').value;
             const lieuId = lieuValue ? parseInt(lieuValue) : null;
-
-            const checkbox = document.querySelector(`input[type="checkbox"][data-resident-id="${residentId}"]`);
-            const present = checkbox ? checkbox.checked : true;
-
             const lieuDefaut = selectEl.dataset.defaut ? parseInt(selectEl.dataset.defaut) : null;
             if (lieuId && lieuDefaut && lieuId !== lieuDefaut) {
                 selectEl.classList.add('modifie');
             } else {
                 selectEl.classList.remove('modifie');
             }
+            await persisterLigne(residentId);
+        }
 
-            await supaClient.from(TABLE_PRESENCES).delete()
-                .eq('resident_id', residentId).eq('date', date).eq('repas', repas);
-
-            const { error } = await supaClient.from(TABLE_PRESENCES).insert({
-                resident_id: residentId,
-                date,
-                repas,
-                present,
-                lieu_id: present ? lieuId : null
-            });
-
-            const msg = document.getElementById('message');
-            if (error) {
-                msg.innerHTML = `<div class="error">Erreur : ${error.message}</div>`;
+        async function enregistrerTexture(residentId, textureValue, selectEl) {
+            const textureDefaut = selectEl.dataset.defaut || TEXTURE_DEFAUT;
+            if (textureValue !== textureDefaut) {
+                selectEl.classList.add('modifie');
             } else {
-                msg.innerHTML = `<div class="success">✓ Lieu enregistré</div>`;
-                setTimeout(() => msg.innerHTML = '', 1500);
+                selectEl.classList.remove('modifie');
             }
+            await persisterLigne(residentId);
         }
 
         // ===== MODAL DÉCLARER ABSENCE =====
 
         function ouvrirModalAbsence() {
-            // Pré-remplir la liste des résidents
             const sel = document.getElementById('abs-resident');
             sel.innerHTML = '<option value="">— Sélectionner un résident —</option>';
             const residentsTries = [...residentsCache].sort((a, b) =>
@@ -519,7 +546,6 @@
                 sel.innerHTML += `<option value="${r.id}">${r.prenom} ${r.nom}</option>`;
             }
 
-            // Reset du form
             document.getElementById('form-absence').reset();
             document.querySelectorAll('.abs-repas').forEach(cb => cb.checked = true);
             document.getElementById('abs-date-debut').value = aujourdhui();
@@ -599,7 +625,6 @@
             const dateRetour = document.getElementById('retour-date').value;
             if (!dateRetour) return;
 
-            // Si la date de retour est <= date de début → on annule complètement
             if (dateRetour <= absenceCouranteRetour.date_debut) {
                 if (!confirm('La date de retour est antérieure ou égale au début de l\'absence. Cela revient à annuler complètement l\'absence. Continuer ?')) return;
                 const { error } = await supaClient.from(TABLE_ABSENCES).delete().eq('id', absenceCouranteRetour.id);
@@ -609,7 +634,6 @@
                 return;
             }
 
-            // Sinon : on raccourcit la date_fin à dateRetour - 1 jour
             const d = new Date(dateRetour + 'T00:00:00');
             d.setDate(d.getDate() - 1);
             const yyyy = d.getFullYear();
@@ -635,12 +659,11 @@
             chargerPresences();
         }
 
-        // Démarrage protégé par auth (admin uniquement)
         (async () => {
             const auth = await verifierAuthEtRole(['admin']);
             if (!auth) return;
             userAuth = auth;
-            afficherMenuComplet('presences', auth.user.email, auth.profil.role, auth.profil.nom_affiche);
+            afficherMenuComplet(PAGE_ACTIVE, auth.user.email, auth.profil.role, auth.profil.nom_affiche);
             document.getElementById('date-saisie').value = aujourdhui();
             chargerPresences();
         })();

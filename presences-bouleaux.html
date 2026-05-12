@@ -1,0 +1,672 @@
+ <!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Présences Bouleaux - Restauration Les Bouleaux</title>
+    <link rel="stylesheet" href="shared.css">
+    <style>
+        /* Bandeau identité unité — VERT pour Bouleaux */
+        .bandeau-unite {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            padding: 12px 16px;
+            border-radius: 8px;
+            margin: 10px 0 20px 0;
+            font-weight: 600;
+            background: #e8f4e8;
+            color: #2c5530;
+            border-left: 5px solid #2c5530;
+        }
+        .bandeau-unite .emoji-grand { font-size: 28px; }
+
+        select.lieu-select, select.texture-select {
+            padding: 6px 10px;
+            border: 1px solid #ccc;
+            border-radius: 6px;
+            font-size: 14px;
+            background: white;
+            cursor: pointer;
+        }
+        select.lieu-select:disabled, select.texture-select:disabled {
+            background: #f5f5f5;
+            color: #999;
+            cursor: not-allowed;
+        }
+        select.lieu-select.modifie {
+            border-color: #2c5530;
+            background: #f0f8f0;
+            font-weight: bold;
+        }
+        select.texture-select.modifie {
+            border-color: #d4762b;
+            background: #fff5e8;
+            font-weight: bold;
+        }
+
+        /* Bandeau d'absences prolongées */
+        .bandeau-absences {
+            background: #fff3e0;
+            border-left: 4px solid #b35900;
+            padding: 12px 16px;
+            border-radius: 6px;
+            margin: 12px 0;
+        }
+        .bandeau-absences h3 {
+            margin: 0 0 8px 0;
+            color: #b35900;
+            font-size: 14px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+        .bandeau-absence-item {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 10px;
+            padding: 6px 10px;
+            background: white;
+            border-radius: 4px;
+            margin: 4px 0;
+            flex-wrap: wrap;
+        }
+        .bandeau-absence-info { flex: 1; min-width: 200px; }
+        .bandeau-absence-nom { font-weight: 700; color: #333; }
+        .bandeau-absence-dates { color: #666; font-size: 13px; }
+        .bandeau-absence-motif { color: #888; font-size: 12px; font-style: italic; }
+        .bandeau-absence-actions { display: flex; gap: 6px; }
+
+        /* Ligne de résident en absence prolongée */
+        tr.absence-prolongee { background: #fff8f0 !important; }
+        tr.absence-prolongee td { color: #888; }
+        tr.absence-prolongee strong { color: #555; }
+        .badge-absence {
+            display: inline-block;
+            background: #b35900;
+            color: white;
+            padding: 2px 8px;
+            border-radius: 10px;
+            font-size: 11px;
+            font-weight: bold;
+            margin-left: 6px;
+            cursor: help;
+        }
+
+        .btn-absence {
+            background: #fff3e0;
+            color: #b35900;
+            border: 1px solid #b35900;
+            padding: 4px 8px;
+            border-radius: 4px;
+            font-size: 12px;
+            cursor: pointer;
+            white-space: nowrap;
+        }
+        .btn-absence:hover { background: #ffe4c4; }
+        .btn-retour {
+            background: #d4e7d6;
+            color: #1f3a22;
+            border: 1px solid #2c5530;
+            padding: 4px 10px;
+            border-radius: 4px;
+            font-size: 12px;
+            cursor: pointer;
+            white-space: nowrap;
+        }
+        .btn-retour:hover { background: #b8d4ba; }
+
+        /* Modal absence */
+        .form-row-2col {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 10px;
+        }
+        @media (max-width: 600px) {
+            .form-row-2col { grid-template-columns: 1fr; }
+        }
+        .form-row-2col .form-group { margin-bottom: 0; }
+        .repas-checkboxes {
+            display: flex;
+            gap: 12px;
+            flex-wrap: wrap;
+            padding: 8px 0;
+        }
+        .repas-checkbox {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            padding: 6px 12px;
+            background: #f5f5f5;
+            border-radius: 16px;
+            cursor: pointer;
+            user-select: none;
+        }
+        .repas-checkbox:hover { background: #e8e8e8; }
+    </style>
+</head>
+<body>
+    <div id="app-header"></div>
+    <h1>🍽️ Restauration Les Bouleaux</h1>
+    <div id="menu"></div>
+
+    <h2>✅ Saisie des présences — Bouleaux</h2>
+
+    <div class="bandeau-unite">
+        <span class="emoji-grand">🏠</span>
+        <div>
+            <strong>Unité Bouleaux</strong><br>
+            <small>Cet onglet gère uniquement les présences des résidents de l'unité Bouleaux.</small>
+        </div>
+    </div>
+
+    <div class="toolbar">
+        <label><strong>Date :</strong></label>
+        <input type="date" id="date-saisie">
+        <label><strong>Repas :</strong></label>
+        <select id="repas-saisie">
+            <option value="petit_dej">🥐 Petit-déjeuner</option>
+            <option value="dejeuner" selected>🍽️ Déjeuner</option>
+            <option value="diner">🌙 Dîner</option>
+        </select>
+        <button class="btn-primary" onclick="chargerPresences()">🔄 Charger</button>
+        <button class="btn-secondary" onclick="ouvrirModalAbsence()">🏥 Déclarer une absence prolongée</button>
+    </div>
+
+    <div id="message"></div>
+
+    <div id="bandeau-absences"></div>
+
+    <div id="contenu">
+        <p class="info-msg">Choisissez une date et un repas, puis cliquez "Charger".</p>
+    </div>
+
+    <!-- Modal : Déclarer une absence prolongée -->
+    <div class="modal-overlay" id="modal-absence">
+        <div class="modal">
+            <h2>🏥 Déclarer une absence prolongée</h2>
+            <form id="form-absence" onsubmit="sauvegarderAbsence(event)">
+                <div class="form-group">
+                    <label for="abs-resident">Résident *</label>
+                    <select id="abs-resident" required>
+                        <option value="">— Sélectionner un résident —</option>
+                    </select>
+                </div>
+
+                <div class="form-row-2col">
+                    <div class="form-group">
+                        <label for="abs-date-debut">Date de début *</label>
+                        <input type="date" id="abs-date-debut" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="abs-date-fin">Date de fin *</label>
+                        <input type="date" id="abs-date-fin" required>
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label>Repas concernés</label>
+                    <small style="color:#666;display:block;margin-bottom:6px;">Décoche un repas si le résident sera là pour celui-ci (ex : présent au petit-déj du jour de départ).</small>
+                    <div class="repas-checkboxes">
+                        <label class="repas-checkbox"><input type="checkbox" class="abs-repas" value="petit_dej" checked> 🥐 Petit-déjeuner</label>
+                        <label class="repas-checkbox"><input type="checkbox" class="abs-repas" value="dejeuner" checked> 🍽️ Déjeuner</label>
+                        <label class="repas-checkbox"><input type="checkbox" class="abs-repas" value="diner" checked> 🌙 Dîner</label>
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label for="abs-motif">Motif (optionnel)</label>
+                    <textarea id="abs-motif" placeholder="Ex : Hôpital de l'Île, chambre 305 — Famille pour le mariage de sa petite-fille..."></textarea>
+                </div>
+
+                <div class="form-actions">
+                    <button type="button" class="btn-secondary" onclick="fermerModalAbsence()">Annuler</button>
+                    <button type="submit" class="btn-primary">💾 Enregistrer l'absence</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Modal : Marquer comme revenu -->
+    <div class="modal-overlay" id="modal-retour">
+        <div class="modal">
+            <h2>✅ Marquer comme revenu</h2>
+            <p id="retour-info" style="margin-bottom:14px;"></p>
+            <form id="form-retour" onsubmit="confirmerRetour(event)">
+                <input type="hidden" id="retour-absence-id">
+                <div class="form-group">
+                    <label for="retour-date">Date de retour effectif *</label>
+                    <input type="date" id="retour-date" required>
+                    <small style="color:#666;">Le résident sera marqué présent à partir de cette date.</small>
+                </div>
+                <div class="form-actions">
+                    <button type="button" class="btn-secondary" onclick="fermerModalRetour()">Annuler</button>
+                    <button type="button" class="btn-danger" onclick="annulerAbsence()">🗑️ Annuler complètement l'absence</button>
+                    <button type="submit" class="btn-primary">✅ Valider le retour</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="shared.js"></script>
+    <script>
+        const UNITE_COURANTE = 'bouleaux';
+        const PAGE_ACTIVE = 'presences-bouleaux';
+
+        let lieuxDisponibles = [];
+        let residentsCache = [];
+        let absencesPourDate = [];
+        let userAuth = null;
+
+        // ⭐ FILTRAGE DES LIEUX PAR UNITÉ
+        async function chargerLieux() {
+            const { data, error } = await supaClient
+                .from('lieux_repas')
+                .select('*')
+                .eq('actif', true)
+                .or(`unite.is.null,unite.eq.${UNITE_COURANTE}`)
+                .order('ordre', { ascending: true });
+            if (error) console.error(error);
+            lieuxDisponibles = data || [];
+        }
+
+        function optionsLieux(lieuSelectionneId) {
+            let opts = '<option value="">— Aucun —</option>';
+            for (const l of lieuxDisponibles) {
+                const sel = l.id === lieuSelectionneId ? 'selected' : '';
+                opts += `<option value="${l.id}" ${sel}>${l.nom}</option>`;
+            }
+            return opts;
+        }
+
+        function optionsTextures(textureSelectionnee) {
+            let opts = '';
+            for (const t of TEXTURES_LISTE) {
+                const sel = t.code === textureSelectionnee ? 'selected' : '';
+                opts += `<option value="${t.code}" ${sel}>${t.emoji} ${t.nom}</option>`;
+            }
+            return opts;
+        }
+
+        function lieuDefautPourRepas(resident, repas) {
+            if (repas === 'petit_dej') return resident.lieu_defaut_petit_dej_id || null;
+            if (repas === 'dejeuner') return resident.lieu_defaut_dejeuner_id || null;
+            if (repas === 'diner') return resident.lieu_defaut_diner_id || null;
+            return null;
+        }
+
+        function nomResident(id) {
+            const r = residentsCache.find(x => x.id === id);
+            return r ? `${r.prenom} ${r.nom}` : `Résident #${id}`;
+        }
+
+        function libelleRepasShort(code) {
+            const map = { petit_dej: 'P-déj', dejeuner: 'Déj', diner: 'Dîner' };
+            return map[code] || code;
+        }
+
+        async function chargerPresences() {
+            const date = document.getElementById('date-saisie').value;
+            const repas = document.getElementById('repas-saisie').value;
+            const contenu = document.getElementById('contenu');
+            contenu.innerHTML = '<p class="loading">⏳ Chargement...</p>';
+
+            await chargerLieux();
+            residentsCache = await chargerResidentsActifs(UNITE_COURANTE);
+            if (!residentsCache.length) {
+                contenu.innerHTML = `<p class="info-msg">Aucun résident dans l'unité ${nomUniteSansEmoji(UNITE_COURANTE)}.</p>`;
+                document.getElementById('bandeau-absences').innerHTML = '';
+                return;
+            }
+
+            const toutesAbsences = await chargerAbsencesPourDate(date);
+            const idsResidentsUnite = new Set(residentsCache.map(r => r.id));
+            absencesPourDate = toutesAbsences.filter(a => idsResidentsUnite.has(a.resident_id));
+
+            const { data: presences, error } = await supaClient
+                .from(TABLE_PRESENCES)
+                .select('*')
+                .eq('date', date)
+                .eq('repas', repas);
+            if (error) {
+                contenu.innerHTML = `<div class="error">Erreur : ${error.message}</div>`;
+                return;
+            }
+
+            const map = {};
+            for (const p of (presences || [])) {
+                map[p.resident_id] = {
+                    present: p.present,
+                    lieu_id: p.lieu_id,
+                    texture: p.texture || TEXTURE_DEFAUT
+                };
+            }
+
+            afficherBandeauAbsences(date);
+
+            let html = `
+                <p>${dateFr(date)} — ${libelleRepas(repas)} — Unité ${nomUniteSansEmoji(UNITE_COURANTE)}</p>
+                <table class="presences">
+                    <thead>
+                        <tr>
+                            <th>Résident</th>
+                            <th class="col-center">Présent</th>
+                            <th>📍 Lieu</th>
+                            <th>🥣 Texture</th>
+                            <th>Allergies / Intolérances</th>
+                        </tr>
+                    </thead>
+                    <tbody>`;
+            for (const r of residentsCache) {
+                const absence = estEnAbsenceProlongee(absencesPourDate, r.id, date, repas);
+
+                if (absence) {
+                    const motifTxt = absence.motif ? `Motif : ${absence.motif.replace(/"/g, '&quot;')}` : 'Aucun motif renseigné';
+                    const tooltip = `Absence du ${dateFr(absence.date_debut)} au ${dateFr(absence.date_fin)}\n${motifTxt}`;
+                    html += `
+                        <tr class="absence-prolongee">
+                            <td>
+                                <strong>${r.prenom} ${r.nom}</strong>
+                                <span class="badge-absence" title="${tooltip}">🏥 Absence prolongée</span>
+                            </td>
+                            <td class="col-center">
+                                <input type="checkbox" disabled>
+                            </td>
+                            <td><em>— absent jusqu'au ${dateFr(absence.date_fin)} —</em></td>
+                            <td><em>—</em></td>
+                            <td>${tagsResidentBref(r)}</td>
+                        </tr>`;
+                    continue;
+                }
+
+                const data = map[r.id];
+                const present = data ? data.present : true;
+                const lieuDefautRepas = lieuDefautPourRepas(r, repas);
+                const lieuId = data && data.lieu_id != null ? data.lieu_id : lieuDefautRepas;
+                const estModifieLieu = lieuId && lieuDefautRepas && lieuId !== lieuDefautRepas;
+                const classModifLieu = estModifieLieu ? 'modifie' : '';
+
+                const textureDefautRepas = getTextureDefautResident(r, repas);
+                const textureCourante = data ? data.texture : textureDefautRepas;
+                const estModifieTexture = textureCourante !== textureDefautRepas;
+                const classModifTexture = estModifieTexture ? 'modifie' : '';
+
+                html += `
+                    <tr>
+                        <td><strong>${r.prenom} ${r.nom}</strong></td>
+                        <td class="col-center">
+                            <input type="checkbox"
+                                   data-resident-id="${r.id}"
+                                   ${present ? 'checked' : ''}
+                                   onchange="enregistrerPresence(${r.id}, this.checked)">
+                        </td>
+                        <td>
+                            <select class="lieu-select ${classModifLieu}"
+                                    data-resident-id="${r.id}"
+                                    data-defaut="${lieuDefautRepas || ''}"
+                                    ${present ? '' : 'disabled'}
+                                    onchange="enregistrerLieu(${r.id}, this.value, this)">
+                                ${optionsLieux(lieuId)}
+                            </select>
+                        </td>
+                        <td>
+                            <select class="texture-select ${classModifTexture}"
+                                    data-resident-id="${r.id}"
+                                    data-defaut="${textureDefautRepas}"
+                                    ${present ? '' : 'disabled'}
+                                    onchange="enregistrerTexture(${r.id}, this.value, this)">
+                                ${optionsTextures(textureCourante)}
+                            </select>
+                        </td>
+                        <td>${tagsResidentBref(r)}</td>
+                    </tr>`;
+            }
+            html += '</tbody></table>';
+            contenu.innerHTML = html;
+        }
+
+        function tagsResidentBref(r) {
+            const tags = [];
+            if (r.allergenes && r.allergenes.length) {
+                const list = r.allergenes.map(c => nomAllergene(c)).join(' · ');
+                tags.push(`<span class="tag tag-allergie">⚠️ ${list}</span>`);
+            }
+            if (r.allergies && r.allergies.trim()) {
+                tags.push(`<span class="tag tag-allergie">⚠️ ${r.allergies}</span>`);
+            }
+            if (r.intolerances) tags.push(`<span class="tag tag-intolerance">🚫 ${r.intolerances}</span>`);
+            return tags.join(' ') || '<span class="empty">—</span>';
+        }
+
+        function afficherBandeauAbsences(date) {
+            const zone = document.getElementById('bandeau-absences');
+            if (!absencesPourDate.length) {
+                zone.innerHTML = '';
+                return;
+            }
+            let html = `<div class="bandeau-absences">
+                <h3>📌 ${absencesPourDate.length} absence(s) prolongée(s) en cours au ${dateFr(date)} — ${nomUniteSansEmoji(UNITE_COURANTE)}</h3>`;
+            for (const a of absencesPourDate) {
+                const repasTxt = (a.repas_concernes || []).length === 3
+                    ? 'tous les repas'
+                    : (a.repas_concernes || []).map(libelleRepasShort).join(', ');
+                const motifTxt = a.motif
+                    ? `<div class="bandeau-absence-motif">📝 ${a.motif}</div>`
+                    : '';
+                html += `<div class="bandeau-absence-item">
+                    <div class="bandeau-absence-info">
+                        <span class="bandeau-absence-nom">${nomResident(a.resident_id)}</span>
+                        <span class="bandeau-absence-dates"> — du ${dateFr(a.date_debut)} au ${dateFr(a.date_fin)} (${repasTxt})</span>
+                        ${motifTxt}
+                    </div>
+                    <div class="bandeau-absence-actions">
+                        <button class="btn-retour" onclick="ouvrirModalRetour(${a.id})">✅ Marquer comme revenu</button>
+                    </div>
+                </div>`;
+            }
+            html += '</div>';
+            zone.innerHTML = html;
+        }
+
+        function lireValeursLigne(residentId) {
+            const checkbox = document.querySelector(`input[type="checkbox"][data-resident-id="${residentId}"]`);
+            const selectLieu = document.querySelector(`select.lieu-select[data-resident-id="${residentId}"]`);
+            const selectTexture = document.querySelector(`select.texture-select[data-resident-id="${residentId}"]`);
+            return {
+                present: checkbox ? checkbox.checked : true,
+                lieuId: selectLieu && selectLieu.value ? parseInt(selectLieu.value) : null,
+                texture: selectTexture ? selectTexture.value : TEXTURE_DEFAUT
+            };
+        }
+
+        async function persisterLigne(residentId) {
+            const date = document.getElementById('date-saisie').value;
+            const repas = document.getElementById('repas-saisie').value;
+            const vals = lireValeursLigne(residentId);
+
+            await supaClient.from(TABLE_PRESENCES).delete()
+                .eq('resident_id', residentId).eq('date', date).eq('repas', repas);
+
+            const { error } = await supaClient.from(TABLE_PRESENCES).insert({
+                resident_id: residentId,
+                date,
+                repas,
+                present: vals.present,
+                lieu_id: vals.present ? vals.lieuId : null,
+                texture: vals.texture
+            });
+
+            const msg = document.getElementById('message');
+            if (error) {
+                msg.innerHTML = `<div class="error">Erreur : ${error.message}</div>`;
+            } else {
+                msg.innerHTML = `<div class="success">✓ Enregistré</div>`;
+                setTimeout(() => msg.innerHTML = '', 1500);
+            }
+        }
+
+        async function enregistrerPresence(residentId, present) {
+            const selectLieu = document.querySelector(`select.lieu-select[data-resident-id="${residentId}"]`);
+            const selectTexture = document.querySelector(`select.texture-select[data-resident-id="${residentId}"]`);
+            if (selectLieu) selectLieu.disabled = !present;
+            if (selectTexture) selectTexture.disabled = !present;
+            await persisterLigne(residentId);
+        }
+
+        async function enregistrerLieu(residentId, lieuValue, selectEl) {
+            const lieuId = lieuValue ? parseInt(lieuValue) : null;
+            const lieuDefaut = selectEl.dataset.defaut ? parseInt(selectEl.dataset.defaut) : null;
+            if (lieuId && lieuDefaut && lieuId !== lieuDefaut) {
+                selectEl.classList.add('modifie');
+            } else {
+                selectEl.classList.remove('modifie');
+            }
+            await persisterLigne(residentId);
+        }
+
+        async function enregistrerTexture(residentId, textureValue, selectEl) {
+            const textureDefaut = selectEl.dataset.defaut || TEXTURE_DEFAUT;
+            if (textureValue !== textureDefaut) {
+                selectEl.classList.add('modifie');
+            } else {
+                selectEl.classList.remove('modifie');
+            }
+            await persisterLigne(residentId);
+        }
+
+        // ===== MODAL DÉCLARER ABSENCE =====
+
+        function ouvrirModalAbsence() {
+            const sel = document.getElementById('abs-resident');
+            sel.innerHTML = '<option value="">— Sélectionner un résident —</option>';
+            const residentsTries = [...residentsCache].sort((a, b) =>
+                `${a.prenom} ${a.nom}`.localeCompare(`${b.prenom} ${b.nom}`));
+            for (const r of residentsTries) {
+                sel.innerHTML += `<option value="${r.id}">${r.prenom} ${r.nom}</option>`;
+            }
+
+            document.getElementById('form-absence').reset();
+            document.querySelectorAll('.abs-repas').forEach(cb => cb.checked = true);
+            document.getElementById('abs-date-debut').value = aujourdhui();
+            document.getElementById('abs-date-fin').value = aujourdhui();
+            document.getElementById('modal-absence').classList.add('active');
+        }
+
+        function fermerModalAbsence() {
+            document.getElementById('modal-absence').classList.remove('active');
+        }
+
+        async function sauvegarderAbsence(event) {
+            event.preventDefault();
+            const residentId = parseInt(document.getElementById('abs-resident').value);
+            const dateDebut = document.getElementById('abs-date-debut').value;
+            const dateFin = document.getElementById('abs-date-fin').value;
+            const motif = document.getElementById('abs-motif').value.trim() || null;
+            const repasConcernes = Array.from(document.querySelectorAll('.abs-repas:checked')).map(cb => cb.value);
+
+            if (!residentId || !dateDebut || !dateFin) {
+                alert('Tous les champs marqués * sont obligatoires.');
+                return;
+            }
+            if (dateFin < dateDebut) {
+                alert('La date de fin ne peut pas être antérieure à la date de début.');
+                return;
+            }
+            if (repasConcernes.length === 0) {
+                alert('Sélectionne au moins un repas concerné.');
+                return;
+            }
+
+            const { error } = await supaClient.from(TABLE_ABSENCES).insert({
+                resident_id: residentId,
+                date_debut: dateDebut,
+                date_fin: dateFin,
+                repas_concernes: repasConcernes,
+                motif: motif,
+                cree_par: userAuth ? userAuth.user.id : null
+            });
+
+            if (error) {
+                alert('Erreur : ' + error.message);
+                return;
+            }
+
+            fermerModalAbsence();
+            chargerPresences();
+        }
+
+        // ===== MODAL RETOUR =====
+
+        let absenceCouranteRetour = null;
+
+        function ouvrirModalRetour(absenceId) {
+            const absence = absencesPourDate.find(a => a.id === absenceId);
+            if (!absence) return;
+            absenceCouranteRetour = absence;
+
+            const nom = nomResident(absence.resident_id);
+            document.getElementById('retour-info').innerHTML =
+                `<strong>${nom}</strong> est en absence prolongée du <strong>${dateFr(absence.date_debut)}</strong> au <strong>${dateFr(absence.date_fin)}</strong>.`;
+            document.getElementById('retour-absence-id').value = absenceId;
+            document.getElementById('retour-date').value = aujourdhui();
+            document.getElementById('retour-date').min = absence.date_debut;
+            document.getElementById('modal-retour').classList.add('active');
+        }
+
+        function fermerModalRetour() {
+            document.getElementById('modal-retour').classList.remove('active');
+            absenceCouranteRetour = null;
+        }
+
+        async function confirmerRetour(event) {
+            event.preventDefault();
+            if (!absenceCouranteRetour) return;
+            const dateRetour = document.getElementById('retour-date').value;
+            if (!dateRetour) return;
+
+            if (dateRetour <= absenceCouranteRetour.date_debut) {
+                if (!confirm('La date de retour est antérieure ou égale au début de l\'absence. Cela revient à annuler complètement l\'absence. Continuer ?')) return;
+                const { error } = await supaClient.from(TABLE_ABSENCES).delete().eq('id', absenceCouranteRetour.id);
+                if (error) return alert('Erreur : ' + error.message);
+                fermerModalRetour();
+                chargerPresences();
+                return;
+            }
+
+            const d = new Date(dateRetour + 'T00:00:00');
+            d.setDate(d.getDate() - 1);
+            const yyyy = d.getFullYear();
+            const mm = String(d.getMonth() + 1).padStart(2, '0');
+            const dd = String(d.getDate()).padStart(2, '0');
+            const nouvelleDateFin = `${yyyy}-${mm}-${dd}`;
+
+            const { error } = await supaClient.from(TABLE_ABSENCES)
+                .update({ date_fin: nouvelleDateFin })
+                .eq('id', absenceCouranteRetour.id);
+            if (error) return alert('Erreur : ' + error.message);
+
+            fermerModalRetour();
+            chargerPresences();
+        }
+
+        async function annulerAbsence() {
+            if (!absenceCouranteRetour) return;
+            if (!confirm('Annuler complètement cette absence ? Le résident sera de nouveau marqué présent sur toute la période. Cette action est définitive.')) return;
+            const { error } = await supaClient.from(TABLE_ABSENCES).delete().eq('id', absenceCouranteRetour.id);
+            if (error) return alert('Erreur : ' + error.message);
+            fermerModalRetour();
+            chargerPresences();
+        }
+
+        (async () => {
+            const auth = await verifierAuthEtRole(['admin']);
+            if (!auth) return;
+            userAuth = auth;
+            afficherMenuComplet(PAGE_ACTIVE, auth.user.email, auth.profil.role, auth.profil.nom_affiche);
+            document.getElementById('date-saisie').value = aujourdhui();
+            chargerPresences();
+        })();
+    </script>
+</body>
+</html>

@@ -1,0 +1,742 @@
+ <!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Résidents Bouleaux - Restauration Les Bouleaux</title>
+    <link rel="stylesheet" href="shared.css">
+    <style>
+        /* Bandeau identité unité */
+        .bandeau-unite {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            padding: 12px 16px;
+            border-radius: 8px;
+            margin: 10px 0 20px 0;
+            font-weight: 600;
+            background: #e8f4e8;
+            color: #2c5530;
+            border-left: 5px solid #2c5530;
+        }
+        .bandeau-unite .emoji-grand { font-size: 28px; }
+        .doc-info {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            background: #e8f4ff;
+            color: #0066cc;
+            padding: 3px 10px;
+            border-radius: 12px;
+            font-size: 13px;
+            font-weight: bold;
+            margin-left: 8px;
+        }
+        .doc-info-empty {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            background: #f0f0f0;
+            color: #888;
+            padding: 3px 10px;
+            border-radius: 12px;
+            font-size: 13px;
+            font-style: italic;
+            margin-left: 8px;
+        }
+        .chambre-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 4px;
+            background: #fff3e0;
+            color: #b35900;
+            padding: 3px 10px;
+            border-radius: 12px;
+            font-size: 13px;
+            font-weight: bold;
+            margin-left: 8px;
+        }
+        .lieu-mini {
+            display: inline-flex;
+            align-items: center;
+            gap: 4px;
+            background: #e8f4e8;
+            color: #2c5530;
+            padding: 2px 8px;
+            border-radius: 10px;
+            font-size: 12px;
+            font-weight: bold;
+            margin-right: 4px;
+        }
+        .lieux-recap {
+            margin-top: 8px;
+            padding: 8px 12px;
+            background: #f5faf5;
+            border-left: 3px solid #2c5530;
+            border-radius: 4px;
+        }
+        .texture-mini {
+            display: inline-flex;
+            align-items: center;
+            gap: 4px;
+            background: #fff3e8;
+            color: #a85b00;
+            padding: 2px 8px;
+            border-radius: 10px;
+            font-size: 12px;
+            font-weight: bold;
+            margin-right: 4px;
+        }
+        .textures-recap {
+            margin-top: 8px;
+            padding: 8px 12px;
+            background: #fffaf5;
+            border-left: 3px solid #d4762b;
+            border-radius: 4px;
+        }
+        .form-lieux-row {
+            display: grid;
+            grid-template-columns: 1fr 1fr 1fr;
+            gap: 10px;
+        }
+        @media (max-width: 600px) {
+            .form-lieux-row { grid-template-columns: 1fr; }
+        }
+        .form-lieux-row .form-group {
+            margin-bottom: 0;
+        }
+        .form-row-2col {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 10px;
+        }
+        @media (max-width: 600px) {
+            .form-row-2col { grid-template-columns: 1fr; }
+        }
+        .form-row-2col .form-group {
+            margin-bottom: 0;
+        }
+        .pdf-zone {
+            border: 2px dashed #ccc;
+            padding: 20px;
+            border-radius: 8px;
+            text-align: center;
+            background: #fafafa;
+        }
+        .pdf-zone.has-file {
+            border-color: #2c5530;
+            background: #f0f8f0;
+        }
+        .pdf-actions {
+            display: flex;
+            gap: 8px;
+            justify-content: center;
+            margin-top: 10px;
+            flex-wrap: wrap;
+        }
+        .allergenes-grille {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+            gap: 6px;
+            padding: 10px;
+            background: #fafafa;
+            border: 1px solid #e0e0e0;
+            border-radius: 6px;
+        }
+        .allergene-case {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            padding: 5px 8px;
+            background: white;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 13px;
+            user-select: none;
+            transition: all 0.15s;
+        }
+        .allergene-case:hover {
+            background: #fff5f5;
+            border-color: #c0392b;
+        }
+        .allergene-case input {
+            margin: 0;
+            cursor: pointer;
+        }
+        .allergene-case input:checked + span {
+            font-weight: 700;
+            color: #c0392b;
+        }
+        .allergenes-actions {
+            display: flex;
+            gap: 8px;
+            margin-top: 8px;
+            justify-content: flex-end;
+        }
+        .btn-mini {
+            background: transparent;
+            border: 1px solid #888;
+            color: #555;
+            padding: 3px 10px;
+            border-radius: 4px;
+            font-size: 12px;
+            cursor: pointer;
+        }
+        .btn-mini:hover { background: #f0f0f0; }
+        .allergie-tag {
+            display: inline-block;
+            background: #ffe4e4;
+            color: #7a1f17;
+            padding: 2px 8px;
+            border-radius: 4px;
+            font-size: 12px;
+            font-weight: 600;
+            margin: 2px 3px 2px 0;
+            border-left: 3px solid #c0392b;
+        }
+    </style>
+</head>
+<body>
+    <div id="app-header"></div>
+    <h1>🍽️ Restauration Les Bouleaux</h1>
+    <div id="menu"></div>
+
+    <h2>👥 Gestion des résidents — Bouleaux</h2>
+
+    <div class="bandeau-unite">
+        <span class="emoji-grand">🏠</span>
+        <div>
+            <strong>Unité Bouleaux</strong><br>
+            <small>Cet onglet affiche et gère uniquement les résidents de l'unité Bouleaux.</small>
+        </div>
+    </div>
+
+    <div class="toolbar">
+        <input type="text" id="recherche" placeholder="🔍 Rechercher un résident...">
+        <button class="btn-primary" onclick="ouvrirFormulaire()">➕ Ajouter un résident</button>
+    </div>
+
+    <div id="contenu">
+        <p class="loading">⏳ Chargement...</p>
+    </div>
+
+    <!-- Modal formulaire résident -->
+    <div class="modal-overlay" id="modal">
+        <div class="modal">
+            <h2 id="modal-titre">Ajouter un résident</h2>
+            <form id="form-resident" onsubmit="sauvegarderResident(event)">
+                <input type="hidden" id="resident-id">
+                <div class="form-row-2col">
+                    <div class="form-group">
+                        <label for="prenom">Prénom *</label>
+                        <input type="text" id="prenom" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="nom">Nom *</label>
+                        <input type="text" id="nom" required>
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label for="numero_chambre">🚪 Numéro de chambre</label>
+                    <input type="number" id="numero_chambre" min="1" max="9999" placeholder="Ex : 101">
+                    <small style="color:#666;">Optionnel — utilisé pour la livraison des repas en chambre.</small>
+                </div>
+
+                <div class="form-group">
+                    <label>📍 Lieux de repas par défaut</label>
+                    <small style="color:#666;display:block;margin-bottom:8px;">Lieu habituel pour chaque repas. Modifiable au cas par cas lors de la saisie des présences.</small>
+                    <div class="form-lieux-row">
+                        <div class="form-group">
+                            <label for="lieu_petit_dej" style="font-size:13px;">🥐 Petit-déjeuner</label>
+                            <select id="lieu_petit_dej">
+                                <option value="">— Non défini —</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label for="lieu_dejeuner" style="font-size:13px;">🍽️ Déjeuner</label>
+                            <select id="lieu_dejeuner">
+                                <option value="">— Non défini —</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label for="lieu_diner" style="font-size:13px;">🌙 Dîner</label>
+                            <select id="lieu_diner">
+                                <option value="">— Non défini —</option>
+                            </select>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label>🥣 Textures par défaut</label>
+                    <small style="color:#666;display:block;margin-bottom:8px;">Texture habituelle pour chaque repas. Modifiable au cas par cas lors de la saisie des présences.</small>
+                    <div class="form-lieux-row">
+                        <div class="form-group">
+                            <label for="texture_petit_dej" style="font-size:13px;">🥐 Petit-déjeuner</label>
+                            <select id="texture_petit_dej"></select>
+                        </div>
+                        <div class="form-group">
+                            <label for="texture_dejeuner" style="font-size:13px;">🍽️ Déjeuner</label>
+                            <select id="texture_dejeuner"></select>
+                        </div>
+                        <div class="form-group">
+                            <label for="texture_diner" style="font-size:13px;">🌙 Dîner</label>
+                            <select id="texture_diner"></select>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label for="gouts">Souhaits particuliers</label>
+                    <textarea id="gouts"></textarea>
+                </div>
+                <div class="form-group">
+                    <label for="aversions">Non-goûts</label>
+                    <textarea id="aversions"></textarea>
+                </div>
+
+                <div class="form-group">
+                    <label>⚠️ Allergies — 14 allergènes UE majeurs</label>
+                    <small style="color:#666;display:block;margin-bottom:8px;">Coche les allergènes UE concernés. Pour les allergies hors liste (kiwi, fraise, etc.), utilise le champ "Autres allergies" ci-dessous.</small>
+                    <div class="allergenes-grille" id="allergenes-grille"></div>
+                    <div class="allergenes-actions">
+                        <button type="button" class="btn-mini" onclick="cocherAllergenes(false)">Tout décocher</button>
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label for="allergies">Autres allergies (texte libre)</label>
+                    <textarea id="allergies" placeholder="Ex : kiwi, fraise, pollen..."></textarea>
+                    <small style="color:#666;">Pour les allergies non listées dans les 14 UE majeurs.</small>
+                </div>
+
+                <div class="form-group">
+                    <label for="intolerances">Intolérances</label>
+                    <textarea id="intolerances" placeholder="Ex : lactose, fructose, histamine..."></textarea>
+                </div>
+
+                <div class="form-actions">
+                    <button type="button" class="btn-secondary" onclick="fermerFormulaire()">Annuler</button>
+                    <button type="submit" class="btn-primary">💾 Enregistrer</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Modal gestion document PDF -->
+    <div class="modal-overlay" id="modal-doc">
+        <div class="modal">
+            <h2 id="modal-doc-titre">Document - Résident</h2>
+            <div id="modal-doc-contenu" class="pdf-zone">
+                <p class="loading">⏳ Chargement...</p>
+            </div>
+            <div class="form-actions">
+                <button type="button" class="btn-secondary" onclick="fermerModalDoc()">Fermer</button>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="shared.js"></script>
+    <script>
+        const UNITE_COURANTE = 'bouleaux';
+        const PAGE_ACTIVE = 'residents-bouleaux';
+
+        let tousLesResidents = [];
+        let tousLesLieux = [];
+        let residentDocCourant = null;
+
+        const BUCKET_DOCUMENTS = 'documents-residents';
+
+        function genererGrilleAllergenes() {
+            const grille = document.getElementById('allergenes-grille');
+            let html = '';
+            for (const a of ALLERGENES_LISTE) {
+                html += `<label class="allergene-case">
+                    <input type="checkbox" class="allergene-cb" value="${a.code}">
+                    <span>${a.emoji} ${a.nom}</span>
+                </label>`;
+            }
+            grille.innerHTML = html;
+        }
+
+        function remplirSelectsTexture() {
+            const ids = ['texture_petit_dej', 'texture_dejeuner', 'texture_diner'];
+            for (const id of ids) {
+                const sel = document.getElementById(id);
+                let html = '';
+                for (const t of TEXTURES_LISTE) {
+                    const selDef = t.code === TEXTURE_DEFAUT ? 'selected' : '';
+                    html += `<option value="${t.code}" ${selDef}>${t.emoji} ${t.nom}</option>`;
+                }
+                sel.innerHTML = html;
+            }
+        }
+
+        function cocherAllergenes(valeur) {
+            document.querySelectorAll('.allergene-cb').forEach(cb => cb.checked = valeur);
+        }
+
+        function getAllergenesSelectionnes() {
+            return Array.from(document.querySelectorAll('.allergene-cb:checked')).map(cb => cb.value);
+        }
+
+        function setAllergenesSelectionnes(codes) {
+            const set = new Set(codes || []);
+            document.querySelectorAll('.allergene-cb').forEach(cb => {
+                cb.checked = set.has(cb.value);
+            });
+        }
+
+        // ⭐ FILTRAGE DES LIEUX PAR UNITÉ
+        async function chargerLieux() {
+            const { data, error } = await supaClient
+                .from('lieux_repas')
+                .select('*')
+                .eq('actif', true)
+                .or(`unite.is.null,unite.eq.${UNITE_COURANTE}`)
+                .order('ordre', { ascending: true });
+            if (error) console.error(error);
+            tousLesLieux = data || [];
+
+            const selects = ['lieu_petit_dej', 'lieu_dejeuner', 'lieu_diner'];
+            for (const id of selects) {
+                const sel = document.getElementById(id);
+                sel.innerHTML = '<option value="">— Non défini —</option>';
+                for (const l of tousLesLieux) {
+                    sel.innerHTML += `<option value="${l.id}">${l.nom}</option>`;
+                }
+            }
+        }
+
+        async function charger() {
+            await chargerLieux();
+            tousLesResidents = await chargerResidentsActifs(UNITE_COURANTE);
+            afficher(tousLesResidents);
+        }
+
+        function nomLieu(id) {
+            if (!id) return '— non défini —';
+            const l = tousLesLieux.find(x => x.id === id);
+            return l ? l.nom : '— non défini —';
+        }
+
+        function afficherAllergiesResident(r) {
+            const tags = [];
+            if (r.allergenes && r.allergenes.length) {
+                for (const code of r.allergenes) {
+                    tags.push(`<span class="allergie-tag">${nomAllergene(code)}</span>`);
+                }
+            }
+            const autres = (r.allergies || '').trim();
+            if (autres) {
+                tags.push(`<span class="allergie-tag">📝 ${autres}</span>`);
+            }
+            if (!tags.length) return '<span class="empty">aucune</span>';
+            return tags.join(' ');
+        }
+
+        function afficher(liste) {
+            const contenu = document.getElementById('contenu');
+            if (!liste.length) {
+                contenu.innerHTML = '<p class="info-msg">Aucun résident dans cette unité.</p>';
+                return;
+            }
+            let html = `<p><strong>${liste.length}</strong> résident(s) dans l'unité ${nomUniteSansEmoji(UNITE_COURANTE)}</p>`;
+            for (const r of liste) {
+                const docBadge = r.document_pdf
+                    ? `<span class="doc-info">📎 PDF attaché</span>`
+                    : `<span class="doc-info-empty">📎 Aucun document</span>`;
+
+                const chambreBadge = r.numero_chambre
+                    ? `<span class="chambre-badge">🚪 Ch. ${r.numero_chambre}</span>`
+                    : '';
+
+                const lieuxRecap = `
+                    <div class="lieux-recap">
+                        <span class="lieu-mini">🥐 ${nomLieu(r.lieu_defaut_petit_dej_id)}</span>
+                        <span class="lieu-mini">🍽️ ${nomLieu(r.lieu_defaut_dejeuner_id)}</span>
+                        <span class="lieu-mini">🌙 ${nomLieu(r.lieu_defaut_diner_id)}</span>
+                    </div>`;
+
+                const texturesRecap = `
+                    <div class="textures-recap">
+                        <span class="texture-mini">🥐 ${nomTexture(r.texture_defaut_petit_dej || TEXTURE_DEFAUT)}</span>
+                        <span class="texture-mini">🍽️ ${nomTexture(r.texture_defaut_dejeuner || TEXTURE_DEFAUT)}</span>
+                        <span class="texture-mini">🌙 ${nomTexture(r.texture_defaut_diner || TEXTURE_DEFAUT)}</span>
+                    </div>`;
+
+                html += `
+                    <div class="resident">
+                        <h3>
+                            <span>${r.prenom} ${r.nom} ${chambreBadge} ${docBadge}</span>
+                            <span class="resident-actions">
+                                <button class="btn-print" onclick="ouvrirModalDoc(${r.id})">📎 Document</button>
+                                <button class="btn-edit" onclick="modifierResident(${r.id})">✏️ Modifier</button>
+                                <button class="btn-danger" onclick="archiverResident(${r.id}, '${r.prenom} ${r.nom}')">🗑️ Archiver</button>
+                            </span>
+                        </h3>
+                        ${lieuxRecap}
+                        ${texturesRecap}
+                        <p class="info"><span class="label">Souhaits particuliers :</span> ${r.gouts || '<span class="empty">non renseigné</span>'}</p>
+                        <p class="info"><span class="label">Non-goûts :</span> ${r.aversions || '<span class="empty">non renseigné</span>'}</p>
+                        <p class="info"><span class="label">Allergies :</span> ${afficherAllergiesResident(r)}</p>
+                        <p class="info"><span class="label">Intolérances :</span> ${r.intolerances || '<span class="empty">aucune</span>'}</p>
+                    </div>`;
+            }
+            contenu.innerHTML = html;
+        }
+
+        document.getElementById('recherche').addEventListener('input', (e) => {
+            const t = e.target.value.toLowerCase().trim();
+            if (!t) return afficher(tousLesResidents);
+            afficher(tousLesResidents.filter(r => {
+                const allergenesText = (r.allergenes || []).map(c => nomAllergene(c)).join(' ').toLowerCase();
+                return (
+                    (r.prenom||'').toLowerCase().includes(t) ||
+                    (r.nom||'').toLowerCase().includes(t) ||
+                    (r.allergies||'').toLowerCase().includes(t) ||
+                    (r.intolerances||'').toLowerCase().includes(t) ||
+                    allergenesText.includes(t) ||
+                    String(r.numero_chambre || '').includes(t)
+                );
+            }));
+        });
+
+        function ouvrirFormulaire() {
+            document.getElementById('modal-titre').textContent = `Ajouter un résident — ${nomUniteSansEmoji(UNITE_COURANTE)}`;
+            document.getElementById('form-resident').reset();
+            document.getElementById('resident-id').value = '';
+            document.getElementById('numero_chambre').value = '';
+            document.getElementById('lieu_petit_dej').value = '';
+            document.getElementById('lieu_dejeuner').value = '';
+            document.getElementById('lieu_diner').value = '';
+            document.getElementById('texture_petit_dej').value = TEXTURE_DEFAUT;
+            document.getElementById('texture_dejeuner').value = TEXTURE_DEFAUT;
+            document.getElementById('texture_diner').value = TEXTURE_DEFAUT;
+            cocherAllergenes(false);
+            document.getElementById('modal').classList.add('active');
+        }
+
+        function modifierResident(id) {
+            const r = tousLesResidents.find(x => x.id === id);
+            if (!r) return;
+            document.getElementById('modal-titre').textContent = `Modifier un résident — ${nomUniteSansEmoji(UNITE_COURANTE)}`;
+            document.getElementById('resident-id').value = r.id;
+            document.getElementById('prenom').value = r.prenom || '';
+            document.getElementById('nom').value = r.nom || '';
+            document.getElementById('numero_chambre').value = r.numero_chambre || '';
+            document.getElementById('lieu_petit_dej').value = r.lieu_defaut_petit_dej_id || '';
+            document.getElementById('lieu_dejeuner').value = r.lieu_defaut_dejeuner_id || '';
+            document.getElementById('lieu_diner').value = r.lieu_defaut_diner_id || '';
+            document.getElementById('texture_petit_dej').value = r.texture_defaut_petit_dej || TEXTURE_DEFAUT;
+            document.getElementById('texture_dejeuner').value = r.texture_defaut_dejeuner || TEXTURE_DEFAUT;
+            document.getElementById('texture_diner').value = r.texture_defaut_diner || TEXTURE_DEFAUT;
+            document.getElementById('gouts').value = r.gouts || '';
+            document.getElementById('aversions').value = r.aversions || '';
+            document.getElementById('allergies').value = r.allergies || '';
+            document.getElementById('intolerances').value = r.intolerances || '';
+            setAllergenesSelectionnes(r.allergenes || []);
+            document.getElementById('modal').classList.add('active');
+        }
+
+        function fermerFormulaire() {
+            document.getElementById('modal').classList.remove('active');
+        }
+
+        async function sauvegarderResident(event) {
+            event.preventDefault();
+            const id = document.getElementById('resident-id').value;
+            const lieuPD = document.getElementById('lieu_petit_dej').value;
+            const lieuDJ = document.getElementById('lieu_dejeuner').value;
+            const lieuDI = document.getElementById('lieu_diner').value;
+            const chambreVal = document.getElementById('numero_chambre').value.trim();
+            const donnees = {
+                prenom: document.getElementById('prenom').value.trim(),
+                nom: document.getElementById('nom').value.trim(),
+                unite: UNITE_COURANTE,
+                numero_chambre: chambreVal ? parseInt(chambreVal) : null,
+                lieu_defaut_petit_dej_id: lieuPD ? parseInt(lieuPD) : null,
+                lieu_defaut_dejeuner_id: lieuDJ ? parseInt(lieuDJ) : null,
+                lieu_defaut_diner_id: lieuDI ? parseInt(lieuDI) : null,
+                texture_defaut_petit_dej: document.getElementById('texture_petit_dej').value,
+                texture_defaut_dejeuner: document.getElementById('texture_dejeuner').value,
+                texture_defaut_diner: document.getElementById('texture_diner').value,
+                gouts: document.getElementById('gouts').value.trim() || null,
+                aversions: document.getElementById('aversions').value.trim() || null,
+                allergies: document.getElementById('allergies').value.trim() || null,
+                intolerances: document.getElementById('intolerances').value.trim() || null,
+                allergenes: getAllergenesSelectionnes(),
+                actif: true
+            };
+            let res;
+            if (id) res = await supaClient.from(TABLE_RESIDENTS).update(donnees).eq('id', id);
+            else res = await supaClient.from(TABLE_RESIDENTS).insert(donnees);
+            if (res.error) return alert('Erreur : ' + res.error.message);
+            fermerFormulaire();
+            charger();
+        }
+
+        async function archiverResident(id, nomComplet) {
+            if (!confirm(`Archiver ${nomComplet} ?`)) return;
+            const { error } = await supaClient.from(TABLE_RESIDENTS).update({ actif: false }).eq('id', id);
+            if (error) return alert('Erreur : ' + error.message);
+            charger();
+        }
+
+        // ===== GESTION DOCUMENT PDF =====
+
+        async function ouvrirModalDoc(id) {
+            const r = tousLesResidents.find(x => x.id === id);
+            if (!r) return;
+            residentDocCourant = r;
+            document.getElementById('modal-doc-titre').textContent = `Document - ${r.prenom} ${r.nom}`;
+            document.getElementById('modal-doc').classList.add('active');
+            await afficherZoneDoc();
+        }
+
+        function fermerModalDoc() {
+            document.getElementById('modal-doc').classList.remove('active');
+            residentDocCourant = null;
+        }
+
+        async function afficherZoneDoc() {
+            const zone = document.getElementById('modal-doc-contenu');
+            const r = residentDocCourant;
+
+            if (r.document_pdf) {
+                zone.className = 'pdf-zone has-file';
+                zone.innerHTML = `
+                    <div style="font-size: 48px;">📄</div>
+                    <p><strong>Un document PDF est attaché à ce résident.</strong></p>
+                    <div class="pdf-actions">
+                        <button class="btn-primary" onclick="voirDoc()">👁️ Voir / Télécharger</button>
+                        <button class="btn-edit" onclick="document.getElementById('input-pdf').click()">🔄 Remplacer</button>
+                        <button class="btn-danger" onclick="supprimerDoc()">🗑️ Supprimer</button>
+                    </div>
+                    <input type="file" id="input-pdf" accept="application/pdf" style="display:none" onchange="uploaderDoc(event)">
+                `;
+            } else {
+                zone.className = 'pdf-zone';
+                zone.innerHTML = `
+                    <div style="font-size: 48px;">📎</div>
+                    <p>Aucun document attaché à ce résident.</p>
+                    <p style="color:#888;font-size:13px;">Format accepté : PDF (max 5 MB)</p>
+                    <div class="pdf-actions">
+                        <button class="btn-primary" onclick="document.getElementById('input-pdf').click()">📤 Téléverser un PDF</button>
+                    </div>
+                    <input type="file" id="input-pdf" accept="application/pdf" style="display:none" onchange="uploaderDoc(event)">
+                `;
+            }
+        }
+
+        async function uploaderDoc(event) {
+            const fichier = event.target.files[0];
+            if (!fichier) return;
+
+            if (fichier.type !== 'application/pdf') {
+                alert('❌ Seuls les fichiers PDF sont acceptés.');
+                return;
+            }
+            if (fichier.size > 5 * 1024 * 1024) {
+                alert('❌ Le fichier dépasse 5 MB.');
+                return;
+            }
+
+            const zone = document.getElementById('modal-doc-contenu');
+            zone.innerHTML = '<p class="loading">⏳ Téléversement en cours...</p>';
+
+            const r = residentDocCourant;
+            if (r.document_pdf) {
+                await supaClient.storage.from(BUCKET_DOCUMENTS).remove([r.document_pdf]);
+            }
+
+            const chemin = `resident_${r.id}_${Date.now()}.pdf`;
+
+            const { error: errUpload } = await supaClient.storage
+                .from(BUCKET_DOCUMENTS)
+                .upload(chemin, fichier, { contentType: 'application/pdf', upsert: false });
+
+            if (errUpload) {
+                alert('❌ Erreur upload : ' + errUpload.message);
+                await afficherZoneDoc();
+                return;
+            }
+
+            const { error: errUpdate } = await supaClient
+                .from(TABLE_RESIDENTS)
+                .update({ document_pdf: chemin })
+                .eq('id', r.id);
+
+            if (errUpdate) {
+                alert('❌ Erreur enregistrement : ' + errUpdate.message);
+                return;
+            }
+
+            r.document_pdf = chemin;
+            const idx = tousLesResidents.findIndex(x => x.id === r.id);
+            if (idx >= 0) tousLesResidents[idx].document_pdf = chemin;
+
+            await afficherZoneDoc();
+            afficher(tousLesResidents);
+        }
+
+        async function voirDoc() {
+            const r = residentDocCourant;
+            if (!r.document_pdf) return;
+
+            const { data, error } = await supaClient.storage
+                .from(BUCKET_DOCUMENTS)
+                .createSignedUrl(r.document_pdf, 60);
+
+            if (error) {
+                alert('❌ Erreur : ' + error.message);
+                return;
+            }
+            window.open(data.signedUrl, '_blank');
+        }
+
+        async function supprimerDoc() {
+            const r = residentDocCourant;
+            if (!confirm(`Supprimer le document de ${r.prenom} ${r.nom} ?\n\nCette action est définitive.`)) return;
+
+            const { error: errStorage } = await supaClient.storage
+                .from(BUCKET_DOCUMENTS)
+                .remove([r.document_pdf]);
+
+            if (errStorage) {
+                alert('❌ Erreur suppression fichier : ' + errStorage.message);
+                return;
+            }
+
+            const { error: errUpdate } = await supaClient
+                .from(TABLE_RESIDENTS)
+                .update({ document_pdf: null })
+                .eq('id', r.id);
+
+            if (errUpdate) {
+                alert('❌ Erreur : ' + errUpdate.message);
+                return;
+            }
+
+            r.document_pdf = null;
+            const idx = tousLesResidents.findIndex(x => x.id === r.id);
+            if (idx >= 0) tousLesResidents[idx].document_pdf = null;
+
+            await afficherZoneDoc();
+            afficher(tousLesResidents);
+        }
+
+        (async () => {
+            const auth = await verifierAuthEtRole(['admin']);
+            if (!auth) return;
+            afficherMenuComplet(PAGE_ACTIVE, auth.user.email, auth.profil.role, auth.profil.nom_affiche);
+            genererGrilleAllergenes();
+            remplirSelectsTexture();
+            charger();
+        })();
+    </script>
+</body>
+</html>

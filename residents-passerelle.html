@@ -3,9 +3,23 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Résidents - Restauration Les Bouleaux</title>
+    <title>Résidents Passerelle - Restauration Les Bouleaux</title>
     <link rel="stylesheet" href="shared.css">
     <style>
+        /* Bandeau identité unité — couleur BLEUE pour Passerelle */
+        .bandeau-unite {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            padding: 12px 16px;
+            border-radius: 8px;
+            margin: 10px 0 20px 0;
+            font-weight: 600;
+            background: #e3f2fd;
+            color: #0d47a1;
+            border-left: 5px solid #1976d2;
+        }
+        .bandeau-unite .emoji-grand { font-size: 28px; }
         .doc-info {
             display: inline-flex;
             align-items: center;
@@ -61,6 +75,25 @@
             border-left: 3px solid #2c5530;
             border-radius: 4px;
         }
+        .texture-mini {
+            display: inline-flex;
+            align-items: center;
+            gap: 4px;
+            background: #fff3e8;
+            color: #a85b00;
+            padding: 2px 8px;
+            border-radius: 10px;
+            font-size: 12px;
+            font-weight: bold;
+            margin-right: 4px;
+        }
+        .textures-recap {
+            margin-top: 8px;
+            padding: 8px 12px;
+            background: #fffaf5;
+            border-left: 3px solid #d4762b;
+            border-radius: 4px;
+        }
         .form-lieux-row {
             display: grid;
             grid-template-columns: 1fr 1fr 1fr;
@@ -101,7 +134,6 @@
             margin-top: 10px;
             flex-wrap: wrap;
         }
-        /* Grille des allergènes (cases à cocher) */
         .allergenes-grille {
             display: grid;
             grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
@@ -152,7 +184,6 @@
             cursor: pointer;
         }
         .btn-mini:hover { background: #f0f0f0; }
-        /* Affichage allergies dans la liste */
         .allergie-tag {
             display: inline-block;
             background: #ffe4e4;
@@ -171,7 +202,15 @@
     <h1>🍽️ Restauration Les Bouleaux</h1>
     <div id="menu"></div>
 
-    <h2>Gestion des résidents</h2>
+    <h2>👥 Gestion des résidents — Passerelle</h2>
+
+    <div class="bandeau-unite">
+        <span class="emoji-grand">🌉</span>
+        <div>
+            <strong>Unité Passerelle</strong><br>
+            <small>Cet onglet affiche et gère uniquement les résidents de l'unité Passerelle.</small>
+        </div>
+    </div>
 
     <div class="toolbar">
         <input type="text" id="recherche" placeholder="🔍 Rechercher un résident...">
@@ -231,6 +270,25 @@
                 </div>
 
                 <div class="form-group">
+                    <label>🥣 Textures par défaut</label>
+                    <small style="color:#666;display:block;margin-bottom:8px;">Texture habituelle pour chaque repas. Modifiable au cas par cas lors de la saisie des présences.</small>
+                    <div class="form-lieux-row">
+                        <div class="form-group">
+                            <label for="texture_petit_dej" style="font-size:13px;">🥐 Petit-déjeuner</label>
+                            <select id="texture_petit_dej"></select>
+                        </div>
+                        <div class="form-group">
+                            <label for="texture_dejeuner" style="font-size:13px;">🍽️ Déjeuner</label>
+                            <select id="texture_dejeuner"></select>
+                        </div>
+                        <div class="form-group">
+                            <label for="texture_diner" style="font-size:13px;">🌙 Dîner</label>
+                            <select id="texture_diner"></select>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="form-group">
                     <label for="gouts">Souhaits particuliers</label>
                     <textarea id="gouts"></textarea>
                 </div>
@@ -239,13 +297,10 @@
                     <textarea id="aversions"></textarea>
                 </div>
 
-                <!-- Bloc allergènes UE -->
                 <div class="form-group">
                     <label>⚠️ Allergies — 14 allergènes UE majeurs</label>
                     <small style="color:#666;display:block;margin-bottom:8px;">Coche les allergènes UE concernés. Pour les allergies hors liste (kiwi, fraise, etc.), utilise le champ "Autres allergies" ci-dessous.</small>
-                    <div class="allergenes-grille" id="allergenes-grille">
-                        <!-- Généré par JS -->
-                    </div>
+                    <div class="allergenes-grille" id="allergenes-grille"></div>
                     <div class="allergenes-actions">
                         <button type="button" class="btn-mini" onclick="cocherAllergenes(false)">Tout décocher</button>
                     </div>
@@ -286,13 +341,15 @@
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script src="shared.js"></script>
     <script>
+        const UNITE_COURANTE = 'passerelle';
+        const PAGE_ACTIVE = 'residents-passerelle';
+
         let tousLesResidents = [];
         let tousLesLieux = [];
         let residentDocCourant = null;
 
         const BUCKET_DOCUMENTS = 'documents-residents';
 
-        // ===== GÉNÉRATION DE LA GRILLE D'ALLERGÈNES =====
         function genererGrilleAllergenes() {
             const grille = document.getElementById('allergenes-grille');
             let html = '';
@@ -303,6 +360,19 @@
                 </label>`;
             }
             grille.innerHTML = html;
+        }
+
+        function remplirSelectsTexture() {
+            const ids = ['texture_petit_dej', 'texture_dejeuner', 'texture_diner'];
+            for (const id of ids) {
+                const sel = document.getElementById(id);
+                let html = '';
+                for (const t of TEXTURES_LISTE) {
+                    const selDef = t.code === TEXTURE_DEFAUT ? 'selected' : '';
+                    html += `<option value="${t.code}" ${selDef}>${t.emoji} ${t.nom}</option>`;
+                }
+                sel.innerHTML = html;
+            }
         }
 
         function cocherAllergenes(valeur) {
@@ -320,11 +390,13 @@
             });
         }
 
+        // ⭐ FILTRAGE DES LIEUX PAR UNITÉ
         async function chargerLieux() {
             const { data, error } = await supaClient
                 .from('lieux_repas')
                 .select('*')
                 .eq('actif', true)
+                .or(`unite.is.null,unite.eq.${UNITE_COURANTE}`)
                 .order('ordre', { ascending: true });
             if (error) console.error(error);
             tousLesLieux = data || [];
@@ -341,7 +413,7 @@
 
         async function charger() {
             await chargerLieux();
-            tousLesResidents = await chargerResidentsActifs();
+            tousLesResidents = await chargerResidentsActifs(UNITE_COURANTE);
             afficher(tousLesResidents);
         }
 
@@ -351,7 +423,6 @@
             return l ? l.nom : '— non défini —';
         }
 
-        // Construit l'affichage des allergies pour la liste
         function afficherAllergiesResident(r) {
             const tags = [];
             if (r.allergenes && r.allergenes.length) {
@@ -370,10 +441,10 @@
         function afficher(liste) {
             const contenu = document.getElementById('contenu');
             if (!liste.length) {
-                contenu.innerHTML = '<p class="info-msg">Aucun résident.</p>';
+                contenu.innerHTML = '<p class="info-msg">Aucun résident dans cette unité.</p>';
                 return;
             }
-            let html = `<p><strong>${liste.length}</strong> résident(s)</p>`;
+            let html = `<p><strong>${liste.length}</strong> résident(s) dans l'unité ${nomUniteSansEmoji(UNITE_COURANTE)}</p>`;
             for (const r of liste) {
                 const docBadge = r.document_pdf
                     ? `<span class="doc-info">📎 PDF attaché</span>`
@@ -390,6 +461,13 @@
                         <span class="lieu-mini">🌙 ${nomLieu(r.lieu_defaut_diner_id)}</span>
                     </div>`;
 
+                const texturesRecap = `
+                    <div class="textures-recap">
+                        <span class="texture-mini">🥐 ${nomTexture(r.texture_defaut_petit_dej || TEXTURE_DEFAUT)}</span>
+                        <span class="texture-mini">🍽️ ${nomTexture(r.texture_defaut_dejeuner || TEXTURE_DEFAUT)}</span>
+                        <span class="texture-mini">🌙 ${nomTexture(r.texture_defaut_diner || TEXTURE_DEFAUT)}</span>
+                    </div>`;
+
                 html += `
                     <div class="resident">
                         <h3>
@@ -401,6 +479,7 @@
                             </span>
                         </h3>
                         ${lieuxRecap}
+                        ${texturesRecap}
                         <p class="info"><span class="label">Souhaits particuliers :</span> ${r.gouts || '<span class="empty">non renseigné</span>'}</p>
                         <p class="info"><span class="label">Non-goûts :</span> ${r.aversions || '<span class="empty">non renseigné</span>'}</p>
                         <p class="info"><span class="label">Allergies :</span> ${afficherAllergiesResident(r)}</p>
@@ -427,13 +506,16 @@
         });
 
         function ouvrirFormulaire() {
-            document.getElementById('modal-titre').textContent = 'Ajouter un résident';
+            document.getElementById('modal-titre').textContent = `Ajouter un résident — ${nomUniteSansEmoji(UNITE_COURANTE)}`;
             document.getElementById('form-resident').reset();
             document.getElementById('resident-id').value = '';
             document.getElementById('numero_chambre').value = '';
             document.getElementById('lieu_petit_dej').value = '';
             document.getElementById('lieu_dejeuner').value = '';
             document.getElementById('lieu_diner').value = '';
+            document.getElementById('texture_petit_dej').value = TEXTURE_DEFAUT;
+            document.getElementById('texture_dejeuner').value = TEXTURE_DEFAUT;
+            document.getElementById('texture_diner').value = TEXTURE_DEFAUT;
             cocherAllergenes(false);
             document.getElementById('modal').classList.add('active');
         }
@@ -441,7 +523,7 @@
         function modifierResident(id) {
             const r = tousLesResidents.find(x => x.id === id);
             if (!r) return;
-            document.getElementById('modal-titre').textContent = 'Modifier un résident';
+            document.getElementById('modal-titre').textContent = `Modifier un résident — ${nomUniteSansEmoji(UNITE_COURANTE)}`;
             document.getElementById('resident-id').value = r.id;
             document.getElementById('prenom').value = r.prenom || '';
             document.getElementById('nom').value = r.nom || '';
@@ -449,6 +531,9 @@
             document.getElementById('lieu_petit_dej').value = r.lieu_defaut_petit_dej_id || '';
             document.getElementById('lieu_dejeuner').value = r.lieu_defaut_dejeuner_id || '';
             document.getElementById('lieu_diner').value = r.lieu_defaut_diner_id || '';
+            document.getElementById('texture_petit_dej').value = r.texture_defaut_petit_dej || TEXTURE_DEFAUT;
+            document.getElementById('texture_dejeuner').value = r.texture_defaut_dejeuner || TEXTURE_DEFAUT;
+            document.getElementById('texture_diner').value = r.texture_defaut_diner || TEXTURE_DEFAUT;
             document.getElementById('gouts').value = r.gouts || '';
             document.getElementById('aversions').value = r.aversions || '';
             document.getElementById('allergies').value = r.allergies || '';
@@ -471,10 +556,14 @@
             const donnees = {
                 prenom: document.getElementById('prenom').value.trim(),
                 nom: document.getElementById('nom').value.trim(),
+                unite: UNITE_COURANTE,
                 numero_chambre: chambreVal ? parseInt(chambreVal) : null,
                 lieu_defaut_petit_dej_id: lieuPD ? parseInt(lieuPD) : null,
                 lieu_defaut_dejeuner_id: lieuDJ ? parseInt(lieuDJ) : null,
                 lieu_defaut_diner_id: lieuDI ? parseInt(lieuDI) : null,
+                texture_defaut_petit_dej: document.getElementById('texture_petit_dej').value,
+                texture_defaut_dejeuner: document.getElementById('texture_dejeuner').value,
+                texture_defaut_diner: document.getElementById('texture_diner').value,
                 gouts: document.getElementById('gouts').value.trim() || null,
                 aversions: document.getElementById('aversions').value.trim() || null,
                 allergies: document.getElementById('allergies').value.trim() || null,
@@ -640,12 +729,12 @@
             afficher(tousLesResidents);
         }
 
-        // Démarrage protégé par auth (admin uniquement)
         (async () => {
             const auth = await verifierAuthEtRole(['admin']);
             if (!auth) return;
-            afficherMenuComplet('residents', auth.user.email, auth.profil.role, auth.profil.nom_affiche);
+            afficherMenuComplet(PAGE_ACTIVE, auth.user.email, auth.profil.role, auth.profil.nom_affiche);
             genererGrilleAllergenes();
+            remplirSelectsTexture();
             charger();
         })();
     </script>

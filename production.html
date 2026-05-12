@@ -6,431 +6,304 @@
     <title>Production J-1 - Restauration Les Bouleaux</title>
     <link rel="stylesheet" href="shared.css">
     <style>
-        /* ============================================================
-           FILTRES (zone toolbar étendue)
-           ============================================================ */
-        .filtres-zone {
+        /* ============ TOOLBAR STYLE TOGGLE ============ */
+        .toolbar-prod {
             background: white;
-            padding: 12px 16px;
-            border-radius: 8px;
-            margin: 10px 0;
-            box-shadow: 0 1px 3px rgba(0,0,0,0.06);
-            display: flex;
-            flex-wrap: wrap;
-            gap: 20px;
-            align-items: center;
-        }
-        .filtre-groupe {
-            display: flex;
-            align-items: center;
-            gap: 10px;
-            flex-wrap: wrap;
-        }
-        .filtre-titre {
-            font-weight: 700;
-            color: #2c5530;
-            font-size: 13px;
-            text-transform: uppercase;
-            letter-spacing: 0.5px;
-        }
-        .filtre-checkbox {
-            display: inline-flex;
-            align-items: center;
-            gap: 5px;
-            padding: 5px 10px;
-            background: #f5f5f5;
-            border-radius: 16px;
-            cursor: pointer;
-            font-size: 13px;
-            user-select: none;
-            transition: background 0.15s;
-        }
-        .filtre-checkbox:hover { background: #e8e8e8; }
-        .filtre-checkbox input { margin: 0; cursor: pointer; }
-        .filtre-checkbox.actif {
-            background: #d4e7d6;
-            color: #1f3a22;
-            font-weight: 600;
-        }
-        .btn-tout {
-            background: transparent;
-            border: 1px solid #2c5530;
-            color: #2c5530;
-            padding: 4px 10px;
-            border-radius: 4px;
-            font-size: 12px;
-            cursor: pointer;
-        }
-        .btn-tout:hover { background: #f0f8f0; }
-
-        .filtre-info-vide {
-            background: #fff3cd;
-            color: #856404;
             padding: 14px 18px;
             border-radius: 8px;
-            border-left: 4px solid #ffc107;
-            margin: 15px 0;
-            text-align: center;
-        }
-
-        /* ============================================================
-           STYLES ÉCRAN (consultation)
-           ============================================================ */
-        .prod-doc {
-            background: white;
-            padding: 25px;
-            border-radius: 10px;
-            box-shadow: 0 2px 6px rgba(0,0,0,0.08);
-            margin: 15px 0;
-        }
-        .prod-titre {
-            text-align: center;
-            margin: 0 0 5px 0;
-            font-size: 22px;
-            color: #2c5530;
-            border-bottom: 2px solid #2c5530;
-            padding-bottom: 8px;
-        }
-        .prod-soustitre {
-            text-align: center;
-            color: #666;
-            font-size: 13px;
-            margin-bottom: 20px;
-            font-style: italic;
-        }
-        .prod-filtres-rappel {
-            text-align: center;
-            color: #888;
-            font-size: 12px;
-            margin-bottom: 15px;
-            font-style: italic;
-        }
-
-        /* Bloc repas */
-        .repas-bloc {
-            border: 2px solid #2c5530;
-            border-radius: 8px;
-            margin: 14px 0;
-            overflow: hidden;
-        }
-        .repas-header {
-            background: #2c5530;
-            color: white;
-            padding: 8px 14px;
+            border: 0.5px solid #ddd;
+            margin-bottom: 14px;
             display: flex;
-            align-items: center;
-            justify-content: space-between;
+            flex-direction: column;
             gap: 10px;
-            flex-wrap: wrap;
+            font-size: 13px;
         }
-        .repas-header .nom {
-            font-size: 17px;
-            font-weight: 700;
-        }
-        .repas-header .totaux {
+        .toolbar-ligne {
             display: flex;
             gap: 14px;
             align-items: center;
+            flex-wrap: wrap;
         }
-        .repas-header .total-final {
+        .toolbar-label {
+            font-weight: 600;
+            color: #2c5530;
+            min-width: 85px;
+        }
+
+        /* === Navigation date === */
+        .date-nav {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+        }
+        .date-nav input[type="date"] {
+            padding: 5px 10px;
+            border: 1px solid #2c5530;
+            border-radius: 6px;
+            font-size: 13px;
+            color: #2c5530;
+            font-weight: 600;
+            cursor: pointer;
+        }
+        .btn-chevron {
             background: white;
             color: #2c5530;
-            padding: 4px 14px;
-            border-radius: 4px;
-            font-size: 22px;
-            font-weight: 800;
+            border: 1px solid #2c5530;
+            width: 32px;
+            height: 32px;
+            padding: 0;
+            cursor: pointer;
+            font-size: 18px;
+            font-weight: 700;
+            border-radius: 6px;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
             line-height: 1;
         }
-        .repas-header .total-final small {
-            font-size: 11px;
+        .btn-chevron:hover { background: #f0f8f0; }
+        .btn-chevron:active { transform: scale(0.95); }
+        .btn-demain {
+            background: white;
+            color: #2c5530;
+            border: 1px solid #2c5530;
+            padding: 5px 12px;
+            border-radius: 6px;
+            font-size: 12px;
             font-weight: 600;
-            display: block;
-            text-align: center;
-            margin-top: 2px;
+            cursor: pointer;
         }
-        .repas-header .total-detail {
+        .btn-demain:hover { background: #f0f8f0; }
+
+        /* === Toggle group === */
+        .toggle-group {
+            display: inline-flex;
+            border: 1px solid #2c5530;
+            border-radius: 6px;
+            overflow: hidden;
+            flex-wrap: wrap;
+        }
+        .toggle-btn {
+            background: white;
+            color: #2c5530;
+            border: none;
+            border-right: 1px solid #2c5530;
+            padding: 6px 14px;
+            cursor: pointer;
+            font-size: 12px;
+            font-weight: 500;
+            white-space: nowrap;
+            transition: all 0.1s;
+        }
+        .toggle-btn:last-child { border-right: none; }
+        .toggle-btn:hover { background: #f0f8f0; }
+        .toggle-btn.active {
+            background: #2c5530;
+            color: white;
+            font-weight: 600;
+        }
+
+        /* === Boutons action === */
+        .toolbar-actions {
+            display: flex;
+            gap: 10px;
+            justify-content: flex-end;
+            padding-top: 4px;
+            border-top: 1px solid #eee;
+            margin-top: 4px;
+        }
+        .btn-charger {
+            background: #2c5530;
+            color: white;
+            border: none;
+            padding: 7px 18px;
+            border-radius: 6px;
             font-size: 13px;
-            opacity: 0.95;
+            font-weight: 600;
+            cursor: pointer;
+        }
+        .btn-charger:hover { background: #1f3a22; }
+        .btn-imprimer {
+            background: white;
+            color: #2c5530;
+            border: 1px solid #2c5530;
+            padding: 7px 18px;
+            border-radius: 6px;
+            font-size: 13px;
+            font-weight: 600;
+            cursor: pointer;
+        }
+        .btn-imprimer:hover { background: #f0f8f0; }
+
+        /* ============ FEUILLE DE PRODUCTION ============ */
+        .feuille-prod {
+            background: white;
+            border: 0.5px solid #ddd;
+            border-radius: 8px;
+            padding: 20px;
+            font-size: 13px;
+            color: #222;
         }
 
-        .repas-body {
-            padding: 10px 14px;
+        .feuille-entete {
+            display: flex;
+            justify-content: space-between;
+            align-items: baseline;
+            border-bottom: 2px solid #2c5530;
+            padding-bottom: 8px;
+            margin-bottom: 14px;
+        }
+        .feuille-titre { font-size: 18px; font-weight: 600; color: #2c5530; }
+        .feuille-soustitre { font-size: 12px; color: #666; }
+        .feuille-total { text-align: right; }
+        .feuille-total-nombre {
+            font-size: 28px;
+            font-weight: 700;
+            color: #2c5530;
+            line-height: 1;
+        }
+        .feuille-total-label {
+            font-size: 10px;
+            color: #666;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
         }
 
-        /* Tableau EJC */
-        .ejc-tableau {
+        .feuille-filtres-actifs {
+            margin-bottom: 10px;
+            padding: 6px 10px;
+            background: #fffaf0;
+            border-left: 3px solid #b35900;
+            font-size: 12px;
+            color: #6b3500;
+        }
+
+        .grid-2cols {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 18px;
+        }
+        @media (max-width: 700px) {
+            .grid-2cols { grid-template-columns: 1fr; }
+        }
+
+        .section-titre {
+            font-size: 11px;
+            font-weight: 700;
+            color: #666;
+            letter-spacing: 0.5px;
+            margin-bottom: 6px;
+            text-transform: uppercase;
+        }
+
+        .feuille-prod table {
             width: 100%;
             border-collapse: collapse;
-            margin: 6px 0 10px 0;
-            font-size: 13px;
-            border: 1px solid #b8d4ba;
-            background: #f5faf5;
         }
-        .ejc-tableau th {
-            background: #d4e7d6;
-            color: #1f3a22;
-            padding: 5px 8px;
-            text-align: left;
-            font-size: 12px;
-            text-transform: uppercase;
-            letter-spacing: 0.3px;
+        .feuille-prod table td {
+            padding: 3px 0;
         }
-        .ejc-tableau td {
-            padding: 5px 8px;
-            border-top: 1px solid #c8dccb;
-        }
-        .ejc-tableau .qte {
-            font-size: 17px;
-            font-weight: 800;
-            text-align: center;
-            color: #2c5530;
-            width: 50px;
-        }
-        .ejc-tableau .cat-nom {
-            font-weight: 700;
-            font-size: 14px;
-        }
-        .ejc-tableau .cat-allergenes {
-            font-size: 11px;
-            color: #856404;
-        }
-        .ejc-tableau .ann-info {
-            font-size: 11px;
-            color: #888;
-            font-style: italic;
-        }
-        .ejc-section-titre {
-            font-size: 13px;
-            font-weight: 700;
-            color: #2c5530;
-            margin: 4px 0 2px 0;
-            text-transform: uppercase;
-            letter-spacing: 0.3px;
-        }
-
-        /* Section adaptations résidents */
-        .adapt-titre {
-            font-size: 13px;
-            font-weight: 700;
-            color: #333;
-            margin: 8px 0 4px 0;
-            text-transform: uppercase;
-            letter-spacing: 0.3px;
+        .table-bloc-titre {
+            padding: 6px 0 2px !important;
+            font-weight: 600;
             border-bottom: 1px solid #ddd;
-            padding-bottom: 3px;
         }
-        .adapt-liste {
-            list-style: none;
-            padding: 0;
-            margin: 0;
+        .table-bloc-titre-rouge {
+            padding: 8px 0 2px !important;
+            font-weight: 600;
+            color: #c0392b;
+            border-bottom: 1px solid #f0c0c0;
         }
-        .adapt-item {
-            padding: 4px 8px;
-            margin: 3px 0;
-            border-radius: 4px;
-            font-size: 13px;
-            line-height: 1.35;
-        }
-        .adapt-allergie {
-            background: #ffe4e4;
-            border-left: 4px solid #c0392b;
-            color: #7a1f17;
+        .nombre-cellule {
+            text-align: right;
             font-weight: 600;
         }
-        .adapt-allergie .badge {
-            display: inline-block;
-            background: #c0392b;
-            color: white;
-            padding: 1px 7px;
-            border-radius: 3px;
-            font-size: 11px;
-            font-weight: 800;
-            text-transform: uppercase;
-            letter-spacing: 0.5px;
-            margin-right: 6px;
-        }
-        .adapt-intolerance {
-            background: #fff3e0;
-            border-left: 4px solid #e67e22;
-            color: #6b3a0c;
-        }
-        .adapt-intolerance .badge {
-            display: inline-block;
-            background: #e67e22;
-            color: white;
-            padding: 1px 7px;
-            border-radius: 3px;
-            font-size: 11px;
-            font-weight: 800;
-            text-transform: uppercase;
-            letter-spacing: 0.5px;
-            margin-right: 6px;
-        }
-        .adapt-nongout {
-            background: #f5f5f5;
-            border-left: 3px solid #999;
-            color: #555;
-            font-size: 12px;
-        }
-        .adapt-nongout .badge {
-            display: inline-block;
-            background: #888;
-            color: white;
-            padding: 1px 6px;
-            border-radius: 3px;
-            font-size: 10px;
-            font-weight: 700;
-            text-transform: uppercase;
-            margin-right: 6px;
-        }
-        .adapt-rien {
-            color: #999;
-            font-style: italic;
-            font-size: 12px;
-            padding: 4px 0;
+        .nombre-cellule-rouge {
+            text-align: right;
+            font-weight: 600;
+            color: #c0392b;
         }
 
-        .pied-page {
+        .bloc-info {
+            margin-top: 10px;
+            padding: 8px 10px;
+            font-size: 12px;
+            border-radius: 4px;
+        }
+        .bloc-info-titre {
+            font-weight: 700;
+            margin-bottom: 3px;
+        }
+        .bloc-info-orange {
+            background: #fff3e0;
+            border-left: 3px solid #b35900;
+        }
+        .bloc-info-orange .bloc-info-titre { color: #b35900; }
+        .bloc-info-violet {
+            background: #f3edff;
+            border-left: 3px solid #5b3fa6;
+        }
+        .bloc-info-violet .bloc-info-titre { color: #5b3fa6; }
+        .bloc-info-vide {
+            color: #888;
+            font-style: italic;
+            font-size: 11px;
+        }
+
+        .liste-b-table thead tr {
+            border-bottom: 1px solid #2c5530;
+        }
+        .liste-b-table th {
+            text-align: left;
+            padding: 4px 0;
+            font-weight: 600;
+            font-size: 11px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            color: #555;
+        }
+        .liste-b-table .col-qte {
+            font-weight: 700;
+            color: #2c5530;
+            width: 40px;
+            padding-right: 8px;
+            white-space: nowrap;
+        }
+        .liste-b-table tfoot tr {
+            border-top: 1px solid #2c5530;
+        }
+        .liste-b-table tfoot td {
+            padding: 6px 0 0;
+            font-weight: 600;
+        }
+
+        .feuille-vide {
+            padding: 30px;
             text-align: center;
             color: #888;
-            font-size: 11px;
-            margin-top: 12px;
-            padding-top: 8px;
-            border-top: 1px solid #ddd;
         }
 
-        /* ============================================================
-           STYLES IMPRESSION — optimisés pour tenir sur 1 A4
-           ============================================================ */
+        /* ============ IMPRESSION ============ */
         @media print {
-            @page {
-                size: A4 portrait;
-                margin: 8mm 10mm;
-            }
-            body {
-                background: white !important;
-                padding: 0 !important;
-                margin: 0 !important;
-                font-size: 11pt;
-            }
-            #app-header, #menu, h1, h2.page-title, .toolbar, .filtres-zone, .no-print {
+            body { background: white !important; }
+            .toolbar-prod,
+            #app-header,
+            #menu,
+            .user-bar,
+            h1, h2 {
                 display: none !important;
             }
-            .prod-doc {
-                box-shadow: none;
-                padding: 0;
-                margin: 0;
-                border-radius: 0;
+            .feuille-prod {
+                border: none !important;
+                padding: 0 !important;
+                font-size: 11px !important;
             }
-            .prod-titre {
-                font-size: 16pt;
-                margin-bottom: 2pt;
-                padding-bottom: 4pt;
-                color: black;
-                border-color: black;
+            .feuille-titre { font-size: 16px !important; }
+            .grid-2cols { gap: 14px !important; }
+            @page {
+                size: A4 portrait;
+                margin: 12mm;
             }
-            .prod-soustitre {
-                font-size: 9pt;
-                margin-bottom: 4pt;
-                color: #444;
-            }
-            .prod-filtres-rappel {
-                font-size: 9pt;
-                margin-bottom: 8pt;
-                color: #444;
-            }
-
-            .repas-bloc {
-                border: 1.5pt solid black;
-                page-break-inside: avoid;
-                margin: 6pt 0;
-            }
-            .repas-header {
-                background: black !important;
-                color: white !important;
-                -webkit-print-color-adjust: exact;
-                print-color-adjust: exact;
-                padding: 4pt 8pt;
-            }
-            .repas-header .nom { font-size: 12pt; }
-            .repas-header .total-final {
-                font-size: 16pt;
-                padding: 2pt 8pt;
-                background: white !important;
-                color: black !important;
-            }
-            .repas-header .total-final small { font-size: 8pt; }
-            .repas-header .total-detail { font-size: 9pt; }
-            .repas-body { padding: 5pt 8pt; }
-
-            .ejc-tableau {
-                font-size: 9pt;
-                background: white !important;
-                border-color: black;
-            }
-            .ejc-tableau th {
-                background: #ddd !important;
-                color: black !important;
-                -webkit-print-color-adjust: exact;
-                print-color-adjust: exact;
-                padding: 2pt 4pt;
-            }
-            .ejc-tableau td { padding: 2pt 4pt; }
-            .ejc-tableau .qte { font-size: 12pt; }
-            .ejc-tableau .cat-nom { font-size: 10pt; }
-            .ejc-tableau .cat-allergenes { font-size: 8pt; }
-            .ejc-section-titre { font-size: 9pt; margin: 2pt 0; }
-
-            .adapt-titre {
-                font-size: 9pt;
-                margin: 4pt 0 2pt 0;
-            }
-            .adapt-item {
-                padding: 2pt 5pt;
-                margin: 1.5pt 0;
-                font-size: 10pt;
-            }
-
-            .adapt-allergie {
-                background: #ffd0d0 !important;
-                border-left: 3pt solid #a00 !important;
-                color: #500 !important;
-                -webkit-print-color-adjust: exact;
-                print-color-adjust: exact;
-            }
-            .adapt-allergie .badge {
-                background: #a00 !important;
-                color: white !important;
-                -webkit-print-color-adjust: exact;
-                print-color-adjust: exact;
-            }
-            .adapt-intolerance {
-                background: #ffe6c8 !important;
-                border-left: 3pt solid #c66 !important;
-                color: #533 !important;
-                -webkit-print-color-adjust: exact;
-                print-color-adjust: exact;
-            }
-            .adapt-intolerance .badge {
-                background: #c60 !important;
-                color: white !important;
-                -webkit-print-color-adjust: exact;
-                print-color-adjust: exact;
-            }
-            .adapt-nongout {
-                background: white !important;
-                border-left: 1pt solid #888 !important;
-                color: #444 !important;
-                font-size: 9pt;
-            }
-            .adapt-nongout .badge {
-                background: #888 !important;
-                color: white !important;
-                -webkit-print-color-adjust: exact;
-                print-color-adjust: exact;
-            }
-
-            .pied-page { font-size: 8pt; margin-top: 5pt; }
         }
     </style>
 </head>
@@ -439,43 +312,77 @@
     <h1>🍽️ Restauration Les Bouleaux</h1>
     <div id="menu"></div>
 
-    <h2 class="page-title">Liste de production J-1</h2>
-    <p class="no-print">Cette liste sert à préparer les portions <strong>la veille</strong> du repas.</p>
+    <h2>📋 Production J-1 — Feuille de production cuisine</h2>
 
-    <div class="toolbar no-print">
-        <label><strong>Date du repas :</strong></label>
-        <input type="date" id="date-prod">
-        <button class="btn-primary" onclick="genererListe()">🔄 Générer</button>
-        <button class="btn-print" onclick="window.print()">🖨️ Imprimer</button>
-    </div>
+    <div class="toolbar-prod">
+        <!-- Ligne Date + Repas -->
+        <div class="toolbar-ligne">
+            <span class="toolbar-label">📅 Date :</span>
+            <div class="date-nav">
+                <button class="btn-chevron" onclick="decalerJour(-1)" title="Jour précédent">‹</button>
+                <input type="date" id="date-prod" onchange="genererFeuille()">
+                <button class="btn-chevron" onclick="decalerJour(1)" title="Jour suivant">›</button>
+                <button class="btn-demain" onclick="resetDemain()">📅 Demain</button>
+            </div>
 
-    <!-- Zone des filtres -->
-    <div class="filtres-zone no-print">
-        <div class="filtre-groupe">
-            <span class="filtre-titre">🍴 Repas :</span>
-            <label class="filtre-checkbox"><input type="checkbox" class="filtre-repas" value="petit_dej" checked onchange="genererListe()"> 🥐 Petit-déj</label>
-            <label class="filtre-checkbox"><input type="checkbox" class="filtre-repas" value="dejeuner" checked onchange="genererListe()"> 🍽️ Déjeuner</label>
-            <label class="filtre-checkbox"><input type="checkbox" class="filtre-repas" value="diner" checked onchange="genererListe()"> 🌙 Dîner</label>
-            <button class="btn-tout" onclick="toutCocher('repas', true)">Tout</button>
-            <button class="btn-tout" onclick="toutCocher('repas', false)">Rien</button>
+            <span class="toolbar-label" style="margin-left:12px;">🍴 Repas :</span>
+            <div class="toggle-group" id="toggle-repas">
+                <button class="toggle-btn" data-value="petit_dej" onclick="setToggle('repas', this)">🥐 P-déj</button>
+                <button class="toggle-btn active" data-value="dejeuner" onclick="setToggle('repas', this)">🍽️ Déjeuner</button>
+                <button class="toggle-btn" data-value="diner" onclick="setToggle('repas', this)">🌙 Dîner</button>
+            </div>
         </div>
-        <div class="filtre-groupe">
-            <span class="filtre-titre">👥 Public :</span>
-            <label class="filtre-checkbox"><input type="checkbox" class="filtre-public" value="residents" checked onchange="genererListe()"> 🏠 Résidents</label>
-            <label class="filtre-checkbox"><input type="checkbox" class="filtre-public" value="ejc" checked onchange="genererListe()"> 🍴 EJC</label>
-            <button class="btn-tout" onclick="toutCocher('public', true)">Tout</button>
-            <button class="btn-tout" onclick="toutCocher('public', false)">Rien</button>
+
+        <!-- Ligne Unité -->
+        <div class="toolbar-ligne">
+            <span class="toolbar-label">🏘️ Unité :</span>
+            <div class="toggle-group" id="toggle-unite">
+                <button class="toggle-btn active" data-value="toutes" onclick="setToggle('unite', this)">🏘️ Toutes</button>
+                <button class="toggle-btn" data-value="bouleaux" onclick="setToggle('unite', this)">🏠 Bouleaux</button>
+                <button class="toggle-btn" data-value="passerelle" onclick="setToggle('unite', this)">🌉 Passerelle</button>
+                <button class="toggle-btn" data-value="aucune" onclick="setToggle('unite', this)">⛔ Aucune</button>
+            </div>
+        </div>
+
+        <!-- Ligne Clients externes (chargée dynamiquement) -->
+        <div class="toolbar-ligne">
+            <span class="toolbar-label">🍴 Clients :</span>
+            <div class="toggle-group" id="toggle-client">
+                <button class="toggle-btn active" data-value="tous" onclick="setToggle('client', this)">🍴 Tous</button>
+                <button class="toggle-btn" data-value="aucun" onclick="setToggle('client', this)">⛔ Aucun</button>
+                <!-- Boutons clients ajoutés dynamiquement -->
+            </div>
+        </div>
+
+        <!-- Boutons d'action -->
+        <div class="toolbar-actions">
+            <button class="btn-charger" onclick="genererFeuille()">🔄 Charger</button>
+            <button class="btn-imprimer" onclick="window.print()">🖨️ Imprimer</button>
         </div>
     </div>
 
     <div id="contenu">
-        <p class="info-msg">Choisissez une date et cliquez "Générer".</p>
+        <p class="info-msg">Choisissez une date et un repas, puis cliquez "Charger".</p>
     </div>
 
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script src="shared.js"></script>
     <script>
-        function dateDemain() {
+        // ============================================================
+        // CONFIG
+        // ============================================================
+        let tousLesClients = [];
+        let toutesLesCategories = [];
+
+        // Valeurs des toggles (états)
+        let valRepas = 'dejeuner';
+        let valUnite = 'toutes';
+        let valClient = 'tous';
+
+        // ============================================================
+        // INIT
+        // ============================================================
+        function demainIso() {
             const d = new Date();
             d.setDate(d.getDate() + 1);
             const yyyy = d.getFullYear();
@@ -484,261 +391,460 @@
             return `${yyyy}-${mm}-${dd}`;
         }
 
-        function heureMaintenant() {
-            return new Date().toLocaleString('fr-FR', {
-                day: '2-digit', month: '2-digit', year: 'numeric',
-                hour: '2-digit', minute: '2-digit'
-            });
+        function resetDemain() {
+            document.getElementById('date-prod').value = demainIso();
+            genererFeuille();
         }
 
-        // Construit le texte des allergies (allergènes UE + texte libre, style EJC)
-        function texteAllergiesResident(r) {
-            const parts = [];
-            if (r.allergenes && r.allergenes.length) {
-                for (const code of r.allergenes) parts.push(nomAllergene(code));
+        function decalerJour(delta) {
+            const input = document.getElementById('date-prod');
+            const val = input.value || demainIso();
+            const d = new Date(val + 'T00:00:00');
+            d.setDate(d.getDate() + delta);
+            const yyyy = d.getFullYear();
+            const mm = String(d.getMonth() + 1).padStart(2, '0');
+            const dd = String(d.getDate()).padStart(2, '0');
+            input.value = `${yyyy}-${mm}-${dd}`;
+            genererFeuille();
+        }
+
+        // Gestion des toggles : un seul actif par groupe
+        function setToggle(groupe, btn) {
+            const containerId = `toggle-${groupe}`;
+            const container = document.getElementById(containerId);
+            container.querySelectorAll('.toggle-btn').forEach(b => b.classList.remove('active'));
+            btn.classList.add('active');
+
+            const valeur = btn.dataset.value;
+            if (groupe === 'repas') valRepas = valeur;
+            else if (groupe === 'unite') valUnite = valeur;
+            else if (groupe === 'client') valClient = valeur;
+
+            genererFeuille();
+        }
+
+        async function initFiltres() {
+            tousLesClients = await chargerTousLesClients(true);
+            const container = document.getElementById('toggle-client');
+            // On insère les boutons clients entre "Tous" et "Aucun"
+            const btnAucun = container.querySelector('[data-value="aucun"]');
+            for (const c of tousLesClients) {
+                const btn = document.createElement('button');
+                btn.className = 'toggle-btn';
+                btn.dataset.value = c.id;
+                btn.textContent = c.nom;
+                btn.onclick = function() { setToggle('client', this); };
+                container.insertBefore(btn, btnAucun);
             }
-            const autres = (r.allergies || '').trim();
-            if (autres) parts.push(autres);
-            return parts.join(' · ');
         }
 
-        // Indique si un résident a une allergie (cases cochées OU texte libre)
-        function aDesAllergies(r) {
-            return (r.allergenes && r.allergenes.length > 0) || (r.allergies && r.allergies.trim().length > 0);
+        // ============================================================
+        // CHARGEMENT DES DONNÉES
+        // ============================================================
+        async function chargerDonneesProd(date, repas) {
+            const { data: residents, error: errR } = await supaClient
+                .from(TABLE_RESIDENTS)
+                .select('*')
+                .eq('actif', true);
+            if (errR) throw errR;
+
+            const { data: presences, error: errP } = await supaClient
+                .from(TABLE_PRESENCES)
+                .select('*')
+                .eq('date', date)
+                .eq('repas', repas);
+            if (errP) throw errP;
+
+            const absences = await chargerAbsencesPourDate(date);
+
+            const { data: commandes, error: errC } = await supaClient
+                .from(TABLE_COMMANDES_EJC)
+                .select('*')
+                .eq('date', date);
+            if (errC) throw errC;
+
+            const { data: annulations, error: errA } = await supaClient
+                .from(TABLE_ANNULATIONS_EJC)
+                .select('*')
+                .eq('date', date);
+            if (errA) throw errA;
+
+            toutesLesCategories = await chargerCategoriesEjc(true);
+
+            return {
+                residents: residents || [],
+                presences: presences || [],
+                absences: absences || [],
+                commandes: commandes || [],
+                annulations: annulations || [],
+                categories: toutesLesCategories
+            };
         }
 
-        // ===== GESTION DES FILTRES =====
-        function toutCocher(type, valeur) {
-            const selector = type === 'repas' ? '.filtre-repas' : '.filtre-public';
-            document.querySelectorAll(selector).forEach(cb => cb.checked = valeur);
-            genererListe();
+        function estPresentAuRepas(resident, repas, date, absences, mapPresences) {
+            const abs = estEnAbsenceProlongee(absences, resident.id, date, repas);
+            if (abs) return false;
+
+            const key = `${resident.id}_${repas}`;
+            const presence = mapPresences[key];
+            if (presence && presence.present === false) return false;
+
+            return true;
         }
 
-        function repasSelectionnes() {
-            return Array.from(document.querySelectorAll('.filtre-repas:checked')).map(cb => cb.value);
+        function getTextureResident(resident, repas, mapPresences) {
+            const key = `${resident.id}_${repas}`;
+            const p = mapPresences[key];
+            if (p && p.texture) return p.texture;
+            return getTextureDefautResident(resident, repas);
         }
 
-        function publicSelectionne() {
-            return Array.from(document.querySelectorAll('.filtre-public:checked')).map(cb => cb.value);
-        }
-
-        function texteRappelFiltres() {
-            const repas = repasSelectionnes();
-            const pub = publicSelectionne();
-            const labelsRepas = { petit_dej: 'Petit-déjeuner', dejeuner: 'Déjeuner', diner: 'Dîner' };
-            const labelsPub = { residents: 'Résidents', ejc: 'EJC' };
-            const r = repas.length === 3 ? 'Tous les repas' : repas.map(x => labelsRepas[x]).join(', ');
-            const p = pub.length === 2 ? 'résidents + EJC' : pub.map(x => labelsPub[x]).join(' + ');
-            return `Filtres : ${r} — ${p}`;
-        }
-
-        async function genererListe() {
+        // ============================================================
+        // GÉNÉRATION DE LA FEUILLE
+        // ============================================================
+        async function genererFeuille() {
             const date = document.getElementById('date-prod').value;
             const contenu = document.getElementById('contenu');
 
-            const repasFiltres = repasSelectionnes();
-            const publicFiltres = publicSelectionne();
-
-            // Cas vide : aucun filtre
-            if (repasFiltres.length === 0 || publicFiltres.length === 0) {
-                contenu.innerHTML = `<div class="filtre-info-vide">
-                    ⚠️ <strong>Aucun élément à afficher</strong><br>
-                    Sélectionne au moins un repas et au moins un public (résidents et/ou EJC).
-                </div>`;
+            if (!date) {
+                contenu.innerHTML = '<p class="info-msg">Sélectionne une date.</p>';
                 return;
             }
 
+            const repas = valRepas;
+            const filtreUnite = valUnite;
+            const filtreClient = valClient;
+
             contenu.innerHTML = '<p class="loading">⏳ Chargement...</p>';
 
-            const inclureResidents = publicFiltres.includes('residents');
-            const inclureEjc = publicFiltres.includes('ejc');
-
-            // Charger les données nécessaires uniquement
-            let residents = [];
-            let presences = [];
-            let absences = [];
-            if (inclureResidents) {
-                residents = await chargerResidentsActifs();
-                const res = await supaClient
-                    .from(TABLE_PRESENCES).select('*').eq('date', date);
-                presences = res.data || [];
-                absences = await chargerAbsencesPourDate(date);
+            let donnees;
+            try {
+                donnees = await chargerDonneesProd(date, repas);
+            } catch (e) {
+                contenu.innerHTML = `<div class="error">Erreur : ${e.message}</div>`;
+                return;
             }
 
-            let categoriesEjc = [];
-            let cmdMap = {};
-            let annMap = {};
-            if (inclureEjc) {
-                categoriesEjc = await chargerCategoriesEjc(false);
-                const { data: cmdEjcArr } = await supaClient
-                    .from(TABLE_COMMANDES_EJC).select('*').eq('date', date);
-                const { data: annEjcArr } = await supaClient
-                    .from(TABLE_ANNULATIONS_EJC).select('*').eq('date', date);
-                for (const c of (cmdEjcArr || [])) cmdMap[c.categorie_id] = c.quantite;
-                for (const a of (annEjcArr || [])) annMap[a.categorie_id] = a.quantite;
+            // === FILTRAGE RÉSIDENTS PAR UNITÉ ===
+            let residentsFiltres = donnees.residents;
+            if (filtreUnite === 'bouleaux') {
+                residentsFiltres = residentsFiltres.filter(r => r.unite === 'bouleaux');
+            } else if (filtreUnite === 'passerelle') {
+                residentsFiltres = residentsFiltres.filter(r => r.unite === 'passerelle');
+            } else if (filtreUnite === 'aucune') {
+                residentsFiltres = [];
             }
 
-            const repasInfos = [
-                { code: 'petit_dej', nom: '🥐 PETIT-DÉJEUNER' },
-                { code: 'dejeuner',  nom: '🍽️ DÉJEUNER' },
-                { code: 'diner',     nom: '🌙 DÎNER' }
-            ].filter(r => repasFiltres.includes(r.code));
-
-            let html = `<div class="prod-doc">
-                <h2 class="prod-titre">Production du ${dateFr(date)}</h2>
-                <p class="prod-soustitre">Document de travail à préparer la veille du service</p>
-                <p class="prod-filtres-rappel">${texteRappelFiltres()}</p>`;
-
-            let blocsAffiches = 0;
-
-            for (const ri of repasInfos) {
-                const codeRepas = ri.code;
-
-                // Calculer les résidents présents (uniquement si le filtre est actif)
-                let presentsForRepas = [];
-                if (inclureResidents) {
-                    presentsForRepas = residents.filter(r => {
-                        // Si en absence prolongée → exclu
-                        if (estEnAbsenceProlongee(absences, r.id, date, codeRepas)) return false;
-                        // Sinon, on regarde la table presences (présent par défaut si pas d'enregistrement)
-                        const p = presences.find(x => x.resident_id === r.id && x.repas === codeRepas);
-                        return p ? p.present : true;
-                    });
-                }
-
-                const avecAllergie = presentsForRepas.filter(r => aDesAllergies(r));
-                const avecIntolerance = presentsForRepas.filter(r => r.intolerances);
-                const avecNonGout = presentsForRepas.filter(r => r.aversions);
-
-                // Calculer EJC (uniquement si filtre actif ET déjeuner)
-                let totalEjc = 0;
-                let lignesEjc = [];
-                if (inclureEjc && codeRepas === 'dejeuner') {
-                    const catsTriees = [...categoriesEjc].sort((a, b) => a.ordre - b.ordre);
-                    for (const cat of catsTriees) {
-                        const cmd = cmdMap[cat.id] || 0;
-                        const ann = annMap[cat.id] || 0;
-                        const net = cmd - ann;
-                        if (cmd > 0 || ann > 0) {
-                            totalEjc += net;
-                            lignesEjc.push({ cat, cmd, ann, net });
-                        }
-                    }
-                }
-
-                // Si ce repas n'a aucun contenu après filtrage → on le saute
-                const aDuContenu = (inclureResidents && presentsForRepas.length > 0) || (inclureEjc && lignesEjc.length > 0);
-                if (!aDuContenu) continue;
-
-                // Calculer le total selon les filtres actifs
-                const totalGeneral = (inclureResidents ? presentsForRepas.length : 0) + totalEjc;
-
-                // Construire le détail texte selon ce qui est actif
-                const detailParts = [];
-                if (inclureResidents) detailParts.push(`${presentsForRepas.length} résident${presentsForRepas.length > 1 ? 's' : ''}`);
-                if (inclureEjc && totalEjc > 0) detailParts.push(`${totalEjc} EJC`);
-                const detailTxt = detailParts.join(' + ');
-
-                // ===== EN-TÊTE DU REPAS =====
-                html += `<div class="repas-bloc">
-                    <div class="repas-header">
-                        <div class="nom">${ri.nom}</div>
-                        <div class="totaux">
-                            <div class="total-detail">${detailTxt}</div>
-                            <div class="total-final">
-                                ${totalGeneral}
-                                <small>À PRÉPARER</small>
-                            </div>
-                        </div>
-                    </div>
-                    <div class="repas-body">`;
-
-                // ===== TABLEAU EJC =====
-                if (lignesEjc.length > 0) {
-                    html += `<div class="ejc-section-titre">🍴 EJC Péry — ${totalEjc} portions</div>
-                    <table class="ejc-tableau">
-                        <thead>
-                            <tr>
-                                <th style="width:50px;">Qté</th>
-                                <th>Catégorie</th>
-                                <th>Sans (allergènes)</th>
-                            </tr>
-                        </thead>
-                        <tbody>`;
-                    for (const l of lignesEjc) {
-                        const allergenesTxt = (l.cat.allergenes && l.cat.allergenes.length)
-                            ? l.cat.allergenes.map(a => nomAllergene(a)).join(' · ')
-                            : '<span style="color:#999;">—</span>';
-                        const annInfo = l.ann > 0
-                            ? `<div class="ann-info">commandé ${l.cmd}, annulé ${l.ann}</div>`
-                            : '';
-                        html += `<tr>
-                            <td class="qte">${l.net}</td>
-                            <td>
-                                <div class="cat-nom">${l.cat.nom}</div>
-                                ${annInfo}
-                            </td>
-                            <td class="cat-allergenes">${allergenesTxt}</td>
-                        </tr>`;
-                    }
-                    html += `</tbody></table>`;
-                }
-
-                // ===== ADAPTATIONS RÉSIDENTS =====
-                if (inclureResidents) {
-                    const aDesAdaptations = avecAllergie.length || avecIntolerance.length || avecNonGout.length;
-                    if (aDesAdaptations) {
-                        html += `<div class="adapt-titre">⚠️ Adaptations résidents</div>
-                        <ul class="adapt-liste">`;
-                        for (const r of avecAllergie) {
-                            const txt = texteAllergiesResident(r);
-                            html += `<li class="adapt-item adapt-allergie">
-                                <span class="badge">⚠ ALLERGIE</span>
-                                <strong>${r.prenom} ${r.nom}</strong> — Sans : ${txt}
-                            </li>`;
-                        }
-                        for (const r of avecIntolerance) {
-                            html += `<li class="adapt-item adapt-intolerance">
-                                <span class="badge">⚠ Intolérance</span>
-                                <strong>${r.prenom} ${r.nom}</strong> — ${r.intolerances}
-                            </li>`;
-                        }
-                        for (const r of avecNonGout) {
-                            html += `<li class="adapt-item adapt-nongout">
-                                <span class="badge">Non-goûts</span>
-                                ${r.prenom} ${r.nom} — ${r.aversions}
-                            </li>`;
-                        }
-                        html += `</ul>`;
-                    } else if (lignesEjc.length === 0) {
-                        html += `<div class="adapt-rien">Aucune adaptation particulière à prévoir.</div>`;
-                    }
-                }
-
-                html += `</div></div>`; // /repas-body /repas-bloc
-                blocsAffiches++;
+            const mapPresences = {};
+            for (const p of donnees.presences) {
+                mapPresences[`${p.resident_id}_${p.repas}`] = p;
             }
 
-            // Aucun repas n'a de contenu après filtrage
-            if (blocsAffiches === 0) {
-                html += `<div class="filtre-info-vide">
-                    Aucune donnée à afficher pour les filtres sélectionnés à cette date.
-                </div>`;
+            const residentsPresents = residentsFiltres.filter(r =>
+                estPresentAuRepas(r, repas, date, donnees.absences, mapPresences)
+            );
+
+            // === FILTRAGE COMMANDES PAR CLIENT (FIX UUID) ===
+            let commandesFiltrees = donnees.commandes;
+            if (filtreClient === 'aucun') {
+                commandesFiltrees = [];
+            } else if (filtreClient !== 'tous') {
+                commandesFiltrees = commandesFiltrees.filter(c => c.client_id === filtreClient);
             }
 
-            html += `<div class="pied-page">Document généré le ${heureMaintenant()} — Restauration Les Bouleaux, Corgémont</div>
-            </div>`;
+            // FIX UUID : séparateur '::'
+            const mapAnnulations = {};
+            for (const a of donnees.annulations) {
+                const k = `${a.client_id}::${a.categorie_id}`;
+                mapAnnulations[k] = (mapAnnulations[k] || 0) + (a.quantite || 0);
+            }
+            const commandesNettes = commandesFiltrees.map(c => {
+                const k = `${c.client_id}::${c.categorie_id}`;
+                const qte = (c.quantite || 0) - (mapAnnulations[k] || 0);
+                return { ...c, quantite_nette: Math.max(0, qte) };
+            }).filter(c => c.quantite_nette > 0);
 
+            const html = construireFeuille({
+                date, repas,
+                residentsPresents,
+                mapPresences,
+                commandesNettes,
+                categories: donnees.categories,
+                clients: tousLesClients,
+                filtreUnite,
+                filtreClient
+            });
             contenu.innerHTML = html;
         }
 
-        // Démarrage protégé par auth (admin uniquement)
+        // ============================================================
+        // CONSTRUCTION DU HTML
+        // ============================================================
+        function construireFeuille(ctx) {
+            const { date, repas, residentsPresents, mapPresences, commandesNettes,
+                    categories, clients, filtreUnite, filtreClient } = ctx;
+
+            const nbResidents = residentsPresents.length;
+            const nbClients = commandesNettes.reduce((s, c) => s + c.quantite_nette, 0);
+            const totalRepas = nbResidents + nbClients;
+
+            if (totalRepas === 0) {
+                return `<div class="feuille-prod">
+                    <div class="feuille-vide">Aucun repas à produire pour ce repas/cette date avec les filtres actuels.</div>
+                </div>`;
+            }
+
+            const textureCounts = {};
+            for (const r of residentsPresents) {
+                const t = getTextureResident(r, repas, mapPresences);
+                textureCounts[t] = (textureCounts[t] || 0) + 1;
+            }
+
+            const clientCatCounts = {};
+            for (const c of commandesNettes) {
+                const k = `${c.client_id}::${c.categorie_id}`;
+                clientCatCounts[k] = (clientCatCounts[k] || 0) + c.quantite_nette;
+            }
+
+            const allergeneCounts = {};
+            for (const r of residentsPresents) {
+                for (const a of (r.allergenes || [])) {
+                    allergeneCounts[a] = (allergeneCounts[a] || 0) + 1;
+                }
+            }
+            for (const c of commandesNettes) {
+                const cat = categories.find(x => x.id === c.categorie_id);
+                if (cat && cat.allergenes) {
+                    for (const a of cat.allergenes) {
+                        allergeneCounts[a] = (allergeneCounts[a] || 0) + c.quantite_nette;
+                    }
+                }
+            }
+
+            const autresAllergies = residentsPresents
+                .filter(r => (r.allergies || '').trim())
+                .map(r => ({ nom: `${r.prenom} ${r.nom}`, valeur: r.allergies.trim() }));
+
+            const nonGouts = residentsPresents
+                .filter(r => (r.aversions || '').trim())
+                .map(r => ({ nom: `${r.prenom} ${r.nom}`, valeur: r.aversions.trim() }));
+
+            const portions = {};
+
+            for (const r of residentsPresents) {
+                const texture = getTextureResident(r, repas, mapPresences);
+                const allergenes = [...(r.allergenes || [])].sort();
+                const autresAllergie = (r.allergies || '').trim();
+                const intolerance = (r.intolerances || '').trim();
+
+                const estStandard = texture === 'normale'
+                    && allergenes.length === 0
+                    && !autresAllergie
+                    && !intolerance;
+
+                let libelle;
+                if (estStandard) {
+                    libelle = 'Normale standard';
+                } else {
+                    const parts = [nomTextureSansEmoji(texture)];
+                    if (allergenes.length) {
+                        parts.push('sans ' + allergenes.map(a => libelleAllergeneCourt(a)).join(' + '));
+                    }
+                    if (autresAllergie) {
+                        parts.push(`(autre allergie : ${autresAllergie})`);
+                    }
+                    if (intolerance) {
+                        parts.push(`(intolérance : ${intolerance})`);
+                    }
+                    libelle = parts.join(' ');
+                }
+
+                const cle = `R::${texture}::${allergenes.join(',')}::${autresAllergie}::${intolerance}`;
+                if (!portions[cle]) portions[cle] = { qte: 0, libelle };
+                portions[cle].qte += 1;
+            }
+
+            for (const c of commandesNettes) {
+                const cat = categories.find(x => x.id === c.categorie_id);
+                const client = clients.find(x => x.id === c.client_id);
+                const nomCat = cat ? cat.nom : `Catégorie #${c.categorie_id}`;
+                const nomClient = client ? client.nom : `Client inconnu`;
+                const allergenes = [...((cat && cat.allergenes) || [])].sort();
+
+                let libelle = `${nomClient} — ${nomCat}`;
+                if (allergenes.length) {
+                    libelle += ' sans ' + allergenes.map(a => libelleAllergeneCourt(a)).join(' + ');
+                }
+
+                const cle = `C::${c.client_id}::${c.categorie_id}`;
+                if (!portions[cle]) portions[cle] = { qte: 0, libelle };
+                portions[cle].qte += c.quantite_nette;
+            }
+
+            const portionsArr = Object.values(portions).sort((a, b) => b.qte - a.qte);
+            const totalRecettes = portionsArr.length;
+
+            const filtresActifs = construireBandeauFiltres(filtreUnite, filtreClient, clients);
+
+            return `
+                <div class="feuille-prod">
+                    <div class="feuille-entete">
+                        <div>
+                            <div class="feuille-titre">Production cuisine</div>
+                            <div class="feuille-soustitre">${dateFr(date)} · ${libelleRepas(repas)}</div>
+                        </div>
+                        <div class="feuille-total">
+                            <div class="feuille-total-nombre">${totalRepas}</div>
+                            <div class="feuille-total-label">repas total</div>
+                        </div>
+                    </div>
+
+                    ${filtresActifs}
+
+                    <div class="grid-2cols">
+                        <div>
+                            <div class="section-titre">Vue d'ensemble</div>
+                            ${construireTableEnsemble(textureCounts, clientCatCounts, allergeneCounts, commandesNettes, categories, clients, nbResidents, nbClients)}
+                            ${construireBlocAutresAllergies(autresAllergies)}
+                            ${construireBlocNonGouts(nonGouts)}
+                        </div>
+
+                        <div>
+                            <div class="section-titre">Détail des portions</div>
+                            ${construireTablePortions(portionsArr, totalRepas, totalRecettes)}
+                        </div>
+                    </div>
+                </div>
+            `;
+        }
+
+        function libelleAllergeneCourt(code) {
+            const a = ALLERGENES_LISTE.find(x => x.code === code);
+            return a ? a.nom.toLowerCase() : code;
+        }
+
+        function construireBandeauFiltres(filtreUnite, filtreClient, clients) {
+            const parts = [];
+            if (filtreUnite === 'bouleaux') parts.push('🏠 Bouleaux uniquement');
+            else if (filtreUnite === 'passerelle') parts.push('🌉 Passerelle uniquement');
+            else if (filtreUnite === 'aucune') parts.push('Aucune unité');
+
+            if (filtreClient === 'aucun') parts.push('Aucun client externe');
+            else if (filtreClient !== 'tous') {
+                const c = clients.find(x => x.id === filtreClient);
+                if (c) parts.push(`Client : ${c.nom}`);
+            }
+
+            if (!parts.length) return '';
+            return `<div class="feuille-filtres-actifs">🔍 Filtres actifs : ${parts.join(' · ')}</div>`;
+        }
+
+        function construireTableEnsemble(textureCounts, clientCatCounts, allergeneCounts, commandesNettes, categories, clients, nbResidents, nbClients) {
+            let html = '<table>';
+
+            if (nbResidents > 0) {
+                html += `<tr><td colspan="2" class="table-bloc-titre">Textures résidents (${nbResidents})</td></tr>`;
+                for (const t of TEXTURES_LISTE) {
+                    const n = textureCounts[t.code] || 0;
+                    if (n > 0) {
+                        html += `<tr><td>${t.nom}</td><td class="nombre-cellule">${n}</td></tr>`;
+                    }
+                }
+            }
+
+            if (nbClients > 0) {
+                html += `<tr><td colspan="2" class="table-bloc-titre">Clients externes (${nbClients})</td></tr>`;
+                const lignes = [];
+                for (const cle in clientCatCounts) {
+                    const parts = cle.split('::');
+                    const clientId = parts[0];
+                    const catId = parseInt(parts[1]);
+                    const client = clients.find(x => x.id === clientId);
+                    const cat = categories.find(x => x.id === catId);
+                    lignes.push({
+                        libelle: `${client ? client.nom : 'Client'} — ${cat ? cat.nom : 'Catégorie'}`,
+                        qte: clientCatCounts[cle]
+                    });
+                }
+                lignes.sort((a, b) => b.qte - a.qte);
+                for (const l of lignes) {
+                    html += `<tr><td>${l.libelle}</td><td class="nombre-cellule">${l.qte}</td></tr>`;
+                }
+            }
+
+            const allergenesPresents = Object.entries(allergeneCounts).filter(([_, n]) => n > 0);
+            if (allergenesPresents.length > 0) {
+                html += `<tr><td colspan="2" class="table-bloc-titre-rouge">Régimes spéciaux UE</td></tr>`;
+                for (const a of ALLERGENES_LISTE) {
+                    const n = allergeneCounts[a.code] || 0;
+                    if (n > 0) {
+                        html += `<tr><td>Sans ${a.nom.toLowerCase()}</td><td class="nombre-cellule-rouge">${n}</td></tr>`;
+                    }
+                }
+            }
+
+            html += '</table>';
+            return html;
+        }
+
+        function construireBlocAutresAllergies(autres) {
+            let html = `<div class="bloc-info bloc-info-orange">
+                <div class="bloc-info-titre">⚠ Autres allergies à vérifier</div>`;
+            if (autres.length === 0) {
+                html += `<div class="bloc-info-vide">Aucune pour ce repas</div>`;
+            } else {
+                for (const a of autres) {
+                    html += `<div>${a.nom} — ${a.valeur}</div>`;
+                }
+            }
+            html += '</div>';
+            return html;
+        }
+
+        function construireBlocNonGouts(nonGouts) {
+            let html = `<div class="bloc-info bloc-info-violet">
+                <div class="bloc-info-titre">📝 Non-goûts à vérifier (selon menu)</div>`;
+            if (nonGouts.length === 0) {
+                html += `<div class="bloc-info-vide">Aucun pour ce repas</div>`;
+            } else {
+                for (const n of nonGouts) {
+                    html += `<div>${n.nom} — ${n.valeur}</div>`;
+                }
+            }
+            html += '</div>';
+            return html;
+        }
+
+        function construireTablePortions(portions, totalRepas, totalRecettes) {
+            let html = `<table class="liste-b-table">
+                <thead>
+                    <tr>
+                        <th>Qté</th>
+                        <th>Recette</th>
+                    </tr>
+                </thead>
+                <tbody>`;
+            for (const p of portions) {
+                html += `<tr><td class="col-qte">${p.qte}×</td><td>${p.libelle}</td></tr>`;
+            }
+            html += `</tbody>
+                <tfoot>
+                    <tr><td colspan="2">${totalRepas} portions · ${totalRecettes} recette(s) distincte(s)</td></tr>
+                </tfoot>
+            </table>`;
+            return html;
+        }
+
+        // ============================================================
+        // DÉMARRAGE
+        // ============================================================
         (async () => {
             const auth = await verifierAuthEtRole(['admin']);
             if (!auth) return;
             afficherMenuComplet('production', auth.user.email, auth.profil.role, auth.profil.nom_affiche);
-            document.getElementById('date-prod').value = dateDemain();
-            genererListe();
+            document.getElementById('date-prod').value = demainIso();
+            await initFiltres();
+            genererFeuille();
         })();
     </script>
 </body>

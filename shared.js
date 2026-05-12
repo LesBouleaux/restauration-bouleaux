@@ -1,4 +1,4 @@
- // ============================================================
+// ============================================================
 // SHARED.JS - Restauration Les Bouleaux
 // Configuration Supabase + utilitaires partagés
 // ============================================================
@@ -254,16 +254,18 @@ function afficherEntete() {
 
 function genererMenuOnglets(pageActive, role) {
     const ongletsAdmin = [
-        { id: 'dashboard',              titre: '🏠 Accueil',            url: 'dashboard.html' },
-        { id: 'residents',              titre: '👥 Résidents',          url: 'residents.html' },
-        { id: 'presences',              titre: '✅ Présences',           url: 'presences.html' },
-        { id: 'production',             titre: '📋 Production J-1',     url: 'production.html' },
-        { id: 'service',                titre: '🍽️ Service du jour',    url: 'service.html' },
-        { id: 'commande-ejc',           titre: '🍴 Saisie repas',       url: 'commande-ejc.html' },
-        { id: 'recap-clients',          titre: '📊 Récap clients',      url: 'recap-clients.html' },
-        { id: 'categories-clients',     titre: '🏷️ Catégories clients', url: 'categories-clients.html' },
-        { id: 'factures-clients-admin', titre: '🧾 Factures clients',   url: 'factures-clients-admin.html' },
-        { id: 'stats',                  titre: '📊 Statistiques',       url: 'stats.html' }
+        { id: 'dashboard',              titre: '🏠 Accueil',               url: 'dashboard.html' },
+        { id: 'residents-bouleaux',     titre: '👥 Résidents Bouleaux',    url: 'residents-bouleaux.html' },
+        { id: 'residents-passerelle',   titre: '🌉 Résidents Passerelle',  url: 'residents-passerelle.html' },
+        { id: 'presences-bouleaux',     titre: '✅ Présences Bouleaux',    url: 'presences-bouleaux.html' },
+        { id: 'presences-passerelle',   titre: '✅ Présences Passerelle',  url: 'presences-passerelle.html' },
+        { id: 'production',             titre: '📋 Production J-1',        url: 'production.html' },
+        { id: 'service',                titre: '🍽️ Service du jour',       url: 'service.html' },
+        { id: 'commande-ejc',           titre: '🍴 Saisie repas',          url: 'commande-ejc.html' },
+        { id: 'recap-clients',          titre: '📊 Récap clients',         url: 'recap-clients.html' },
+        { id: 'categories-clients',     titre: '🏷️ Catégories clients',    url: 'categories-clients.html' },
+        { id: 'factures-clients-admin', titre: '🧾 Factures clients',      url: 'factures-clients-admin.html' },
+        { id: 'stats',                  titre: '📊 Statistiques',          url: 'stats.html' }
     ];
 
     const ongletsEjc = [
@@ -302,20 +304,95 @@ function afficherMenuComplet(pageActive, emailUtilisateur, role, nomAffiche) {
 }
 
 // ============================================================
+// UNITÉS D'HÉBERGEMENT (Bouleaux / Passerelle) ⭐ NOUVEAU
+// ============================================================
+
+const UNITES_LISTE = [
+    { code: 'bouleaux',   nom: 'Bouleaux',   emoji: '🏠' },
+    { code: 'passerelle', nom: 'Passerelle', emoji: '🌉' }
+];
+
+function nomUnite(code) {
+    const u = UNITES_LISTE.find(x => x.code === code);
+    return u ? `${u.emoji} ${u.nom}` : code;
+}
+
+function nomUniteSansEmoji(code) {
+    const u = UNITES_LISTE.find(x => x.code === code);
+    return u ? u.nom : code;
+}
+
+// ============================================================
+// TEXTURES MODIFIÉES ⭐ NOUVEAU
+// ============================================================
+
+const TEXTURE_DEFAUT = 'normale';
+
+const TEXTURES_LISTE = [
+    { code: 'normale',      nom: 'Normale',      emoji: '🍽️' },
+    { code: 'mixe_lisse',   nom: 'Mixé lisse',   emoji: '🥣' },
+    { code: 'coupe',        nom: 'Coupé',        emoji: '🔪' },
+    { code: 'viande_mixe',  nom: 'Viande mixée', emoji: '🥩' },
+    { code: 'liquide',      nom: 'Liquide',      emoji: '🥤' },
+    { code: 'mixe_sucre',   nom: 'Mixé sucré',   emoji: '🍮' }
+];
+
+function nomTexture(code) {
+    const t = TEXTURES_LISTE.find(x => x.code === code);
+    return t ? `${t.emoji} ${t.nom}` : code;
+}
+
+function nomTextureSansEmoji(code) {
+    const t = TEXTURES_LISTE.find(x => x.code === code);
+    return t ? t.nom : code;
+}
+
+// Récupère la texture par défaut d'un résident pour un repas donné
+function getTextureDefautResident(resident, repas) {
+    if (!resident) return TEXTURE_DEFAUT;
+    switch (repas) {
+        case 'petit_dej': return resident.texture_defaut_petit_dej || TEXTURE_DEFAUT;
+        case 'dejeuner':  return resident.texture_defaut_dejeuner  || TEXTURE_DEFAUT;
+        case 'diner':     return resident.texture_defaut_diner     || TEXTURE_DEFAUT;
+        default:          return TEXTURE_DEFAUT;
+    }
+}
+
+// Génère un <select> HTML pour choisir une texture
+function selectTextureHtml(nomChamp, valeurSelectionnee = TEXTURE_DEFAUT, attributs = '') {
+    let html = `<select name="${nomChamp}" ${attributs}>`;
+    for (const t of TEXTURES_LISTE) {
+        const sel = t.code === valeurSelectionnee ? 'selected' : '';
+        html += `<option value="${t.code}" ${sel}>${t.emoji} ${t.nom}</option>`;
+    }
+    html += '</select>';
+    return html;
+}
+
+// ============================================================
 // RÉSIDENTS - Chargement
 // ============================================================
 
-async function chargerResidentsActifs() {
-    const { data, error } = await supaClient
+// Chargement de tous les résidents actifs (toutes unités confondues)
+async function chargerResidentsActifs(unite = null) {
+    let query = supaClient
         .from(TABLE_RESIDENTS)
         .select('*')
         .eq('actif', true)
         .order('prenom', { ascending: true });
+    if (unite) query = query.eq('unite', unite);
+
+    const { data, error } = await query;
     if (error) {
         console.error('Erreur chargement résidents :', error);
         return [];
     }
     return data || [];
+}
+
+// Helper rétro-compatible : charge UNIQUEMENT les résidents d'une unité
+async function chargerResidentsParUnite(unite) {
+    return chargerResidentsActifs(unite);
 }
 
 // ============================================================
