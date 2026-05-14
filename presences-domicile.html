@@ -1,0 +1,638 @@
+ <!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Présences repas à domicile — Les Bouleaux</title>
+  <link rel="stylesheet" href="shared.css">
+</head>
+<body>
+
+  <div id="app-header"></div>
+  <div id="menu"></div>
+
+  <h1>🗓️ Présences repas à domicile</h1>
+  <p>Pointage mensuel des repas livrés à domicile</p>
+
+  <div class="toolbar" style="align-items:center; gap:8px;">
+    <button type="button" class="btn btn-secondary" id="btn-jour-precedent">‹</button>
+    <button type="button" class="btn btn-print" id="btn-imprimer-livraison">
+      🚚 Imprimer feuille de livraison
+    </button>
+    <button type="button" class="btn btn-secondary" id="btn-jour-suivant">›</button>
+    <input type="date" id="date-livraison" style="padding:10px; border:1px solid #ccc; border-radius:6px; font-size:15px; font-family:inherit;">
+  </div>
+
+  <div id="zone-livraison"></div>
+
+  <div id="liste-personnes">
+    <div class="loading">Chargement…</div>
+  </div>
+
+  <div id="modal-pointage" class="modal-overlay">
+    <div class="modal">
+      <h2 id="pointage-titre">Présences</h2>
+      <p id="pointage-rythme" style="color:#888; margin-top:-8px;"></p>
+
+      <div class="toolbar" style="justify-content:space-between; align-items:center;">
+        <button type="button" class="btn btn-secondary" id="btn-mois-precedent">‹</button>
+        <strong id="pointage-mois" style="font-size:16px;"></strong>
+        <button type="button" class="btn btn-secondary" id="btn-mois-suivant">›</button>
+      </div>
+
+      <div id="pointage-calendrier" style="margin-top:10px;"></div>
+
+      <div id="pointage-signataires" style="margin-top:10px; font-size:13px; color:#666; font-style:italic;"></div>
+
+      <div style="margin-top:14px; padding-top:12px; border-top:1px solid #eee; font-size:13px; color:#666; line-height:1.9;">
+        <div><span style="display:inline-block; width:16px; height:16px; background:#2c5530; border-radius:3px; vertical-align:middle;"></span> Repas prévu (rythme habituel)</div>
+        <div><span style="display:inline-block; width:16px; height:16px; background:#fff3cd; border:2px solid #f0ad4e; border-radius:3px; vertical-align:middle;"></span> Repas ajouté exceptionnellement</div>
+        <div><span style="display:inline-block; width:16px; height:16px; background:#fdecea; border:2px dashed #c0392b; border-radius:3px; vertical-align:middle;"></span> Absence signalée (repas retiré)</div>
+      </div>
+
+      <div class="form-group" style="margin-top:16px;">
+        <label for="pointage-signature">Pointage effectué par *</label>
+        <input type="text" id="pointage-signature" placeholder="Votre prénom — obligatoire pour enregistrer">
+      </div>
+
+      <div id="pointage-message"></div>
+
+      <div class="form-actions">
+        <button type="button" class="btn btn-secondary" id="btn-fermer-pointage">Fermer</button>
+        <button type="button" class="btn btn-primary" id="btn-enregistrer-pointage">Enregistrer</button>
+      </div>
+    </div>
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="shared.js"></script>
+  <script>
+  // ================================================
+  // PAGE PRÉSENCES REPAS À DOMICILE
+  // Liste des personnes + pop-up de pointage mensuel
+  // + feuille de livraison imprimable
+  // ================================================
+
+  const JOURS = ['lundi','mardi','mercredi','jeudi','vendredi','samedi','dimanche'];
+  const NOMS_MOIS = ['janvier','février','mars','avril','mai','juin',
+                     'juillet','août','septembre','octobre','novembre','décembre'];
+
+  // Référentiels chargés une fois
+  let formulesParCode = {};
+  let villagesParCode = {};
+  let villagesOrdre = {}; // code village -> ordre d'affichage
+
+  // Personne en cours de pointage dans le pop-up
+  let personneCourante = null;
+  let anneeAffichee = null;
+  let moisAffiche = null;
+  let exceptionsCourantes = {};
+  let etatJours = {};
+
+  document.addEventListener('DOMContentLoaded', async () => {
+    const auth = await verifierAuthEtRole(['admin']);
+    if (!auth) return;
+
+    afficherMenuComplet(
+      'presences-domicile',
+      auth.user.email,
+      auth.profil.role,
+      auth.profil.nom_affiche
+    );
+
+    await chargerReferentiels();
+    await chargerListePersonnes();
+
+    // Date par défaut de la feuille de livraison : demain
+    const demain = new Date();
+    demain.setDate(demain.getDate() + 1);
+    document.getElementById('date-livraison').value = formatDateObjet(demain);
+
+    // Branchements du pop-up de pointage
+    document.getElementById('btn-fermer-pointage')
+      .addEventListener('click', fermerPointage);
+    document.getElementById('btn-enregistrer-pointage')
+      .addEventListener('click', enregistrerPointage);
+    document.getElementById('btn-mois-precedent')
+      .addEventListener('click', () => changerMois(-1));
+    document.getElementById('btn-mois-suivant')
+      .addEventListener('click', () => changerMois(1));
+
+    // Branchements de la feuille de livraison
+    document.getElementById('btn-imprimer-livraison')
+      .addEventListener('click', genererFeuilleLivraison);
+    document.getElementById('btn-jour-precedent')
+      .addEventListener('click', () => decalerJourLivraison(-1));
+    document.getElementById('btn-jour-suivant')
+      .addEventListener('click', () => decalerJourLivraison(1));
+  });
+
+  // ----- Charger les référentiels (formules + villages) -----
+  async function chargerReferentiels() {
+    const { data: formules } = await supaClient
+      .from('formules_repas')
+      .select('code, libelle');
+    (formules || []).forEach(f => { formulesParCode[f.code] = f.libelle; });
+
+    const { data: villages } = await supaClient
+      .from('villages')
+      .select('code, libelle, ordre_affichage');
+    (villages || []).forEach(v => {
+      villagesParCode[v.code] = v.libelle;
+      villagesOrdre[v.code] = v.ordre_affichage;
+    });
+  }
+
+  // ----- Charger la liste des personnes actives -----
+  async function chargerListePersonnes() {
+    const conteneur = document.getElementById('liste-personnes');
+
+    const { data, error } = await supaClient
+      .from('personnes_domicile')
+      .select('*')
+      .eq('actif', true)
+      .order('nom', { ascending: true })
+      .order('prenom', { ascending: true });
+
+    if (error) {
+      console.error('Erreur chargement personnes :', error);
+      conteneur.innerHTML =
+        '<div class="erreur-msg">Erreur : impossible de charger les personnes.</div>';
+      return;
+    }
+
+    if (!data || data.length === 0) {
+      conteneur.innerHTML =
+        '<div class="info-msg">Aucune personne active. Créez des fiches dans l\'onglet Repas à domicile.</div>';
+      return;
+    }
+
+    let html = '<table class="presences"><thead><tr>'
+             + '<th>Nom</th><th>Prénom</th><th>Rythme</th><th></th>'
+             + '</tr></thead><tbody>';
+
+    data.forEach(p => {
+      html += '<tr>'
+            + '<td>' + echapper(p.nom) + '</td>'
+            + '<td>' + echapper(p.prenom) + '</td>'
+            + '<td>' + echapper(resumeRythme(p)) + '</td>'
+            + '<td><button type="button" class="btn-primary btn-small" '
+            + 'onclick="ouvrirPointage(' + p.id + ')">Pointer le mois</button></td>'
+            + '</tr>';
+    });
+
+    html += '</tbody></table>';
+    conteneur.innerHTML = html;
+  }
+
+  // ----- Résumé court du rythme (ex : "Lu Me Ve") -----
+  function resumeRythme(p) {
+    const abrev = {
+      lundi:'Lu', mardi:'Ma', mercredi:'Me', jeudi:'Je',
+      vendredi:'Ve', samedi:'Sa', dimanche:'Di'
+    };
+    const joursActifs = JOURS
+      .filter(jour => p['livraison_' + jour])
+      .map(jour => abrev[jour]);
+
+    if (joursActifs.length === 0) return '—';
+    if (joursActifs.length === 7) return 'Tous les jours';
+    return joursActifs.join(' ');
+  }
+
+  // ----- Rythme complet en toutes lettres -----
+  function rythmeEnToutesLettres(p) {
+    const joursActifs = JOURS.filter(jour => p['livraison_' + jour]);
+    if (joursActifs.length === 0) return 'aucun rythme par défaut (uniquement ponctuel)';
+    if (joursActifs.length === 7) return 'tous les jours';
+    return joursActifs.join(', ');
+  }
+
+  // ================================================
+  // POP-UP DE POINTAGE
+  // ================================================
+
+  async function ouvrirPointage(id) {
+    const { data, error } = await supaClient
+      .from('personnes_domicile')
+      .select('*')
+      .eq('id', id)
+      .maybeSingle();
+
+    if (error || !data) {
+      console.error('Erreur chargement de la fiche :', error);
+      alert('Impossible de charger cette fiche.');
+      return;
+    }
+
+    personneCourante = data;
+
+    const maintenant = new Date();
+    anneeAffichee = maintenant.getFullYear();
+    moisAffiche = maintenant.getMonth();
+
+    document.getElementById('pointage-titre').textContent =
+      'Présences — ' + (data.prenom || '') + ' ' + (data.nom || '');
+    document.getElementById('pointage-rythme').textContent =
+      'Rythme par défaut : ' + rythmeEnToutesLettres(data);
+
+    document.getElementById('pointage-signature').value = '';
+    document.getElementById('pointage-message').innerHTML = '';
+
+    await chargerExceptionsEtAfficher();
+
+    document.getElementById('modal-pointage').classList.add('active');
+  }
+
+  async function changerMois(sens) {
+    moisAffiche += sens;
+    if (moisAffiche < 0) { moisAffiche = 11; anneeAffichee--; }
+    if (moisAffiche > 11) { moisAffiche = 0; anneeAffichee++; }
+    await chargerExceptionsEtAfficher();
+  }
+
+  async function chargerExceptionsEtAfficher() {
+    const premierJour = formatDate(anneeAffichee, moisAffiche, 1);
+    const nbJours = new Date(anneeAffichee, moisAffiche + 1, 0).getDate();
+    const dernierJour = formatDate(anneeAffichee, moisAffiche, nbJours);
+
+    const { data, error } = await supaClient
+      .from('livraisons_exceptions')
+      .select('*')
+      .eq('personne_id', personneCourante.id)
+      .gte('date_repas', premierJour)
+      .lte('date_repas', dernierJour);
+
+    if (error) {
+      console.error('Erreur chargement exceptions :', error);
+      document.getElementById('pointage-calendrier').innerHTML =
+        '<div class="erreur-msg">Erreur : impossible de charger les présences du mois.</div>';
+      return;
+    }
+
+    exceptionsCourantes = {};
+    (data || []).forEach(ex => {
+      exceptionsCourantes[ex.date_repas] = {
+        type: ex.type_exception,
+        signe_par: ex.signe_par
+      };
+    });
+
+    etatJours = {};
+    for (let jour = 1; jour <= nbJours; jour++) {
+      const dateStr = formatDate(anneeAffichee, moisAffiche, jour);
+      etatJours[dateStr] = jourEstCoche(dateStr);
+    }
+
+    dessinerCalendrier();
+    afficherSignataires();
+  }
+
+  function jourEstCoche(dateStr) {
+    const exception = exceptionsCourantes[dateStr];
+    if (exception && exception.type === 'absence') return false;
+    if (exception && exception.type === 'ajout') return true;
+    return rythmePrevoit(personneCourante, dateStr);
+  }
+
+  // ----- Est-ce que le rythme d'une personne prévoit ce jour-là ? -----
+  function rythmePrevoit(personne, dateStr) {
+    const [a, m, j] = dateStr.split('-').map(Number);
+    const d = new Date(a, m - 1, j);
+    const indexJs = d.getDay();
+    const indexJour = (indexJs === 0) ? 6 : indexJs - 1;
+    const nomJour = JOURS[indexJour];
+    return !!personne['livraison_' + nomJour];
+  }
+
+  function dessinerCalendrier() {
+    document.getElementById('pointage-mois').textContent =
+      NOMS_MOIS[moisAffiche] + ' ' + anneeAffichee;
+
+    const nbJours = new Date(anneeAffichee, moisAffiche + 1, 0).getDate();
+
+    const premier = new Date(anneeAffichee, moisAffiche, 1);
+    const indexJsPremier = premier.getDay();
+    const decalage = (indexJsPremier === 0) ? 6 : indexJsPremier - 1;
+
+    let html = '<div style="display:grid; grid-template-columns:repeat(7,1fr); gap:4px; margin-bottom:4px;">';
+    ['Lu','Ma','Me','Je','Ve','Sa','Di'].forEach(j => {
+      html += '<div style="text-align:center; font-size:12px; color:#888; font-weight:bold;">' + j + '</div>';
+    });
+    html += '</div>';
+
+    html += '<div style="display:grid; grid-template-columns:repeat(7,1fr); gap:4px;">';
+
+    for (let i = 0; i < decalage; i++) {
+      html += '<div></div>';
+    }
+
+    for (let jour = 1; jour <= nbJours; jour++) {
+      const dateStr = formatDate(anneeAffichee, moisAffiche, jour);
+      const coche = etatJours[dateStr];
+      const prevu = rythmePrevoit(personneCourante, dateStr);
+
+      let style = 'aspect-ratio:1; border-radius:5px; cursor:pointer; '
+                + 'display:flex; flex-direction:column; align-items:center; '
+                + 'justify-content:center; font-size:13px;';
+      let contenu = '';
+
+      if (coche && prevu) {
+        style += 'background:#2c5530; color:white;';
+        contenu = jour + '<span style="font-size:14px;">✓</span>';
+      } else if (coche && !prevu) {
+        style += 'background:#fff3cd; border:2px solid #f0ad4e; color:#a05000;';
+        contenu = jour + '<span style="font-size:14px;">✓</span>';
+      } else if (!coche && prevu) {
+        style += 'background:#fdecea; border:2px dashed #c0392b; color:#922b21;';
+        contenu = jour;
+      } else {
+        style += 'background:#fafafa; border:1px solid #e0e0e0; color:#999;';
+        contenu = jour;
+      }
+
+      html += '<div style="' + style + '" onclick="basculerJour(\'' + dateStr + '\')">'
+            + contenu + '</div>';
+    }
+
+    html += '</div>';
+    document.getElementById('pointage-calendrier').innerHTML = html;
+  }
+
+  function afficherSignataires() {
+    const conteneur = document.getElementById('pointage-signataires');
+
+    const prenoms = [];
+    Object.values(exceptionsCourantes).forEach(ex => {
+      const nom = (ex.signe_par || '').trim();
+      if (nom && !prenoms.includes(nom)) {
+        prenoms.push(nom);
+      }
+    });
+
+    if (prenoms.length === 0) {
+      conteneur.textContent = 'Aucune modification enregistrée sur ce mois.';
+    } else {
+      conteneur.textContent =
+        'Dernières modifications effectuées par : ' + prenoms.join(', ');
+    }
+  }
+
+  function basculerJour(dateStr) {
+    etatJours[dateStr] = !etatJours[dateStr];
+    dessinerCalendrier();
+  }
+
+  async function enregistrerPointage() {
+    const message = document.getElementById('pointage-message');
+    message.innerHTML = '';
+
+    const signature = document.getElementById('pointage-signature').value.trim();
+    if (!signature) {
+      message.innerHTML =
+        '<div class="erreur-msg">Merci d\'indiquer votre prénom avant d\'enregistrer.</div>';
+      return;
+    }
+
+    const nbJours = new Date(anneeAffichee, moisAffiche + 1, 0).getDate();
+
+    const aSupprimer = [];
+    const aPoser = [];
+
+    for (let jour = 1; jour <= nbJours; jour++) {
+      const dateStr = formatDate(anneeAffichee, moisAffiche, jour);
+      const coche = etatJours[dateStr];
+      const prevu = rythmePrevoit(personneCourante, dateStr);
+
+      if (coche === prevu) {
+        if (exceptionsCourantes[dateStr]) {
+          aSupprimer.push(dateStr);
+        }
+      } else {
+        const type = coche ? 'ajout' : 'absence';
+        aPoser.push({
+          personne_id: personneCourante.id,
+          date_repas: dateStr,
+          type_exception: type,
+          signe_par: signature
+        });
+      }
+    }
+
+    if (aSupprimer.length > 0) {
+      const { error: errSuppr } = await supaClient
+        .from('livraisons_exceptions')
+        .delete()
+        .eq('personne_id', personneCourante.id)
+        .in('date_repas', aSupprimer);
+
+      if (errSuppr) {
+        console.error('Erreur suppression exceptions :', errSuppr);
+        message.innerHTML =
+          '<div class="erreur-msg">Erreur lors de l\'enregistrement (suppression).</div>';
+        return;
+      }
+    }
+
+    if (aPoser.length > 0) {
+      const { error: errPose } = await supaClient
+        .from('livraisons_exceptions')
+        .upsert(aPoser, { onConflict: 'personne_id,date_repas' });
+
+      if (errPose) {
+        console.error('Erreur enregistrement exceptions :', errPose);
+        message.innerHTML =
+          '<div class="erreur-msg">Erreur lors de l\'enregistrement.</div>';
+        return;
+      }
+    }
+
+    message.innerHTML =
+      '<div class="success">Pointage du mois enregistré ✔</div>';
+
+    await chargerExceptionsEtAfficher();
+  }
+
+  function fermerPointage() {
+    document.getElementById('modal-pointage').classList.remove('active');
+    personneCourante = null;
+  }
+
+  // ================================================
+  // FEUILLE DE LIVRAISON
+  // ================================================
+
+  // ----- Décaler la date de livraison d'un jour (-1 ou +1) -----
+  function decalerJourLivraison(sens) {
+    const champDate = document.getElementById('date-livraison');
+    if (!champDate.value) return;
+    const [a, m, j] = champDate.value.split('-').map(Number);
+    const d = new Date(a, m - 1, j);
+    d.setDate(d.getDate() + sens);
+    champDate.value = formatDateObjet(d);
+  }
+
+  // ----- Générer la feuille de livraison pour la date choisie -----
+  async function genererFeuilleLivraison() {
+    const zone = document.getElementById('zone-livraison');
+    const dateStr = document.getElementById('date-livraison').value;
+
+    if (!dateStr) {
+      zone.innerHTML = '<div class="erreur-msg">Merci de choisir une date.</div>';
+      return;
+    }
+
+    zone.innerHTML = '<div class="loading">Préparation de la feuille…</div>';
+
+    // 1) Charger toutes les personnes actives
+    const { data: personnes, error: errP } = await supaClient
+      .from('personnes_domicile')
+      .select('*')
+      .eq('actif', true);
+
+    if (errP) {
+      console.error('Erreur chargement personnes :', errP);
+      zone.innerHTML = '<div class="erreur-msg">Erreur : impossible de préparer la feuille.</div>';
+      return;
+    }
+
+    // 2) Charger toutes les exceptions qui tombent ce jour-là
+    const { data: exceptions, error: errE } = await supaClient
+      .from('livraisons_exceptions')
+      .select('*')
+      .eq('date_repas', dateStr);
+
+    if (errE) {
+      console.error('Erreur chargement exceptions :', errE);
+      zone.innerHTML = '<div class="erreur-msg">Erreur : impossible de préparer la feuille.</div>';
+      return;
+    }
+
+    // Range les exceptions du jour par personne
+    const exceptionParPersonne = {};
+    (exceptions || []).forEach(ex => {
+      exceptionParPersonne[ex.personne_id] = ex.type_exception;
+    });
+
+    // 3) Décider, pour chaque personne, si elle a un repas ce jour-là :
+    //    - exception "absence" => pas de repas
+    //    - exception "ajout"   => repas
+    //    - sinon => on suit le rythme
+    const aLivrer = (personnes || []).filter(p => {
+      const exception = exceptionParPersonne[p.id];
+      if (exception === 'absence') return false;
+      if (exception === 'ajout') return true;
+      return rythmePrevoit(p, dateStr);
+    });
+
+    if (aLivrer.length === 0) {
+      zone.innerHTML = '<div class="print-area"><div class="info-msg">'
+                     + 'Aucune livraison prévue le ' + dateEnToutesLettres(dateStr) + '.'
+                     + '</div></div>';
+      return;
+    }
+
+    // 4) Regrouper par village
+    const parVillage = {};
+    aLivrer.forEach(p => {
+      const codeV = p.village_code || '_sans_village';
+      if (!parVillage[codeV]) parVillage[codeV] = [];
+      parVillage[codeV].push(p);
+    });
+
+    // Ordre des villages : selon l'ordre d'affichage du référentiel,
+    // les éventuels "sans village" à la fin
+    const codesVillages = Object.keys(parVillage).sort((a, b) => {
+      if (a === '_sans_village') return 1;
+      if (b === '_sans_village') return -1;
+      return (villagesOrdre[a] || 999) - (villagesOrdre[b] || 999);
+    });
+
+    // 5) Construire la feuille imprimable
+    let html = '<div class="print-area">';
+    html += '<h2>Feuille de livraison — ' + dateEnToutesLettres(dateStr) + '</h2>';
+    html += '<p>' + aLivrer.length + ' repas à livrer</p>';
+
+    codesVillages.forEach(codeV => {
+      const nomVillage = (codeV === '_sans_village')
+        ? 'Village non renseigné'
+        : (villagesParCode[codeV] || codeV);
+
+      // Trie les personnes du village par nom
+      const gens = parVillage[codeV].sort((a, b) => {
+        const nomA = (a.nom || '').toLowerCase();
+        const nomB = (b.nom || '').toLowerCase();
+        if (nomA < nomB) return -1;
+        if (nomA > nomB) return 1;
+        return 0;
+      });
+
+      html += '<div class="print-section">';
+      html += '<h3>' + echapper(nomVillage) + ' — ' + gens.length + ' repas</h3>';
+      html += '<table class="presences"><thead><tr>'
+            + '<th>Nom</th><th>Prénom</th><th>Adresse</th>'
+            + '<th>Téléphone</th><th>Formule</th><th>Consignes</th>'
+            + '</tr></thead><tbody>';
+
+      gens.forEach(p => {
+        const libelleFormule = formulesParCode[p.formule_code] || p.formule_code || '—';
+        html += '<tr>'
+              + '<td>' + echapper(p.nom) + '</td>'
+              + '<td>' + echapper(p.prenom) + '</td>'
+              + '<td>' + echapper(p.adresse_livraison || '—') + '</td>'
+              + '<td>' + echapper(p.telephone || '—') + '</td>'
+              + '<td>' + echapper(libelleFormule) + '</td>'
+              + '<td>' + echapper(p.consignes_livraison || '—') + '</td>'
+              + '</tr>';
+      });
+
+      html += '</tbody></table></div>';
+    });
+
+    html += '<div class="no-print" style="margin-top:20px;">'
+          + '<button type="button" class="btn btn-print" onclick="window.print()">🖨️ Imprimer</button>'
+          + '</div>';
+    html += '</div>';
+
+    zone.innerHTML = html;
+
+    // Amène la feuille à l'écran
+    zone.scrollIntoView({ behavior: 'smooth' });
+  }
+
+  // ================================================
+  // OUTILS DE DATE
+  // ================================================
+
+  // Fabrique "AAAA-MM-JJ" à partir d'année, mois (0-11), jour
+  function formatDate(annee, mois, jour) {
+    const mm = String(mois + 1).padStart(2, '0');
+    const jj = String(jour).padStart(2, '0');
+    return annee + '-' + mm + '-' + jj;
+  }
+
+  // Fabrique "AAAA-MM-JJ" à partir d'un objet Date
+  function formatDateObjet(d) {
+    return formatDate(d.getFullYear(), d.getMonth(), d.getDate());
+  }
+
+  // Transforme "AAAA-MM-JJ" en "lundi 15 mai 2026"
+  function dateEnToutesLettres(dateStr) {
+    const [a, m, j] = dateStr.split('-').map(Number);
+    const d = new Date(a, m - 1, j);
+    const jours = ['dimanche','lundi','mardi','mercredi','jeudi','vendredi','samedi'];
+    return jours[d.getDay()] + ' ' + j + ' ' + NOMS_MOIS[m - 1] + ' ' + a;
+  }
+
+  // ----- Échapper le texte pour l'affichage -----
+  function echapper(texte) {
+    if (texte === null || texte === undefined) return '';
+    return String(texte)
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;');
+  }
+  </script>
+
+</body>
+</html>

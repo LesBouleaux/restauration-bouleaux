@@ -1,0 +1,561 @@
+ <!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Repas à domicile — Les Bouleaux</title>
+  <link rel="stylesheet" href="shared.css">
+</head>
+<body>
+
+  <div id="app-header"></div>
+  <div id="menu"></div>
+
+  <h1>🏠 Repas à domicile</h1>
+  <p>Gestion des fiches personnes — portage de repas à domicile</p>
+
+  <h2>➕ Nouvelle fiche personne</h2>
+
+  <div class="resident">
+    <form id="form-personne">
+
+      <div class="form-group">
+        <label for="prenom">Prénom *</label>
+        <input type="text" id="prenom" name="prenom" required>
+      </div>
+
+      <div class="form-group">
+        <label for="nom">Nom *</label>
+        <input type="text" id="nom" name="nom" required>
+      </div>
+
+      <div class="form-group">
+        <label for="adresse_livraison">Adresse de livraison (rue et numéro)</label>
+        <input type="text" id="adresse_livraison" name="adresse_livraison"
+               placeholder="Rue et numéro">
+      </div>
+
+      <div class="form-group">
+        <label for="village_code">Village *</label>
+        <select id="village_code" name="village_code" required>
+          <option value="">— Choisir un village —</option>
+        </select>
+      </div>
+
+      <div class="form-group">
+        <label for="telephone">Téléphone</label>
+        <input type="text" id="telephone" name="telephone" placeholder="Optionnel">
+      </div>
+
+      <div class="form-group">
+        <label for="formule_code">Formule de menu *</label>
+        <select id="formule_code" name="formule_code" required>
+          <option value="">— Choisir une formule —</option>
+        </select>
+      </div>
+
+      <div class="form-group">
+        <label>Jours de livraison par défaut</label>
+        <div style="display:flex; flex-wrap:wrap; gap:14px; margin-top:5px;">
+          <label style="font-weight:normal;"><input type="checkbox" id="jour-lundi"> Lundi</label>
+          <label style="font-weight:normal;"><input type="checkbox" id="jour-mardi"> Mardi</label>
+          <label style="font-weight:normal;"><input type="checkbox" id="jour-mercredi"> Mercredi</label>
+          <label style="font-weight:normal;"><input type="checkbox" id="jour-jeudi"> Jeudi</label>
+          <label style="font-weight:normal;"><input type="checkbox" id="jour-vendredi"> Vendredi</label>
+          <label style="font-weight:normal;"><input type="checkbox" id="jour-samedi"> Samedi</label>
+          <label style="font-weight:normal;"><input type="checkbox" id="jour-dimanche"> Dimanche</label>
+        </div>
+      </div>
+
+      <div class="form-group">
+        <label for="consignes_livraison">Consignes de livraison</label>
+        <textarea id="consignes_livraison" name="consignes_livraison"
+                  placeholder="Ex : sonner et rentrer, clé dans le digibox code 1234..."></textarea>
+      </div>
+
+      <div class="form-actions">
+        <button type="submit" class="btn btn-primary">Enregistrer la fiche</button>
+      </div>
+
+      <div id="form-message"></div>
+
+    </form>
+  </div>
+
+  <h2>📋 Fiches</h2>
+
+  <div class="toolbar">
+    <button type="button" id="btn-vue-actives" class="btn btn-primary">Fiches actives</button>
+    <button type="button" id="btn-vue-archivees" class="btn btn-secondary">Fiches archivées</button>
+  </div>
+
+  <div id="liste-personnes">
+    <div class="loading">Chargement…</div>
+  </div>
+
+  <div id="modal-modif" class="modal-overlay">
+    <div class="modal">
+      <h2 id="modal-titre">Modifier la fiche</h2>
+
+      <form id="form-modif">
+        <input type="hidden" id="modif-id">
+
+        <div class="form-group">
+          <label for="modif-prenom">Prénom *</label>
+          <input type="text" id="modif-prenom" required>
+        </div>
+
+        <div class="form-group">
+          <label for="modif-nom">Nom *</label>
+          <input type="text" id="modif-nom" required>
+        </div>
+
+        <div class="form-group">
+          <label for="modif-adresse">Adresse de livraison (rue et numéro)</label>
+          <input type="text" id="modif-adresse" placeholder="Rue et numéro">
+        </div>
+
+        <div class="form-group">
+          <label for="modif-village">Village *</label>
+          <select id="modif-village" required>
+            <option value="">— Choisir un village —</option>
+          </select>
+        </div>
+
+        <div class="form-group">
+          <label for="modif-telephone">Téléphone</label>
+          <input type="text" id="modif-telephone" placeholder="Optionnel">
+        </div>
+
+        <div class="form-group">
+          <label for="modif-formule">Formule de menu *</label>
+          <select id="modif-formule" required>
+            <option value="">— Choisir une formule —</option>
+          </select>
+        </div>
+
+        <div class="form-group">
+          <label>Jours de livraison par défaut</label>
+          <div style="display:flex; flex-wrap:wrap; gap:14px; margin-top:5px;">
+            <label style="font-weight:normal;"><input type="checkbox" id="modif-jour-lundi"> Lundi</label>
+            <label style="font-weight:normal;"><input type="checkbox" id="modif-jour-mardi"> Mardi</label>
+            <label style="font-weight:normal;"><input type="checkbox" id="modif-jour-mercredi"> Mercredi</label>
+            <label style="font-weight:normal;"><input type="checkbox" id="modif-jour-jeudi"> Jeudi</label>
+            <label style="font-weight:normal;"><input type="checkbox" id="modif-jour-vendredi"> Vendredi</label>
+            <label style="font-weight:normal;"><input type="checkbox" id="modif-jour-samedi"> Samedi</label>
+            <label style="font-weight:normal;"><input type="checkbox" id="modif-jour-dimanche"> Dimanche</label>
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label for="modif-consignes">Consignes de livraison</label>
+          <textarea id="modif-consignes"
+                    placeholder="Ex : sonner et rentrer, clé dans le digibox code 1234..."></textarea>
+        </div>
+
+        <div id="modif-message"></div>
+
+        <div class="form-actions">
+          <button type="button" class="btn btn-secondary" id="btn-annuler-modif">Annuler</button>
+          <button type="submit" class="btn btn-primary">Enregistrer les modifications</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="shared.js"></script>
+  <script>
+  // ================================================
+  // PAGE REPAS À DOMICILE
+  // Création + liste active + modification + archivage
+  // + vue des fiches archivées + rythme + village
+  // ================================================
+
+  let formulesParCode = {};
+  let villagesParCode = {};
+  let vueCourante = 'actives';
+
+  const JOURS = ['lundi','mardi','mercredi','jeudi','vendredi','samedi','dimanche'];
+
+  document.addEventListener('DOMContentLoaded', async () => {
+    const auth = await verifierAuthEtRole(['admin']);
+    if (!auth) return;
+
+    afficherMenuComplet(
+      'repas-domicile',
+      auth.user.email,
+      auth.profil.role,
+      auth.profil.nom_affiche
+    );
+
+    await chargerFormules();
+    await chargerVillages();
+    await chargerPersonnes();
+
+    document.getElementById('form-personne')
+      .addEventListener('submit', enregistrerPersonne);
+    document.getElementById('btn-vue-actives')
+      .addEventListener('click', () => changerVue('actives'));
+    document.getElementById('btn-vue-archivees')
+      .addEventListener('click', () => changerVue('archivees'));
+    document.getElementById('form-modif')
+      .addEventListener('submit', enregistrerModification);
+    document.getElementById('btn-annuler-modif')
+      .addEventListener('click', fermerModale);
+  });
+
+  // ----- Charger les formules (listes déroulantes création + modale) -----
+  async function chargerFormules() {
+    const { data, error } = await supaClient
+      .from('formules_repas')
+      .select('code, libelle')
+      .eq('actif', true)
+      .order('ordre_affichage', { ascending: true });
+
+    if (error) {
+      console.error('Erreur chargement formules :', error);
+      document.getElementById('form-message').innerHTML =
+        '<div class="erreur-msg">Erreur : impossible de charger les formules.</div>';
+      return;
+    }
+
+    const selectCreation = document.getElementById('formule_code');
+    const selectModale   = document.getElementById('modif-formule');
+
+    data.forEach(formule => {
+      formulesParCode[formule.code] = formule.libelle;
+
+      const optionA = document.createElement('option');
+      optionA.value = formule.code;
+      optionA.textContent = formule.libelle;
+      selectCreation.appendChild(optionA);
+
+      const optionB = document.createElement('option');
+      optionB.value = formule.code;
+      optionB.textContent = formule.libelle;
+      selectModale.appendChild(optionB);
+    });
+  }
+
+  // ----- Charger les villages (listes déroulantes création + modale) -----
+  async function chargerVillages() {
+    const { data, error } = await supaClient
+      .from('villages')
+      .select('code, libelle')
+      .eq('actif', true)
+      .order('ordre_affichage', { ascending: true });
+
+    if (error) {
+      console.error('Erreur chargement villages :', error);
+      document.getElementById('form-message').innerHTML =
+        '<div class="erreur-msg">Erreur : impossible de charger les villages.</div>';
+      return;
+    }
+
+    const selectCreation = document.getElementById('village_code');
+    const selectModale   = document.getElementById('modif-village');
+
+    data.forEach(village => {
+      villagesParCode[village.code] = village.libelle;
+
+      const optionA = document.createElement('option');
+      optionA.value = village.code;
+      optionA.textContent = village.libelle;
+      selectCreation.appendChild(optionA);
+
+      const optionB = document.createElement('option');
+      optionB.value = village.code;
+      optionB.textContent = village.libelle;
+      selectModale.appendChild(optionB);
+    });
+  }
+
+  // ----- Enregistrer une nouvelle fiche -----
+  async function enregistrerPersonne(event) {
+    event.preventDefault();
+
+    const message = document.getElementById('form-message');
+    message.innerHTML = '';
+
+    const fiche = {
+      prenom:              document.getElementById('prenom').value.trim(),
+      nom:                 document.getElementById('nom').value.trim(),
+      adresse_livraison:   document.getElementById('adresse_livraison').value.trim() || null,
+      village_code:        document.getElementById('village_code').value,
+      telephone:           document.getElementById('telephone').value.trim() || null,
+      formule_code:        document.getElementById('formule_code').value,
+      consignes_livraison: document.getElementById('consignes_livraison').value.trim() || null
+    };
+
+    JOURS.forEach(jour => {
+      fiche['livraison_' + jour] = document.getElementById('jour-' + jour).checked;
+    });
+
+    if (!fiche.prenom || !fiche.nom || !fiche.formule_code || !fiche.village_code) {
+      message.innerHTML =
+        '<div class="erreur-msg">Merci de remplir le prénom, le nom, le village et la formule.</div>';
+      return;
+    }
+
+    const { error } = await supaClient
+      .from('personnes_domicile')
+      .insert([fiche]);
+
+    if (error) {
+      console.error('Erreur enregistrement :', error);
+      message.innerHTML =
+        '<div class="erreur-msg">Erreur : la fiche n\'a pas pu être enregistrée.</div>';
+      return;
+    }
+
+    message.innerHTML = '<div class="success">Fiche enregistrée ✔</div>';
+    document.getElementById('form-personne').reset();
+
+    vueCourante = 'actives';
+    majBoutonsVue();
+    await chargerPersonnes();
+  }
+
+  // ----- Changer de vue (actives <-> archivées) -----
+  function changerVue(vue) {
+    vueCourante = vue;
+    majBoutonsVue();
+    chargerPersonnes();
+  }
+
+  function majBoutonsVue() {
+    const btnActives   = document.getElementById('btn-vue-actives');
+    const btnArchivees = document.getElementById('btn-vue-archivees');
+
+    if (vueCourante === 'actives') {
+      btnActives.className   = 'btn btn-primary';
+      btnArchivees.className = 'btn btn-secondary';
+    } else {
+      btnActives.className   = 'btn btn-secondary';
+      btnArchivees.className = 'btn btn-primary';
+    }
+  }
+
+  // ----- Résumé court du rythme (ex : "Lu Me Ve") -----
+  function resumeRythme(p) {
+    const abrev = {
+      lundi:'Lu', mardi:'Ma', mercredi:'Me', jeudi:'Je',
+      vendredi:'Ve', samedi:'Sa', dimanche:'Di'
+    };
+    const joursActifs = JOURS
+      .filter(jour => p['livraison_' + jour])
+      .map(jour => abrev[jour]);
+
+    if (joursActifs.length === 0) return '—';
+    if (joursActifs.length === 7) return 'Tous les jours';
+    return joursActifs.join(' ');
+  }
+
+  // ----- Charger et afficher la liste (selon la vue) -----
+  async function chargerPersonnes() {
+    const conteneur = document.getElementById('liste-personnes');
+    conteneur.innerHTML = '<div class="loading">Chargement…</div>';
+
+    const veutActives = (vueCourante === 'actives');
+
+    const { data, error } = await supaClient
+      .from('personnes_domicile')
+      .select('*')
+      .eq('actif', veutActives)
+      .order('nom', { ascending: true })
+      .order('prenom', { ascending: true });
+
+    if (error) {
+      console.error('Erreur chargement fiches :', error);
+      conteneur.innerHTML =
+        '<div class="erreur-msg">Erreur : impossible de charger les fiches.</div>';
+      return;
+    }
+
+    if (!data || data.length === 0) {
+      const texteVide = veutActives
+        ? 'Aucune fiche active pour le moment.'
+        : 'Aucune fiche archivée.';
+      conteneur.innerHTML = '<div class="info-msg">' + texteVide + '</div>';
+      return;
+    }
+
+    let html = '<table class="presences"><thead><tr>'
+             + '<th>Nom</th><th>Prénom</th><th>Adresse</th><th>Village</th>'
+             + '<th>Téléphone</th><th>Formule</th><th>Jours</th><th>Consignes</th>'
+             + '<th>Actions</th>'
+             + '</tr></thead><tbody>';
+
+    data.forEach(p => {
+      const libelleFormule = formulesParCode[p.formule_code] || p.formule_code;
+      const libelleVillage = villagesParCode[p.village_code] || p.village_code || '—';
+
+      let actions = '';
+      if (veutActives) {
+        actions = '<button type="button" class="btn-edit btn-small" '
+                + 'onclick="ouvrirModale(' + p.id + ')">Modifier</button> '
+                + '<button type="button" class="btn-secondary btn-small" '
+                + 'onclick="archiverPersonne(' + p.id + ')">Archiver</button>';
+      } else {
+        actions = '<button type="button" class="btn-primary btn-small" '
+                + 'onclick="reactiverPersonne(' + p.id + ')">Réactiver</button>';
+      }
+
+      html += '<tr>'
+            + '<td>' + echapper(p.nom) + '</td>'
+            + '<td>' + echapper(p.prenom) + '</td>'
+            + '<td>' + echapper(p.adresse_livraison || '—') + '</td>'
+            + '<td>' + echapper(libelleVillage) + '</td>'
+            + '<td>' + echapper(p.telephone || '—') + '</td>'
+            + '<td>' + echapper(libelleFormule) + '</td>'
+            + '<td>' + echapper(resumeRythme(p)) + '</td>'
+            + '<td>' + echapper(p.consignes_livraison || '—') + '</td>'
+            + '<td>' + actions + '</td>'
+            + '</tr>';
+    });
+
+    html += '</tbody></table>';
+    conteneur.innerHTML = html;
+  }
+
+  // ----- Ouvrir la modale de modification -----
+  async function ouvrirModale(id) {
+    const message = document.getElementById('modif-message');
+    message.innerHTML = '';
+
+    const { data, error } = await supaClient
+      .from('personnes_domicile')
+      .select('*')
+      .eq('id', id)
+      .maybeSingle();
+
+    if (error || !data) {
+      console.error('Erreur chargement de la fiche :', error);
+      alert('Impossible de charger cette fiche.');
+      return;
+    }
+
+    document.getElementById('modif-id').value        = data.id;
+    document.getElementById('modif-prenom').value    = data.prenom || '';
+    document.getElementById('modif-nom').value       = data.nom || '';
+    document.getElementById('modif-adresse').value   = data.adresse_livraison || '';
+    document.getElementById('modif-village').value   = data.village_code || '';
+    document.getElementById('modif-telephone').value = data.telephone || '';
+    document.getElementById('modif-formule').value   = data.formule_code || '';
+    document.getElementById('modif-consignes').value = data.consignes_livraison || '';
+
+    JOURS.forEach(jour => {
+      document.getElementById('modif-jour-' + jour).checked = !!data['livraison_' + jour];
+    });
+
+    document.getElementById('modal-titre').textContent =
+      'Modifier la fiche — ' + (data.prenom || '') + ' ' + (data.nom || '');
+
+    document.getElementById('modal-modif').classList.add('active');
+  }
+
+  // ----- Fermer la modale -----
+  function fermerModale() {
+    document.getElementById('modal-modif').classList.remove('active');
+    document.getElementById('modif-message').innerHTML = '';
+  }
+
+  // ----- Enregistrer les modifications -----
+  async function enregistrerModification(event) {
+    event.preventDefault();
+
+    const message = document.getElementById('modif-message');
+    message.innerHTML = '';
+
+    const id = document.getElementById('modif-id').value;
+
+    const fiche = {
+      prenom:              document.getElementById('modif-prenom').value.trim(),
+      nom:                 document.getElementById('modif-nom').value.trim(),
+      adresse_livraison:   document.getElementById('modif-adresse').value.trim() || null,
+      village_code:        document.getElementById('modif-village').value,
+      telephone:           document.getElementById('modif-telephone').value.trim() || null,
+      formule_code:        document.getElementById('modif-formule').value,
+      consignes_livraison: document.getElementById('modif-consignes').value.trim() || null
+    };
+
+    JOURS.forEach(jour => {
+      fiche['livraison_' + jour] = document.getElementById('modif-jour-' + jour).checked;
+    });
+
+    if (!fiche.prenom || !fiche.nom || !fiche.formule_code || !fiche.village_code) {
+      message.innerHTML =
+        '<div class="erreur-msg">Merci de remplir le prénom, le nom, le village et la formule.</div>';
+      return;
+    }
+
+    const { error } = await supaClient
+      .from('personnes_domicile')
+      .update(fiche)
+      .eq('id', id);
+
+    if (error) {
+      console.error('Erreur modification :', error);
+      message.innerHTML =
+        '<div class="erreur-msg">Erreur : les modifications n\'ont pas pu être enregistrées.</div>';
+      return;
+    }
+
+    fermerModale();
+    await chargerPersonnes();
+  }
+
+  // ----- Archiver une fiche (actif = false) -----
+  async function archiverPersonne(id) {
+    const ok = confirm('Archiver cette fiche ?\n\n'
+                     + 'La personne sortira de la liste active, '
+                     + 'mais sa fiche restera consultable dans "Fiches archivées".');
+    if (!ok) return;
+
+    const { error } = await supaClient
+      .from('personnes_domicile')
+      .update({ actif: false })
+      .eq('id', id);
+
+    if (error) {
+      console.error('Erreur archivage :', error);
+      alert('Erreur : la fiche n\'a pas pu être archivée.');
+      return;
+    }
+
+    await chargerPersonnes();
+  }
+
+  // ----- Réactiver une fiche (actif = true) -----
+  async function reactiverPersonne(id) {
+    const ok = confirm('Réactiver cette fiche ?\n\n'
+                     + 'La personne réapparaîtra dans la liste des fiches actives.');
+    if (!ok) return;
+
+    const { error } = await supaClient
+      .from('personnes_domicile')
+      .update({ actif: true })
+      .eq('id', id);
+
+    if (error) {
+      console.error('Erreur réactivation :', error);
+      alert('Erreur : la fiche n\'a pas pu être réactivée.');
+      return;
+    }
+
+    await chargerPersonnes();
+  }
+
+  // ----- Échapper le texte pour l'affichage -----
+  function echapper(texte) {
+    if (texte === null || texte === undefined) return '';
+    return String(texte)
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;');
+  }
+  </script>
+
+</body>
+</html>

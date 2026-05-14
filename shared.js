@@ -262,6 +262,8 @@ function genererMenuOnglets(pageActive, role) {
         { id: 'presences-passerelle',   titre: '✅ Présences Passerelle',  url: 'presences-passerelle.html' },
         { id: 'production',             titre: '📋 Production J-1',        url: 'production.html' },
         { id: 'service',                titre: '🍽️ Service du jour',       url: 'service.html' },
+        { id: 'repas-domicile',         titre: '🏠 Repas à domicile',      url: 'repas-domicile.html' },
+        { id: 'presences-domicile',     titre: '🗓️ Présences domicile',    url: 'presences-domicile.html' },
         { id: 'commande-ejc',           titre: '🍴 Saisie repas',          url: 'commande-ejc.html' },
         { id: 'recap-clients',          titre: '📊 Récap clients',         url: 'recap-clients.html' },
         { id: 'categories-clients',     titre: '🏷️ Catégories clients',    url: 'categories-clients.html' },
