@@ -6,70 +6,134 @@
     <title>Service du jour - Restauration Les Bouleaux</title>
     <link rel="stylesheet" href="shared.css">
     <style>
-        /* ============================================================
-           ZONE DES FILTRES
-           ============================================================ */
-        .filtres-zone {
+        /* ============ TOOLBAR STYLE TOGGLE (harmonisé avec production.html) ============ */
+        .toolbar-srv {
             background: white;
-            padding: 12px 16px;
+            padding: 14px 18px;
             border-radius: 8px;
-            margin: 10px 0;
-            box-shadow: 0 1px 3px rgba(0,0,0,0.06);
+            border: 0.5px solid #ddd;
+            margin-bottom: 14px;
             display: flex;
-            flex-wrap: wrap;
-            gap: 20px;
-            align-items: center;
-        }
-        .filtre-groupe {
-            display: flex;
-            align-items: center;
+            flex-direction: column;
             gap: 10px;
+            font-size: 13px;
+        }
+        .toolbar-ligne {
+            display: flex;
+            gap: 14px;
+            align-items: center;
             flex-wrap: wrap;
         }
-        .filtre-titre {
-            font-weight: 700;
-            color: #2c5530;
-            font-size: 13px;
-            text-transform: uppercase;
-            letter-spacing: 0.5px;
-        }
-        .filtre-checkbox {
-            display: inline-flex;
-            align-items: center;
-            gap: 5px;
-            padding: 5px 10px;
-            background: #f5f5f5;
-            border-radius: 16px;
-            cursor: pointer;
-            font-size: 13px;
-            user-select: none;
-            transition: background 0.15s;
-        }
-        .filtre-checkbox:hover { background: #e8e8e8; }
-        .filtre-checkbox input { margin: 0; cursor: pointer; }
-        .btn-tout {
-            background: transparent;
-            border: 1px solid #2c5530;
-            color: #2c5530;
-            padding: 4px 10px;
-            border-radius: 4px;
-            font-size: 12px;
-            cursor: pointer;
-        }
-        .btn-tout:hover { background: #f0f8f0; }
-        .filtre-groupe select {
-            padding: 6px 12px;
-            border: 1px solid #2c5530;
-            border-radius: 16px;
-            font-size: 13px;
-            background: white;
-            cursor: pointer;
+        .toolbar-label {
             font-weight: 600;
             color: #2c5530;
-            min-width: 180px;
+            min-width: 85px;
         }
-        .filtre-groupe select:hover { background: #f0f8f0; }
-        .filtre-groupe select:focus { outline: 2px solid #2c5530; outline-offset: 1px; }
+
+        /* === Navigation date === */
+        .date-nav {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+        }
+        .date-nav input[type="date"] {
+            padding: 5px 10px;
+            border: 1px solid #2c5530;
+            border-radius: 6px;
+            font-size: 13px;
+            color: #2c5530;
+            font-weight: 600;
+            cursor: pointer;
+        }
+        .btn-chevron {
+            background: white;
+            color: #2c5530;
+            border: 1px solid #2c5530;
+            width: 32px;
+            height: 32px;
+            padding: 0;
+            cursor: pointer;
+            font-size: 18px;
+            font-weight: 700;
+            border-radius: 6px;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            line-height: 1;
+        }
+        .btn-chevron:hover { background: #f0f8f0; }
+        .btn-chevron:active { transform: scale(0.95); }
+        .btn-aujourdhui {
+            background: white;
+            color: #2c5530;
+            border: 1px solid #2c5530;
+            padding: 5px 12px;
+            border-radius: 6px;
+            font-size: 12px;
+            font-weight: 600;
+            cursor: pointer;
+        }
+        .btn-aujourdhui:hover { background: #f0f8f0; }
+
+        /* === Toggle group === */
+        .toggle-group {
+            display: inline-flex;
+            border: 1px solid #2c5530;
+            border-radius: 6px;
+            overflow: hidden;
+            flex-wrap: wrap;
+        }
+        .toggle-btn {
+            background: white;
+            color: #2c5530;
+            border: none;
+            border-right: 1px solid #2c5530;
+            padding: 6px 14px;
+            cursor: pointer;
+            font-size: 12px;
+            font-weight: 500;
+            white-space: nowrap;
+            transition: all 0.1s;
+        }
+        .toggle-btn:last-child { border-right: none; }
+        .toggle-btn:hover { background: #f0f8f0; }
+        .toggle-btn.active {
+            background: #2c5530;
+            color: white;
+            font-weight: 600;
+        }
+
+        /* === Boutons action === */
+        .toolbar-actions {
+            display: flex;
+            gap: 10px;
+            justify-content: flex-end;
+            padding-top: 4px;
+            border-top: 1px solid #eee;
+            margin-top: 4px;
+        }
+        .btn-generer {
+            background: #2c5530;
+            color: white;
+            border: none;
+            padding: 7px 18px;
+            border-radius: 6px;
+            font-size: 13px;
+            font-weight: 600;
+            cursor: pointer;
+        }
+        .btn-generer:hover { background: #1f3a22; }
+        .btn-imprimer {
+            background: white;
+            color: #2c5530;
+            border: 1px solid #2c5530;
+            padding: 7px 18px;
+            border-radius: 6px;
+            font-size: 13px;
+            font-weight: 600;
+            cursor: pointer;
+        }
+        .btn-imprimer:hover { background: #f0f8f0; }
 
         .filtre-info-vide {
             background: #fff3cd;
@@ -81,9 +145,7 @@
             text-align: center;
         }
 
-        /* ============================================================
-           STYLES SERVICE
-           ============================================================ */
+        /* ============ STYLES SERVICE ============ */
         .lieu-tag {
             display: inline-block;
             background: #2c5530;
@@ -148,25 +210,6 @@
         .unite-tag.bouleaux { background: #2c5530; }
         .unite-tag.passerelle { background: #1976d2; }
 
-        .vue-toggle {
-            display: inline-flex;
-            border: 2px solid #2c5530;
-            border-radius: 6px;
-            overflow: hidden;
-        }
-        .vue-toggle button {
-            background: white;
-            color: #2c5530;
-            border: none;
-            padding: 8px 16px;
-            cursor: pointer;
-            font-size: 14px;
-            font-weight: bold;
-        }
-        .vue-toggle button.active {
-            background: #2c5530;
-            color: white;
-        }
         .lieu-section {
             background: #f5faf5;
             border-left: 4px solid #2c5530;
@@ -258,9 +301,7 @@
             border-top: 1px solid #ddd;
         }
 
-        /* ============================================================
-           IMPRESSION
-           ============================================================ */
+        /* ============ IMPRESSION ============ */
         @media print {
             @page {
                 size: A4 portrait;
@@ -271,7 +312,7 @@
                 padding: 0 !important;
                 margin: 0 !important;
             }
-            #app-header, #menu, h1, h2.page-title, .toolbar, .filtres-zone, .no-print {
+            #app-header, #menu, h1, h2.page-title, .toolbar-srv, .no-print {
                 display: none !important;
             }
             .service-doc {
@@ -309,44 +350,59 @@
     <h2 class="page-title">Liste de service J-0</h2>
     <p class="no-print">Liste nominative des résidents présents à servir, avec leurs spécificités.</p>
 
-    <div class="toolbar no-print">
-        <label><strong>Date :</strong></label>
-        <input type="date" id="date-srv">
-        <label><strong>Vue :</strong></label>
-        <div class="vue-toggle">
-            <button id="btn-vue-liste" class="active" onclick="changerVue('liste')">📋 Liste</button>
-            <button id="btn-vue-lieu" onclick="changerVue('lieu')">📍 Par lieu</button>
-        </div>
-        <button class="btn-primary" onclick="genererService()">🔄 Générer</button>
-        <button class="btn-print" onclick="window.print()">🖨️ Imprimer</button>
-    </div>
+    <div class="toolbar-srv">
+        <!-- Ligne Date + Repas -->
+        <div class="toolbar-ligne">
+            <span class="toolbar-label">📅 Date :</span>
+            <div class="date-nav">
+                <button class="btn-chevron" onclick="decalerJour(-1)" title="Jour précédent">‹</button>
+                <input type="date" id="date-srv" onchange="genererService()">
+                <button class="btn-chevron" onclick="decalerJour(1)" title="Jour suivant">›</button>
+                <button class="btn-aujourdhui" onclick="resetAujourdhui()">📅 Aujourd'hui</button>
+            </div>
 
-    <!-- Zone filtres -->
-    <div class="filtres-zone no-print">
-        <div class="filtre-groupe">
-            <span class="filtre-titre">🍴 Repas :</span>
-            <label class="filtre-checkbox"><input type="checkbox" class="filtre-repas" value="petit_dej" checked onchange="genererService()"> 🥐 Petit-déj</label>
-            <label class="filtre-checkbox"><input type="checkbox" class="filtre-repas" value="dejeuner" checked onchange="genererService()"> 🍽️ Déjeuner</label>
-            <label class="filtre-checkbox"><input type="checkbox" class="filtre-repas" value="diner" checked onchange="genererService()"> 🌙 Dîner</label>
-            <button class="btn-tout" onclick="toutCocher('repas', true)">Tout</button>
-            <button class="btn-tout" onclick="toutCocher('repas', false)">Rien</button>
+            <span class="toolbar-label" style="margin-left:12px;">🍴 Repas :</span>
+            <div class="toggle-group" id="toggle-repas">
+                <button class="toggle-btn active" data-value="petit_dej" onclick="setToggleRepas(this)">🥐 P-déj</button>
+                <button class="toggle-btn active" data-value="dejeuner" onclick="setToggleRepas(this)">🍽️ Déjeuner</button>
+                <button class="toggle-btn active" data-value="diner" onclick="setToggleRepas(this)">🌙 Dîner</button>
+            </div>
         </div>
-        <div class="filtre-groupe">
-            <span class="filtre-titre">👥 Résidents :</span>
-            <select id="select-residents" onchange="genererService()">
-                <option value="toutes" selected>🏘️ Tout le monde</option>
-                <option value="bouleaux">🏠 Bouleaux</option>
-                <option value="passerelle">🌉 Passerelle</option>
-                <option value="aucun">⛔ Aucun</option>
-            </select>
+
+        <!-- Ligne Résidents (unité) -->
+        <div class="toolbar-ligne">
+            <span class="toolbar-label">👥 Résidents :</span>
+            <div class="toggle-group" id="toggle-residents">
+                <button class="toggle-btn active" data-value="toutes" onclick="setToggle('residents', this)">🏘️ Tout le monde</button>
+                <button class="toggle-btn" data-value="bouleaux" onclick="setToggle('residents', this)">🏠 Bouleaux</button>
+                <button class="toggle-btn" data-value="passerelle" onclick="setToggle('residents', this)">🌉 Passerelle</button>
+                <button class="toggle-btn" data-value="aucun" onclick="setToggle('residents', this)">⛔ Aucun</button>
+            </div>
         </div>
-        <div class="filtre-groupe">
-            <span class="filtre-titre">🍴 Clients externes :</span>
-            <select id="select-clients" onchange="genererService()">
-                <option value="tous" selected>🍽️ Tout le monde</option>
-                <option value="aucun">⛔ Aucun</option>
-                <!-- Clients chargés dynamiquement -->
-            </select>
+
+        <!-- Ligne Lieu (résidents) -->
+        <div class="toolbar-ligne">
+            <span class="toolbar-label">📍 Lieu :</span>
+            <div class="toggle-group" id="toggle-lieu">
+                <button class="toggle-btn active" data-value="tous" onclick="setToggle('lieu', this)">📍 Tous les lieux</button>
+                <!-- Boutons lieux ajoutés dynamiquement -->
+            </div>
+        </div>
+
+        <!-- Ligne Clients externes -->
+        <div class="toolbar-ligne">
+            <span class="toolbar-label">🍴 Clients :</span>
+            <div class="toggle-group" id="toggle-client">
+                <button class="toggle-btn active" data-value="tous" onclick="setToggle('client', this)">🍴 Tout le monde</button>
+                <button class="toggle-btn" data-value="aucun" onclick="setToggle('client', this)">⛔ Aucun</button>
+                <!-- Boutons clients ajoutés dynamiquement -->
+            </div>
+        </div>
+
+        <!-- Boutons d'action -->
+        <div class="toolbar-actions">
+            <button class="btn-generer" onclick="genererService()">🔄 Générer</button>
+            <button class="btn-imprimer" onclick="window.print()">🖨️ Imprimer</button>
         </div>
     </div>
 
@@ -357,10 +413,15 @@
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script src="shared.js"></script>
     <script>
-        let vueActuelle = 'liste';
         let donneesServiceCache = null;
         let lieuxDisponibles = [];
         let tousLesClients = [];
+
+        // États des toggles
+        let valRepas = ['petit_dej', 'dejeuner', 'diner'];
+        let valResidents = 'toutes';
+        let valLieu = 'tous';
+        let valClient = 'tous';
 
         function heureMaintenant() {
             return new Date().toLocaleString('fr-FR', {
@@ -369,10 +430,52 @@
             });
         }
 
+        function resetAujourdhui() {
+            document.getElementById('date-srv').value = aujourdhui();
+            genererService();
+        }
+
+        function decalerJour(delta) {
+            const input = document.getElementById('date-srv');
+            const val = input.value || aujourdhui();
+            const d = new Date(val + 'T00:00:00');
+            d.setDate(d.getDate() + delta);
+            const yyyy = d.getFullYear();
+            const mm = String(d.getMonth() + 1).padStart(2, '0');
+            const dd = String(d.getDate()).padStart(2, '0');
+            input.value = `${yyyy}-${mm}-${dd}`;
+            genererService();
+        }
+
+        // Toggle Repas = multi-sélection (on peut cocher plusieurs repas)
+        function setToggleRepas(btn) {
+            btn.classList.toggle('active');
+            const actifs = Array.from(document.querySelectorAll('#toggle-repas .toggle-btn.active'))
+                .map(b => b.dataset.value);
+            valRepas = actifs;
+            genererService();
+        }
+
+        // Toggle simple = un seul actif par groupe
+        function setToggle(groupe, btn) {
+            const containerId = `toggle-${groupe}`;
+            const container = document.getElementById(containerId);
+            container.querySelectorAll('.toggle-btn').forEach(b => b.classList.remove('active'));
+            btn.classList.add('active');
+
+            const valeur = btn.dataset.value;
+            if (groupe === 'residents') valResidents = valeur;
+            else if (groupe === 'lieu') valLieu = valeur;
+            else if (groupe === 'client') valClient = valeur;
+
+            genererService();
+        }
+
         async function chargerLieux() {
             const { data, error } = await supaClient
                 .from('lieux_repas')
                 .select('*')
+                .eq('actif', true)
                 .order('ordre', { ascending: true });
             if (error) console.error(error);
             lieuxDisponibles = data || [];
@@ -402,13 +505,6 @@
             return null;
         }
 
-        function changerVue(vue) {
-            vueActuelle = vue;
-            document.getElementById('btn-vue-liste').classList.toggle('active', vue === 'liste');
-            document.getElementById('btn-vue-lieu').classList.toggle('active', vue === 'lieu');
-            if (donneesServiceCache) afficherService();
-        }
-
         function texteAllergiesResident(r) {
             const parts = [];
             if (r.allergenes && r.allergenes.length) {
@@ -435,38 +531,13 @@
         }
 
         function uniteTag(r) {
-            if (residentsSelection() !== 'toutes') return '';
+            if (valResidents !== 'toutes') return '';
             if (!r.unite) return '';
             const cls = r.unite === 'bouleaux' ? 'bouleaux' : 'passerelle';
             return `<span class="unite-tag ${cls}">${nomUniteSansEmoji(r.unite)}</span>`;
         }
 
-        // ===== FILTRES =====
-        function toutCocher(type, valeur) {
-            if (type === 'repas') {
-                document.querySelectorAll('.filtre-repas').forEach(cb => cb.checked = valeur);
-                genererService();
-            }
-        }
-
-        function repasSelectionnes() {
-            return Array.from(document.querySelectorAll('.filtre-repas:checked')).map(cb => cb.value);
-        }
-
-        function residentsSelection() {
-            const sel = document.getElementById('select-residents');
-            return sel ? sel.value : 'toutes';
-        }
-
-        function clientSelection() {
-            const sel = document.getElementById('select-clients');
-            return sel ? sel.value : 'tous';
-        }
-
         function texteRappelFiltres() {
-            const repas = repasSelectionnes();
-            const residentsChoix = residentsSelection();
-            const clientChoix = clientSelection();
             const labelsRepas = { petit_dej: 'Petit-déjeuner', dejeuner: 'Déjeuner', diner: 'Dîner' };
             const labelsResidents = {
                 toutes: 'Tous résidents',
@@ -475,18 +546,24 @@
                 aucun: 'Aucun résident'
             };
 
-            const r = repas.length === 3 ? 'Tous les repas' : repas.map(x => labelsRepas[x]).join(', ');
+            const r = valRepas.length === 3 ? 'Tous les repas' : valRepas.map(x => labelsRepas[x]).join(', ');
+
+            let lieuTxt;
+            if (valLieu === 'tous') lieuTxt = 'Tous les lieux';
+            else {
+                const l = lieuxDisponibles.find(x => String(x.id) === String(valLieu));
+                lieuTxt = l ? l.nom : 'Lieu inconnu';
+            }
 
             let cTxt;
-            if (clientChoix === 'tous') cTxt = 'Tous clients ext.';
-            else if (clientChoix === 'aucun') cTxt = 'Aucun client ext.';
+            if (valClient === 'tous') cTxt = 'Tous clients ext.';
+            else if (valClient === 'aucun') cTxt = 'Aucun client ext.';
             else {
-                const c = tousLesClients.find(x => x.id === clientChoix);
+                const c = tousLesClients.find(x => x.id === valClient);
                 cTxt = c ? c.nom : 'Client inconnu';
             }
 
-            const v = vueActuelle === 'lieu' ? 'Vue par lieu' : 'Vue liste';
-            return `Filtres : ${r} — ${labelsResidents[residentsChoix]} — ${cTxt} — ${v}`;
+            return `Filtres : ${r} — ${labelsResidents[valResidents]} — ${lieuTxt} — ${cTxt}`;
         }
 
         // ===== CHARGEMENT DES DONNÉES =====
@@ -494,12 +571,28 @@
             const date = document.getElementById('date-srv').value;
             const contenu = document.getElementById('contenu');
 
-            const repasFiltres = repasSelectionnes();
-            const residentsChoix = residentsSelection();
-            const clientChoix = clientSelection();
+            const repasFiltres = valRepas;
+            const residentsChoix = valResidents;
+            const lieuChoix = valLieu;
+            const clientChoix = valClient;
 
-            const inclureResidents = residentsChoix !== 'aucun';
-            const inclureEjc = clientChoix !== 'aucun';
+            // LOGIQUE DE FILTRES SÉPARÉS :
+            // - Si un lieu résident précis est choisi → on masque les clients EJC
+            // - Si un client EJC précis est choisi → on masque les résidents
+            const lieuPrecisChoisi = lieuChoix !== 'tous';
+            const clientPrecisChoisi = clientChoix !== 'tous' && clientChoix !== 'aucun';
+
+            let inclureResidents = residentsChoix !== 'aucun';
+            let inclureEjc = clientChoix !== 'aucun';
+
+            // Choisir un client EJC précis masque les résidents
+            if (clientPrecisChoisi) {
+                inclureResidents = false;
+            }
+            // Choisir un lieu résident précis masque les clients EJC
+            if (lieuPrecisChoisi) {
+                inclureEjc = false;
+            }
 
             if (repasFiltres.length === 0 || (!inclureResidents && !inclureEjc)) {
                 contenu.innerHTML = `<div class="filtre-info-vide">
@@ -513,7 +606,7 @@
             contenu.innerHTML = '<p class="loading">⏳ Chargement...</p>';
             await chargerLieux();
 
-            // Résidents (filtrés par unité si besoin)
+            // Résidents (filtrés par unité)
             let residents = [];
             let toutesPresences = [];
             let absences = [];
@@ -529,7 +622,7 @@
                 absences = await chargerAbsencesPourDate(date);
             }
 
-            // Clients externes (filtrés par client si choix précis)
+            // Clients externes
             let categoriesEjc = [];
             let commandesArr = [];
             let annulationsArr = [];
@@ -540,7 +633,6 @@
                 const { data: annArr } = await supaClient
                     .from(TABLE_ANNULATIONS_EJC).select('*').eq('date', date);
 
-                // ⭐ FIX UUID : on compare en string directement (pas de parseInt)
                 if (clientChoix !== 'tous' && clientChoix !== 'aucun') {
                     commandesArr = (cmdArr || []).filter(c => c.client_id === clientChoix);
                     annulationsArr = (annArr || []).filter(a => a.client_id === clientChoix);
@@ -577,20 +669,30 @@
                             const textureEffective = (p && p.texture)
                                 ? p.texture
                                 : getTextureDefautResident(r, repas);
+
+                            // FILTRE PAR LIEU : si un lieu précis est choisi, on ne garde que ce lieu
+                            if (lieuPrecisChoisi) {
+                                if (String(lieuEffectifId) !== String(lieuChoix)) {
+                                    continue;
+                                }
+                            }
+
                             dataRepas.presents.push({
                                 ...r,
                                 lieu_effectif_id: lieuEffectifId,
                                 texture_effective: textureEffective
                             });
                         } else {
-                            dataRepas.absents.push(r);
+                            // Les absents ne sont affichés qu'en mode "tous les lieux"
+                            if (!lieuPrecisChoisi) {
+                                dataRepas.absents.push(r);
+                            }
                         }
                     }
                 }
 
                 // Clients externes uniquement pour le déjeuner
                 if (inclureEjc && repas === 'dejeuner') {
-                    // ⭐ FIX UUID : on utilise '::' comme séparateur pour ne pas se mélanger avec les tirets des UUID
                     const cmdMap = {};
                     const annMap = {};
                     for (const c of commandesArr) {
@@ -604,7 +706,6 @@
 
                     const blocsParClient = {};
                     for (const cle in cmdMap) {
-                        // ⭐ FIX UUID : split sur '::', client_id reste une string (UUID), seul categorie_id devient int
                         const parts = cle.split('::');
                         const clientId = parts[0];
                         const catId = parseInt(parts[1]);
@@ -624,7 +725,6 @@
 
                     for (const clientId in blocsParClient) {
                         const bloc = blocsParClient[clientId];
-                        // ⭐ FIX UUID : compare en string
                         const client = tousLesClients.find(c => c.id === clientId);
                         const nomClient = client ? client.nom : `Client inconnu`;
 
@@ -659,7 +759,7 @@
                 donneesParRepas.push(dataRepas);
             }
 
-            donneesServiceCache = { date, donneesParRepas, inclureResidents, inclureEjc };
+            donneesServiceCache = { date, donneesParRepas, inclureResidents, inclureEjc, lieuPrecisChoisi };
             afficherService();
         }
 
@@ -692,83 +792,61 @@
                 html += partsResume.join(' · ') + '</p>';
 
                 if (inclureResidents) {
-                    if (vueActuelle === 'liste') {
-                        html += '<div class="print-section"><h3>✅ Résidents présents</h3>';
-                        if (!dr.presents.length) {
-                            html += '<p><em>Aucun.</em></p>';
+                    // Regroupement par lieu (sections séparées)
+                    const groupes = {};
+                    const sansLieu = [];
+                    for (const r of dr.presents) {
+                        if (r.lieu_effectif_id) {
+                            if (!groupes[r.lieu_effectif_id]) groupes[r.lieu_effectif_id] = [];
+                            groupes[r.lieu_effectif_id].push(r);
                         } else {
+                            sansLieu.push(r);
+                        }
+                    }
+
+                    if (!dr.presents.length) {
+                        html += '<div class="print-section"><h3>✅ Résidents présents</h3><p><em>Aucun.</em></p></div>';
+                    } else {
+                        for (const lieu of lieuxDisponibles) {
+                            const liste = groupes[lieu.id];
+                            if (!liste || !liste.length) continue;
+                            const estChambre = estLieuChambre(lieu.nom);
+                            const classeSection = estChambre ? 'lieu-section lieu-section-chambre print-section' : 'lieu-section print-section';
+                            const icone = estChambre ? '🚪' : '📍';
+                            html += `<div class="${classeSection}">`;
+                            html += `<h3>${icone} ${lieu.nom} — ${liste.length} résident(s)</h3>`;
+
+                            let listeTriee = liste;
+                            if (estChambre) {
+                                listeTriee = [...liste].sort((a, b) => {
+                                    const na = a.numero_chambre;
+                                    const nb = b.numero_chambre;
+                                    if (na == null && nb == null) return 0;
+                                    if (na == null) return 1;
+                                    if (nb == null) return -1;
+                                    return na - nb;
+                                });
+                            }
+
                             html += '<ul class="print-list">';
-                            for (const r of dr.presents) {
-                                const lieu = nomLieu(r.lieu_effectif_id);
-                                const lieuTag = lieu
-                                    ? `<span class="lieu-tag">📍 ${lieu}</span>`
-                                    : `<span class="lieu-tag-aucun">📍 Lieu non défini</span>`;
-                                const chambreTag = estLieuChambre(r.lieu_effectif_id)
+                            for (const r of listeTriee) {
+                                const chambreTag = estChambre
                                     ? (r.numero_chambre
                                         ? `<span class="chambre-tag">🚪 Ch. ${r.numero_chambre}</span>`
                                         : `<span class="chambre-tag-manquant">🚪 Chambre non renseignée</span>`)
                                     : '';
-                                html += `<li><strong>${r.prenom} ${r.nom}</strong> ${uniteTag(r)} ${lieuTag} ${chambreTag} ${textureTag(r)} ${tagsResident(r)}</li>`;
+                                html += `<li><strong>${r.prenom} ${r.nom}</strong> ${uniteTag(r)} ${chambreTag} ${textureTag(r)} ${tagsResident(r)}</li>`;
                             }
-                            html += '</ul>';
+                            html += '</ul></div>';
                         }
-                        html += '</div>';
-                    } else {
-                        const groupes = {};
-                        const sansLieu = [];
-                        for (const r of dr.presents) {
-                            if (r.lieu_effectif_id) {
-                                if (!groupes[r.lieu_effectif_id]) groupes[r.lieu_effectif_id] = [];
-                                groupes[r.lieu_effectif_id].push(r);
-                            } else {
-                                sansLieu.push(r);
+                        if (sansLieu.length) {
+                            html += `<div class="lieu-section print-section" style="background:#fffaf0;border-left-color:#999;">`;
+                            html += `<h3>❓ Lieu non défini — ${sansLieu.length} résident(s)</h3>`;
+                            html += '<ul class="print-list">';
+                            for (const r of sansLieu) {
+                                html += `<li><strong>${r.prenom} ${r.nom}</strong> ${uniteTag(r)} ${textureTag(r)} ${tagsResident(r)}</li>`;
                             }
-                        }
-
-                        if (!dr.presents.length) {
-                            html += '<div class="print-section"><h3>✅ Résidents présents</h3><p><em>Aucun.</em></p></div>';
-                        } else {
-                            for (const lieu of lieuxDisponibles) {
-                                const liste = groupes[lieu.id];
-                                if (!liste || !liste.length) continue;
-                                const estChambre = estLieuChambre(lieu.nom);
-                                const classeSection = estChambre ? 'lieu-section lieu-section-chambre print-section' : 'lieu-section print-section';
-                                const icone = estChambre ? '🚪' : '📍';
-                                html += `<div class="${classeSection}">`;
-                                html += `<h3>${icone} ${lieu.nom} — ${liste.length} résident(s)</h3>`;
-
-                                let listeTriee = liste;
-                                if (estChambre) {
-                                    listeTriee = [...liste].sort((a, b) => {
-                                        const na = a.numero_chambre;
-                                        const nb = b.numero_chambre;
-                                        if (na == null && nb == null) return 0;
-                                        if (na == null) return 1;
-                                        if (nb == null) return -1;
-                                        return na - nb;
-                                    });
-                                }
-
-                                html += '<ul class="print-list">';
-                                for (const r of listeTriee) {
-                                    const chambreTag = estChambre
-                                        ? (r.numero_chambre
-                                            ? `<span class="chambre-tag">🚪 Ch. ${r.numero_chambre}</span>`
-                                            : `<span class="chambre-tag-manquant">🚪 Chambre non renseignée</span>`)
-                                        : '';
-                                    html += `<li><strong>${r.prenom} ${r.nom}</strong> ${uniteTag(r)} ${chambreTag} ${textureTag(r)} ${tagsResident(r)}</li>`;
-                                }
-                                html += '</ul></div>';
-                            }
-                            if (sansLieu.length) {
-                                html += `<div class="lieu-section print-section" style="background:#fffaf0;border-left-color:#999;">`;
-                                html += `<h3>❓ Lieu non défini — ${sansLieu.length} résident(s)</h3>`;
-                                html += '<ul class="print-list">';
-                                for (const r of sansLieu) {
-                                    html += `<li><strong>${r.prenom} ${r.nom}</strong> ${uniteTag(r)} ${textureTag(r)} ${tagsResident(r)}</li>`;
-                                }
-                                html += '</ul></div>';
-                            }
+                            html += '</ul></div>';
                         }
                     }
                 }
@@ -807,14 +885,32 @@
         }
 
         // ===== INIT =====
-        async function remplirSelectClients() {
+        async function remplirToggleClients() {
             tousLesClients = await chargerTousLesClients(true);
-            const sel = document.getElementById('select-clients');
+            const container = document.getElementById('toggle-client');
+            const btnAucun = container.querySelector('[data-value="aucun"]');
             for (const c of tousLesClients) {
-                const opt = document.createElement('option');
-                opt.value = c.id;
-                opt.textContent = `🍴 ${c.nom}`;
-                sel.appendChild(opt);
+                const btn = document.createElement('button');
+                btn.className = 'toggle-btn';
+                btn.dataset.value = c.id;
+                btn.textContent = `🍴 ${c.nom}`;
+                btn.onclick = function() { setToggle('client', this); };
+                container.insertBefore(btn, btnAucun);
+            }
+        }
+
+        async function remplirToggleLieux() {
+            // chargerLieux() a déjà été appelé, mais on s'assure que c'est fait
+            if (!lieuxDisponibles.length) await chargerLieux();
+            const container = document.getElementById('toggle-lieu');
+            for (const l of lieuxDisponibles) {
+                const btn = document.createElement('button');
+                btn.className = 'toggle-btn';
+                btn.dataset.value = l.id;
+                const estChambre = estLieuChambre(l.nom);
+                btn.textContent = `${estChambre ? '🚪' : '📍'} ${l.nom}`;
+                btn.onclick = function() { setToggle('lieu', this); };
+                container.appendChild(btn);
             }
         }
 
@@ -823,7 +919,9 @@
             if (!auth) return;
             afficherMenuComplet('service', auth.user.email, auth.profil.role, auth.profil.nom_affiche);
             document.getElementById('date-srv').value = aujourdhui();
-            await remplirSelectClients();
+            await chargerLieux();
+            await remplirToggleLieux();
+            await remplirToggleClients();
             genererService();
         })();
     </script>

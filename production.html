@@ -143,6 +143,7 @@
             padding: 20px;
             font-size: 13px;
             color: #222;
+            margin-bottom: 18px;
         }
 
         .feuille-entete {
@@ -297,6 +298,11 @@
                 border: none !important;
                 padding: 0 !important;
                 font-size: 11px !important;
+                margin-bottom: 0 !important;
+            }
+            /* Saut de page entre chaque feuille-repas */
+            .feuille-prod + .feuille-prod {
+                page-break-before: always;
             }
             .feuille-titre { font-size: 16px !important; }
             .grid-2cols { gap: 14px !important; }
@@ -327,9 +333,9 @@
 
             <span class="toolbar-label" style="margin-left:12px;">🍴 Repas :</span>
             <div class="toggle-group" id="toggle-repas">
-                <button class="toggle-btn" data-value="petit_dej" onclick="setToggle('repas', this)">🥐 P-déj</button>
-                <button class="toggle-btn active" data-value="dejeuner" onclick="setToggle('repas', this)">🍽️ Déjeuner</button>
-                <button class="toggle-btn" data-value="diner" onclick="setToggle('repas', this)">🌙 Dîner</button>
+                <button class="toggle-btn" data-value="petit_dej" onclick="setToggleRepas(this)">🥐 P-déj</button>
+                <button class="toggle-btn active" data-value="dejeuner" onclick="setToggleRepas(this)">🍽️ Déjeuner</button>
+                <button class="toggle-btn" data-value="diner" onclick="setToggleRepas(this)">🌙 Dîner</button>
             </div>
         </div>
 
@@ -375,7 +381,7 @@
         let toutesLesCategories = [];
 
         // Valeurs des toggles (états)
-        let valRepas = 'dejeuner';
+        let valRepas = ['dejeuner'];   // multi-sélection
         let valUnite = 'toutes';
         let valClient = 'tous';
 
@@ -408,7 +414,16 @@
             genererFeuille();
         }
 
-        // Gestion des toggles : un seul actif par groupe
+        // Toggle Repas = multi-sélection (on peut cocher plusieurs repas)
+        function setToggleRepas(btn) {
+            btn.classList.toggle('active');
+            const actifs = Array.from(document.querySelectorAll('#toggle-repas .toggle-btn.active'))
+                .map(b => b.dataset.value);
+            valRepas = actifs;
+            genererFeuille();
+        }
+
+        // Toggle simple = un seul actif par groupe
         function setToggle(groupe, btn) {
             const containerId = `toggle-${groupe}`;
             const container = document.getElementById(containerId);
@@ -416,8 +431,7 @@
             btn.classList.add('active');
 
             const valeur = btn.dataset.value;
-            if (groupe === 'repas') valRepas = valeur;
-            else if (groupe === 'unite') valUnite = valeur;
+            if (groupe === 'unite') valUnite = valeur;
             else if (groupe === 'client') valClient = valeur;
 
             genererFeuille();
@@ -426,7 +440,6 @@
         async function initFiltres() {
             tousLesClients = await chargerTousLesClients(true);
             const container = document.getElementById('toggle-client');
-            // On insère les boutons clients entre "Tous" et "Aucun"
             const btnAucun = container.querySelector('[data-value="aucun"]');
             for (const c of tousLesClients) {
                 const btn = document.createElement('button');
@@ -439,9 +452,9 @@
         }
 
         // ============================================================
-        // CHARGEMENT DES DONNÉES
+        // CHARGEMENT DES DONNÉES (commun à tous les repas d'une date)
         // ============================================================
-        async function chargerDonneesProd(date, repas) {
+        async function chargerDonneesProd(date) {
             const { data: residents, error: errR } = await supaClient
                 .from(TABLE_RESIDENTS)
                 .select('*')
@@ -451,8 +464,7 @@
             const { data: presences, error: errP } = await supaClient
                 .from(TABLE_PRESENCES)
                 .select('*')
-                .eq('date', date)
-                .eq('repas', repas);
+                .eq('date', date);
             if (errP) throw errP;
 
             const absences = await chargerAbsencesPourDate(date);
@@ -500,7 +512,7 @@
         }
 
         // ============================================================
-        // GÉNÉRATION DE LA FEUILLE
+        // GÉNÉRATION DE LA FEUILLE (boucle sur les repas cochés)
         // ============================================================
         async function genererFeuille() {
             const date = document.getElementById('date-prod').value;
@@ -511,7 +523,11 @@
                 return;
             }
 
-            const repas = valRepas;
+            if (!valRepas.length) {
+                contenu.innerHTML = '<p class="info-msg">Sélectionne au moins un repas.</p>';
+                return;
+            }
+
             const filtreUnite = valUnite;
             const filtreClient = valClient;
 
@@ -519,12 +535,28 @@
 
             let donnees;
             try {
-                donnees = await chargerDonneesProd(date, repas);
+                donnees = await chargerDonneesProd(date);
             } catch (e) {
                 contenu.innerHTML = `<div class="error">Erreur : ${e.message}</div>`;
                 return;
             }
 
+            // Ordre fixe des repas pour l'affichage
+            const ordreRepas = ['petit_dej', 'dejeuner', 'diner'];
+            const repasAffiches = ordreRepas.filter(r => valRepas.includes(r));
+
+            let htmlComplet = '';
+            for (const repas of repasAffiches) {
+                htmlComplet += construireFeuillePourRepas(repas, date, donnees, filtreUnite, filtreClient);
+            }
+
+            contenu.innerHTML = htmlComplet;
+        }
+
+        // ============================================================
+        // CONSTRUCTION D'UNE FEUILLE POUR UN REPAS DONNÉ
+        // ============================================================
+        function construireFeuillePourRepas(repas, date, donnees, filtreUnite, filtreClient) {
             // === FILTRAGE RÉSIDENTS PAR UNITÉ ===
             let residentsFiltres = donnees.residents;
             if (filtreUnite === 'bouleaux') {
@@ -535,9 +567,12 @@
                 residentsFiltres = [];
             }
 
+            // Map des présences pour ce repas
             const mapPresences = {};
             for (const p of donnees.presences) {
-                mapPresences[`${p.resident_id}_${p.repas}`] = p;
+                if (p.repas === repas) {
+                    mapPresences[`${p.resident_id}_${p.repas}`] = p;
+                }
             }
 
             const residentsPresents = residentsFiltres.filter(r =>
@@ -564,7 +599,7 @@
                 return { ...c, quantite_nette: Math.max(0, qte) };
             }).filter(c => c.quantite_nette > 0);
 
-            const html = construireFeuille({
+            return construireFeuille({
                 date, repas,
                 residentsPresents,
                 mapPresences,
@@ -574,11 +609,10 @@
                 filtreUnite,
                 filtreClient
             });
-            contenu.innerHTML = html;
         }
 
         // ============================================================
-        // CONSTRUCTION DU HTML
+        // CONSTRUCTION DU HTML D'UNE FEUILLE
         // ============================================================
         function construireFeuille(ctx) {
             const { date, repas, residentsPresents, mapPresences, commandesNettes,
@@ -590,6 +624,16 @@
 
             if (totalRepas === 0) {
                 return `<div class="feuille-prod">
+                    <div class="feuille-entete">
+                        <div>
+                            <div class="feuille-titre">Production cuisine</div>
+                            <div class="feuille-soustitre">${dateFr(date)} · ${libelleRepas(repas)}</div>
+                        </div>
+                        <div class="feuille-total">
+                            <div class="feuille-total-nombre">0</div>
+                            <div class="feuille-total-label">repas total</div>
+                        </div>
+                    </div>
                     <div class="feuille-vide">Aucun repas à produire pour ce repas/cette date avec les filtres actuels.</div>
                 </div>`;
             }
