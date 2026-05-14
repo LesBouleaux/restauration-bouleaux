@@ -1,0 +1,749 @@
+ <!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Résidents sortis - Restauration Les Bouleaux</title>
+    <link rel="stylesheet" href="shared.css">
+    <style>
+        .bandeau-info {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            padding: 12px 16px;
+            border-radius: 8px;
+            margin: 10px 0 20px 0;
+            font-weight: 600;
+            background: #eceff1;
+            color: #37474f;
+            border-left: 5px solid #607d8b;
+        }
+        .bandeau-info .emoji-grand { font-size: 28px; }
+        .bandeau-info small { font-weight: 400; }
+
+        .filtres-zone {
+            background: white;
+            padding: 12px 16px;
+            border-radius: 8px;
+            margin: 10px 0;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.06);
+            display: flex;
+            flex-wrap: wrap;
+            gap: 20px;
+            align-items: center;
+        }
+        .filtre-groupe {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            flex-wrap: wrap;
+        }
+        .filtre-titre {
+            font-weight: 700;
+            color: #37474f;
+            font-size: 13px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+        .filtre-groupe select,
+        .filtre-groupe input {
+            padding: 6px 12px;
+            border: 1px solid #607d8b;
+            border-radius: 16px;
+            font-size: 13px;
+            background: white;
+            cursor: pointer;
+        }
+        .filtre-groupe input { cursor: text; min-width: 200px; }
+
+        .resident-sorti {
+            background: white;
+            border: 1px solid #ddd;
+            border-left: 4px solid #607d8b;
+            border-radius: 6px;
+            padding: 14px 18px;
+            margin-bottom: 12px;
+        }
+        .resident-sorti.rgpd-pret {
+            border-left-color: #c0392b;
+            background: #fffafa;
+        }
+        .resident-sorti h3 {
+            margin: 0 0 8px 0;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            flex-wrap: wrap;
+            gap: 8px;
+        }
+        .unite-tag {
+            display: inline-block;
+            color: white;
+            padding: 2px 10px;
+            border-radius: 12px;
+            font-size: 11px;
+            font-weight: bold;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+        .unite-tag.bouleaux { background: #2c5530; }
+        .unite-tag.passerelle { background: #1976d2; }
+
+        .motif-badge {
+            display: inline-block;
+            padding: 3px 12px;
+            border-radius: 12px;
+            font-size: 13px;
+            font-weight: bold;
+        }
+        .motif-deces { background: #ede7f6; color: #4527a0; }
+        .motif-changement_institution { background: #e1f5fe; color: #01579b; }
+        .motif-retour_domicile { background: #e8f5e9; color: #1b5e20; }
+        .motif-autre { background: #f5f5f5; color: #555; }
+        .motif-non_renseigne { background: #fff3e0; color: #b35900; font-style: italic; }
+
+        .sortie-detail {
+            font-size: 14px;
+            padding: 3px 0;
+        }
+        .sortie-detail .label {
+            font-weight: 700;
+            color: #555;
+            display: inline-block;
+            min-width: 150px;
+        }
+        .sortie-note-bloc {
+            margin-top: 8px;
+            padding: 8px 12px;
+            background: #fafafa;
+            border-left: 3px solid #bbb;
+            border-radius: 4px;
+            font-size: 14px;
+        }
+        .info-confidentiel {
+            font-size: 12px;
+            color: #b35900;
+            font-style: italic;
+            margin-top: 6px;
+        }
+        .compteur {
+            color: #555;
+            margin: 12px 0;
+            font-size: 14px;
+        }
+
+        .anciennete-badge {
+            display: inline-block;
+            padding: 2px 10px;
+            border-radius: 12px;
+            font-size: 12px;
+            font-weight: 600;
+            background: #eceff1;
+            color: #455a64;
+        }
+
+        .rgpd-alerte {
+            background: #fdecea;
+            border: 1px solid #e6a8a1;
+            border-left: 4px solid #c0392b;
+            border-radius: 6px;
+            padding: 10px 14px;
+            margin-top: 10px;
+            font-size: 13px;
+            color: #7a1f17;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            flex-wrap: wrap;
+            gap: 10px;
+        }
+        .rgpd-alerte strong { color: #b3261e; }
+        .btn-hard-delete {
+            background: #b3261e;
+            color: white;
+            border: none;
+            padding: 7px 14px;
+            border-radius: 6px;
+            font-size: 13px;
+            font-weight: 600;
+            cursor: pointer;
+            white-space: nowrap;
+        }
+        .btn-hard-delete:hover { background: #8e1d17; }
+
+        .rgpd-actions-zone {
+            margin-top: 10px;
+        }
+        .btn-hard-delete-discret {
+            background: white;
+            color: #b3261e;
+            border: 1px solid #b3261e;
+            padding: 6px 12px;
+            border-radius: 6px;
+            font-size: 12px;
+            font-weight: 600;
+            cursor: pointer;
+        }
+        .btn-hard-delete-discret:hover { background: #fff0f0; }
+
+        .hd-danger {
+            background: #fdecea;
+            border-left: 4px solid #b3261e;
+            padding: 12px 14px;
+            border-radius: 6px;
+            margin: 12px 0;
+            font-size: 14px;
+            color: #7a1f17;
+        }
+        .hd-recap {
+            background: #f7f7f7;
+            border: 1px solid #ddd;
+            border-radius: 6px;
+            padding: 12px 14px;
+            margin: 12px 0;
+        }
+        .hd-recap-ligne {
+            padding: 3px 0;
+            font-size: 14px;
+        }
+        .hd-recap-label {
+            font-weight: 700;
+            color: #555;
+            display: inline-block;
+            min-width: 150px;
+        }
+        .hd-liste-suppr {
+            margin: 10px 0;
+            padding: 10px 14px;
+            background: #fff8e1;
+            border-left: 4px solid #e0a800;
+            border-radius: 6px;
+            font-size: 13px;
+        }
+        .hd-liste-suppr ul {
+            margin: 6px 0 0 0;
+            padding-left: 20px;
+        }
+        .hd-liste-suppr li { padding: 2px 0; }
+        .hd-confirm-nom {
+            margin: 14px 0;
+        }
+        .hd-confirm-nom label {
+            display: block;
+            font-weight: 600;
+            margin-bottom: 6px;
+            font-size: 14px;
+        }
+        .hd-confirm-nom input {
+            width: 100%;
+            padding: 8px 10px;
+            border: 2px solid #ccc;
+            border-radius: 6px;
+            font-size: 14px;
+            box-sizing: border-box;
+        }
+        .hd-confirm-nom input.ok {
+            border-color: #2c5530;
+            background: #f0f8f0;
+        }
+        .hd-checkbox-zone {
+            display: flex;
+            align-items: flex-start;
+            gap: 8px;
+            padding: 12px 14px;
+            background: #fdecea;
+            border: 1px solid #e6a8a1;
+            border-radius: 6px;
+            margin: 14px 0;
+            cursor: pointer;
+            user-select: none;
+        }
+        .hd-checkbox-zone input {
+            margin-top: 2px;
+            cursor: pointer;
+            width: 18px;
+            height: 18px;
+        }
+        .btn-confirmer-hd:disabled {
+            background: #ccc;
+            border-color: #ccc;
+            color: #888;
+            cursor: not-allowed;
+        }
+    </style>
+</head>
+<body>
+    <div id="app-header"></div>
+    <h1>🍽️ Restauration Les Bouleaux</h1>
+    <div id="menu"></div>
+
+    <h2>📤 Résidents sortis</h2>
+
+    <div class="bandeau-info">
+        <span class="emoji-grand">📋</span>
+        <div>
+            <strong>Historique des sorties</strong><br>
+            <small>Liste des résidents ayant quitté la résidence (décès, changement d'institution, retour à domicile…). Informations confidentielles réservées aux administrateurs.</small>
+        </div>
+    </div>
+
+    <div class="filtres-zone">
+        <div class="filtre-groupe">
+            <span class="filtre-titre">🔍 Recherche :</span>
+            <input type="text" id="recherche" placeholder="Nom ou prénom...">
+        </div>
+        <div class="filtre-groupe">
+            <span class="filtre-titre">🏘️ Unité :</span>
+            <select id="filtre-unite" onchange="appliquerFiltres()">
+                <option value="toutes">Toutes les unités</option>
+                <option value="bouleaux">🏠 Bouleaux</option>
+                <option value="passerelle">🌉 Passerelle</option>
+            </select>
+        </div>
+        <div class="filtre-groupe">
+            <span class="filtre-titre">📋 Motif :</span>
+            <select id="filtre-motif" onchange="appliquerFiltres()">
+                <option value="tous">Tous les motifs</option>
+                <option value="deces">Décès</option>
+                <option value="changement_institution">Changement d'institution</option>
+                <option value="retour_domicile">Retour à domicile</option>
+                <option value="autre">Autre</option>
+                <option value="non_renseigne">Non renseigné</option>
+            </select>
+        </div>
+        <div class="filtre-groupe">
+            <span class="filtre-titre">⚠️ RGPD :</span>
+            <select id="filtre-rgpd" onchange="appliquerFiltres()">
+                <option value="tous">Tous</option>
+                <option value="pret">Prêts pour suppression</option>
+            </select>
+        </div>
+    </div>
+
+    <div id="contenu">
+        <p class="loading">⏳ Chargement...</p>
+    </div>
+
+    <!-- Modal 1 : Information sur le hard-delete -->
+    <div class="modal-overlay" id="modal-hd">
+        <div class="modal">
+            <h2 id="modal-hd-titre">🗑️ Suppression définitive (RGPD)</h2>
+
+            <div class="hd-danger">
+                ⚠️ <strong>Action irréversible.</strong> Cette suppression efface définitivement le résident et toutes ses données de la base. Aucune récupération ne sera possible.
+            </div>
+
+            <div class="hd-recap" id="hd-recap-contenu">
+                <!-- Rempli dynamiquement -->
+            </div>
+
+            <div class="hd-liste-suppr">
+                <strong>Seront définitivement supprimés :</strong>
+                <ul>
+                    <li>La fiche du résident (identité, chambre, allergies, textures…)</li>
+                    <li>Toutes ses présences enregistrées</li>
+                    <li>Toutes ses absences prolongées</li>
+                    <li>Son document PDF éventuel</li>
+                </ul>
+            </div>
+
+            <div class="form-actions">
+                <button type="button" class="btn-secondary" onclick="fermerModalHd()">Annuler</button>
+                <button type="button" class="btn-primary" onclick="etape2Hd()">Suivant →</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal 2 : Confirmation finale du hard-delete -->
+    <div class="modal-overlay" id="modal-hd-confirm">
+        <div class="modal">
+            <h2>⚠️ Confirmation finale</h2>
+
+            <div class="hd-danger">
+                Tu es sur le point de <strong>supprimer définitivement</strong> ce résident et toutes ses données. Cette action <strong>ne peut pas être annulée</strong>.
+            </div>
+
+            <div class="hd-confirm-nom">
+                <label id="hd-nom-label">Pour confirmer, recopie le nom complet du résident :</label>
+                <input type="text" id="hd-nom-input" placeholder="Prénom Nom" oninput="majBoutonHd()" autocomplete="off">
+            </div>
+
+            <label class="hd-checkbox-zone" for="hd-confirm-check">
+                <input type="checkbox" id="hd-confirm-check" onchange="majBoutonHd()">
+                <span>Je comprends que cette suppression est définitive et irréversible, et je confirme la demande d'effacement RGPD.</span>
+            </label>
+
+            <div class="form-actions">
+                <button type="button" class="btn-secondary" onclick="retourEtape1Hd()">← Retour</button>
+                <button type="button" class="btn-danger btn-confirmer-hd" id="btn-confirmer-hd" onclick="confirmerHardDelete()" disabled>Supprimer définitivement</button>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="shared.js"></script>
+    <script>
+        const PAGE_ACTIVE = 'residents-sortis';
+
+        // ============================================================
+        // Délai de conservation RGPD
+        // La valeur est lue depuis la table 'parametres' (onglet Paramètres).
+        // 10 = valeur de secours si la lecture échoue.
+        // ============================================================
+        let DELAI_CONSERVATION_ANNEES = 10;
+
+        const BUCKET_DOCUMENTS = 'documents-residents';
+
+        let tousLesSortis = [];
+        let hardDeleteEnCours = null;
+
+        function libelleMotifSortie(code) {
+            const map = {
+                deces: 'Décès',
+                changement_institution: "Changement d'institution",
+                retour_domicile: 'Retour à domicile',
+                autre: 'Autre'
+            };
+            return map[code] || 'Non renseigné';
+        }
+
+        function classeMotif(code) {
+            if (!code) return 'motif-non_renseigne';
+            return 'motif-' + code;
+        }
+
+        // Lecture du délai RGPD depuis la table parametres
+        async function chargerDelaiRgpd() {
+            const { data, error } = await supaClient
+                .from('parametres')
+                .select('valeur')
+                .eq('cle', 'delai_conservation_annees')
+                .single();
+
+            if (error) {
+                console.warn('Délai RGPD non trouvé, valeur par défaut 10 ans utilisée.', error.message);
+                return;
+            }
+            const v = parseInt(data.valeur);
+            if (!isNaN(v) && v >= 1) {
+                DELAI_CONSERVATION_ANNEES = v;
+            }
+        }
+
+        function calculerAnciennete(dateSortie) {
+            if (!dateSortie) return null;
+            const debut = new Date(dateSortie + 'T00:00:00');
+            const maintenant = new Date();
+            if (isNaN(debut.getTime())) return null;
+
+            let annees = maintenant.getFullYear() - debut.getFullYear();
+            let mois = maintenant.getMonth() - debut.getMonth();
+            if (maintenant.getDate() < debut.getDate()) {
+                mois -= 1;
+            }
+            if (mois < 0) {
+                annees -= 1;
+                mois += 12;
+            }
+            if (annees < 0) { annees = 0; mois = 0; }
+
+            const totalMois = annees * 12 + mois;
+
+            let texte;
+            if (annees === 0 && mois === 0) {
+                texte = "Moins d'un mois";
+            } else if (annees === 0) {
+                texte = `${mois} mois`;
+            } else if (mois === 0) {
+                texte = `${annees} an${annees > 1 ? 's' : ''}`;
+            } else {
+                texte = `${annees} an${annees > 1 ? 's' : ''} et ${mois} mois`;
+            }
+
+            const pretRgpd = annees >= DELAI_CONSERVATION_ANNEES;
+
+            return { annees, mois, totalMois, texte, pretRgpd };
+        }
+
+        async function charger() {
+            const { data, error } = await supaClient
+                .from(TABLE_RESIDENTS)
+                .select('*')
+                .eq('actif', false)
+                .order('date_sortie', { ascending: false, nullsFirst: false });
+
+            if (error) {
+                document.getElementById('contenu').innerHTML =
+                    `<div class="error">Erreur : ${error.message}</div>`;
+                return;
+            }
+
+            tousLesSortis = data || [];
+            appliquerFiltres();
+        }
+
+        function appliquerFiltres() {
+            const recherche = document.getElementById('recherche').value.toLowerCase().trim();
+            const filtreUnite = document.getElementById('filtre-unite').value;
+            const filtreMotif = document.getElementById('filtre-motif').value;
+            const filtreRgpd = document.getElementById('filtre-rgpd').value;
+
+            let liste = tousLesSortis;
+
+            if (filtreUnite !== 'toutes') {
+                liste = liste.filter(r => r.unite === filtreUnite);
+            }
+
+            if (filtreMotif !== 'tous') {
+                if (filtreMotif === 'non_renseigne') {
+                    liste = liste.filter(r => !r.motif_sortie);
+                } else {
+                    liste = liste.filter(r => r.motif_sortie === filtreMotif);
+                }
+            }
+
+            if (filtreRgpd === 'pret') {
+                liste = liste.filter(r => {
+                    const anc = calculerAnciennete(r.date_sortie);
+                    return anc && anc.pretRgpd;
+                });
+            }
+
+            if (recherche) {
+                liste = liste.filter(r =>
+                    (r.prenom || '').toLowerCase().includes(recherche) ||
+                    (r.nom || '').toLowerCase().includes(recherche)
+                );
+            }
+
+            afficher(liste);
+        }
+
+        function afficher(liste) {
+            const contenu = document.getElementById('contenu');
+
+            if (!tousLesSortis.length) {
+                contenu.innerHTML = '<p class="info-msg">Aucun résident sorti pour le moment.</p>';
+                return;
+            }
+
+            if (!liste.length) {
+                contenu.innerHTML = '<p class="info-msg">Aucun résident ne correspond aux filtres sélectionnés.</p>';
+                return;
+            }
+
+            const nbPrets = liste.filter(r => {
+                const anc = calculerAnciennete(r.date_sortie);
+                return anc && anc.pretRgpd;
+            }).length;
+
+            let html = `<p class="compteur"><strong>${liste.length}</strong> résident(s) sorti(s) affiché(s)`;
+            if (nbPrets > 0) {
+                html += ` — <strong style="color:#b3261e;">${nbPrets}</strong> prêt(s) pour suppression RGPD`;
+            }
+            html += ` <span style="color:#888;">· délai de conservation en vigueur : ${DELAI_CONSERVATION_ANNEES} ans</span>`;
+            html += `</p>`;
+
+            for (const r of liste) {
+                const uniteCls = r.unite === 'bouleaux' ? 'bouleaux' : 'passerelle';
+                const uniteLabel = r.unite === 'bouleaux' ? 'Bouleaux' : 'Passerelle';
+
+                const motifCode = r.motif_sortie || null;
+                const motifLabel = libelleMotifSortie(motifCode);
+                const motifCls = classeMotif(motifCode);
+
+                const dateSortieTxt = r.date_sortie
+                    ? dateFr(r.date_sortie)
+                    : '<span class="empty">non renseignée</span>';
+
+                const chambreTxt = r.numero_chambre
+                    ? `Chambre ${r.numero_chambre}`
+                    : '<span class="empty">non renseignée</span>';
+
+                const anc = calculerAnciennete(r.date_sortie);
+                let ancienneteBadge = '';
+                let ligneAnciennete = '';
+                if (anc) {
+                    ancienneteBadge = `<span class="anciennete-badge">⏳ Sorti depuis ${anc.texte}</span>`;
+                    ligneAnciennete = `<div class="sortie-detail"><span class="label">Sorti depuis :</span> ${anc.texte}</div>`;
+                } else {
+                    ligneAnciennete = `<div class="sortie-detail"><span class="label">Sorti depuis :</span> <span class="empty">impossible à calculer (date manquante)</span></div>`;
+                }
+
+                let noteBloc = '';
+                if (r.note_sortie && r.note_sortie.trim()) {
+                    noteBloc = `<div class="sortie-note-bloc">
+                        <strong>📝 Note :</strong> ${r.note_sortie}
+                    </div>`;
+                }
+
+                const estPret = anc && anc.pretRgpd;
+                const carteCls = estPret ? 'resident-sorti rgpd-pret' : 'resident-sorti';
+
+                let zoneRgpd;
+                if (estPret) {
+                    zoneRgpd = `
+                        <div class="rgpd-alerte">
+                            <span>⚠️ <strong>Prêt pour suppression RGPD</strong> — sorti depuis ${anc.texte} (délai de conservation : ${DELAI_CONSERVATION_ANNEES} ans)</span>
+                            <button class="btn-hard-delete" onclick="ouvrirModalHd(${r.id})">🗑️ Supprimer définitivement (RGPD)</button>
+                        </div>`;
+                } else {
+                    zoneRgpd = `
+                        <div class="rgpd-actions-zone">
+                            <button class="btn-hard-delete-discret" onclick="ouvrirModalHd(${r.id})">🗑️ Supprimer définitivement (RGPD)</button>
+                        </div>`;
+                }
+
+                html += `
+                    <div class="${carteCls}">
+                        <h3>
+                            <span>${r.prenom} ${r.nom} <span class="unite-tag ${uniteCls}">${uniteLabel}</span></span>
+                            <span style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;">
+                                ${ancienneteBadge}
+                                <span class="motif-badge ${motifCls}">${motifLabel}</span>
+                            </span>
+                        </h3>
+                        <div class="sortie-detail"><span class="label">Date de sortie :</span> ${dateSortieTxt}</div>
+                        ${ligneAnciennete}
+                        <div class="sortie-detail"><span class="label">Dernière chambre :</span> ${chambreTxt}</div>
+                        ${noteBloc}
+                        <div class="info-confidentiel">🔒 Information confidentielle — réservée aux administrateurs</div>
+                        ${zoneRgpd}
+                    </div>`;
+            }
+
+            contenu.innerHTML = html;
+        }
+
+        document.getElementById('recherche').addEventListener('input', appliquerFiltres);
+
+        // ============================================================
+        // HARD-DELETE RGPD — Process en 2 étapes
+        // ============================================================
+
+        function ouvrirModalHd(id) {
+            const r = tousLesSortis.find(x => x.id === id);
+            if (!r) return;
+            hardDeleteEnCours = { resident: r };
+
+            const anc = calculerAnciennete(r.date_sortie);
+
+            document.getElementById('modal-hd-titre').textContent =
+                `🗑️ Suppression définitive — ${r.prenom} ${r.nom}`;
+
+            let recapHtml = `
+                <div class="hd-recap-ligne"><span class="hd-recap-label">Résident :</span> <strong>${r.prenom} ${r.nom}</strong></div>
+                <div class="hd-recap-ligne"><span class="hd-recap-label">Unité :</span> ${r.unite === 'bouleaux' ? 'Bouleaux' : 'Passerelle'}</div>
+                <div class="hd-recap-ligne"><span class="hd-recap-label">Date de sortie :</span> ${r.date_sortie ? dateFr(r.date_sortie) : 'non renseignée'}</div>
+                <div class="hd-recap-ligne"><span class="hd-recap-label">Motif :</span> ${libelleMotifSortie(r.motif_sortie)}</div>`;
+            if (anc) {
+                recapHtml += `<div class="hd-recap-ligne"><span class="hd-recap-label">Sorti depuis :</span> ${anc.texte}</div>`;
+            }
+            document.getElementById('hd-recap-contenu').innerHTML = recapHtml;
+
+            document.getElementById('modal-hd').classList.add('active');
+        }
+
+        function fermerModalHd() {
+            document.getElementById('modal-hd').classList.remove('active');
+            hardDeleteEnCours = null;
+        }
+
+        function etape2Hd() {
+            if (!hardDeleteEnCours) return;
+            const r = hardDeleteEnCours.resident;
+
+            document.getElementById('hd-nom-label').textContent =
+                `Pour confirmer, recopie exactement : « ${r.prenom} ${r.nom} »`;
+            document.getElementById('hd-nom-input').value = '';
+            document.getElementById('hd-nom-input').classList.remove('ok');
+            document.getElementById('hd-confirm-check').checked = false;
+            majBoutonHd();
+
+            document.getElementById('modal-hd').classList.remove('active');
+            document.getElementById('modal-hd-confirm').classList.add('active');
+        }
+
+        function retourEtape1Hd() {
+            document.getElementById('modal-hd-confirm').classList.remove('active');
+            document.getElementById('modal-hd').classList.add('active');
+        }
+
+        function majBoutonHd() {
+            if (!hardDeleteEnCours) return;
+            const r = hardDeleteEnCours.resident;
+            const nomAttendu = `${r.prenom} ${r.nom}`.trim().toLowerCase();
+            const nomSaisi = document.getElementById('hd-nom-input').value.trim().toLowerCase();
+            const nomOk = nomSaisi === nomAttendu && nomSaisi.length > 0;
+            const checkOk = document.getElementById('hd-confirm-check').checked;
+
+            const input = document.getElementById('hd-nom-input');
+            if (nomOk) input.classList.add('ok');
+            else input.classList.remove('ok');
+
+            document.getElementById('btn-confirmer-hd').disabled = !(nomOk && checkOk);
+        }
+
+        async function confirmerHardDelete() {
+            if (!hardDeleteEnCours) return;
+            const r = hardDeleteEnCours.resident;
+
+            const nomAttendu = `${r.prenom} ${r.nom}`.trim().toLowerCase();
+            const nomSaisi = document.getElementById('hd-nom-input').value.trim().toLowerCase();
+            if (nomSaisi !== nomAttendu) return;
+            if (!document.getElementById('hd-confirm-check').checked) return;
+
+            const btn = document.getElementById('btn-confirmer-hd');
+            btn.disabled = true;
+            btn.textContent = '⏳ Suppression en cours...';
+
+            try {
+                const { error: errP } = await supaClient
+                    .from(TABLE_PRESENCES)
+                    .delete()
+                    .eq('resident_id', r.id);
+                if (errP) throw new Error('Présences : ' + errP.message);
+
+                const { error: errA } = await supaClient
+                    .from(TABLE_ABSENCES)
+                    .delete()
+                    .eq('resident_id', r.id);
+                if (errA) throw new Error('Absences : ' + errA.message);
+
+                if (r.document_pdf) {
+                    const { error: errStorage } = await supaClient.storage
+                        .from(BUCKET_DOCUMENTS)
+                        .remove([r.document_pdf]);
+                    if (errStorage) console.warn('Storage : ' + errStorage.message);
+                }
+
+                const { error: errR } = await supaClient
+                    .from(TABLE_RESIDENTS)
+                    .delete()
+                    .eq('id', r.id);
+                if (errR) throw new Error('Résident : ' + errR.message);
+
+            } catch (e) {
+                alert('❌ Erreur lors de la suppression : ' + e.message + '\n\nLa suppression a été interrompue. Certaines données ont peut-être déjà été supprimées.');
+                btn.disabled = false;
+                btn.textContent = 'Supprimer définitivement';
+                return;
+            }
+
+            document.getElementById('modal-hd-confirm').classList.remove('active');
+            hardDeleteEnCours = null;
+            btn.textContent = 'Supprimer définitivement';
+            alert('✅ Le résident et toutes ses données ont été définitivement supprimés.');
+            charger();
+        }
+
+        (async () => {
+            const auth = await verifierAuthEtRole(['admin']);
+            if (!auth) return;
+            afficherMenuComplet(PAGE_ACTIVE, auth.user.email, auth.profil.role, auth.profil.nom_affiche);
+            await chargerDelaiRgpd();   // ⭐ on lit le délai depuis la base AVANT d'afficher
+            charger();
+        })();
+    </script>
+</body>
+</html>

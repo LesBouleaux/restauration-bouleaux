@@ -6,7 +6,6 @@
     <title>Résidents Bouleaux - Restauration Les Bouleaux</title>
     <link rel="stylesheet" href="shared.css">
     <style>
-        /* Bandeau identité unité */
         .bandeau-unite {
             display: flex;
             align-items: center;
@@ -102,9 +101,7 @@
         @media (max-width: 600px) {
             .form-lieux-row { grid-template-columns: 1fr; }
         }
-        .form-lieux-row .form-group {
-            margin-bottom: 0;
-        }
+        .form-lieux-row .form-group { margin-bottom: 0; }
         .form-row-2col {
             display: grid;
             grid-template-columns: 1fr 1fr;
@@ -113,9 +110,7 @@
         @media (max-width: 600px) {
             .form-row-2col { grid-template-columns: 1fr; }
         }
-        .form-row-2col .form-group {
-            margin-bottom: 0;
-        }
+        .form-row-2col .form-group { margin-bottom: 0; }
         .pdf-zone {
             border: 2px dashed #ccc;
             padding: 20px;
@@ -160,10 +155,7 @@
             background: #fff5f5;
             border-color: #c0392b;
         }
-        .allergene-case input {
-            margin: 0;
-            cursor: pointer;
-        }
+        .allergene-case input { margin: 0; cursor: pointer; }
         .allergene-case input:checked + span {
             font-weight: 700;
             color: #c0392b;
@@ -194,6 +186,74 @@
             font-weight: 600;
             margin: 2px 3px 2px 0;
             border-left: 3px solid #c0392b;
+        }
+
+        /* ===== Modale de sortie définitive ===== */
+        .btn-sortie {
+            background: #fff0f0;
+            color: #b3261e;
+            border: 1px solid #b3261e;
+        }
+        .btn-sortie:hover { background: #ffe0e0; }
+
+        .sortie-avertissement {
+            background: #fff3e0;
+            border-left: 4px solid #b35900;
+            padding: 12px 14px;
+            border-radius: 6px;
+            margin: 12px 0;
+            font-size: 14px;
+            color: #6b3500;
+        }
+        .sortie-recap {
+            background: #f7f7f7;
+            border: 1px solid #ddd;
+            border-radius: 6px;
+            padding: 12px 14px;
+            margin: 12px 0;
+        }
+        .sortie-recap-ligne {
+            padding: 3px 0;
+            font-size: 14px;
+        }
+        .sortie-recap-label {
+            font-weight: 700;
+            color: #555;
+            display: inline-block;
+            min-width: 130px;
+        }
+        .sortie-danger {
+            background: #fdecea;
+            border-left: 4px solid #b3261e;
+            padding: 12px 14px;
+            border-radius: 6px;
+            margin: 12px 0;
+            font-size: 14px;
+            color: #7a1f17;
+        }
+        .sortie-checkbox-zone {
+            display: flex;
+            align-items: flex-start;
+            gap: 8px;
+            padding: 12px 14px;
+            background: #fff8e1;
+            border: 1px solid #e0c068;
+            border-radius: 6px;
+            margin: 14px 0;
+            cursor: pointer;
+            user-select: none;
+        }
+        .sortie-checkbox-zone input {
+            margin-top: 2px;
+            cursor: pointer;
+            width: 18px;
+            height: 18px;
+        }
+        .btn-confirmer-sortie:disabled {
+            background: #ccc;
+            border-color: #ccc;
+            color: #888;
+            cursor: not-allowed;
         }
     </style>
 </head>
@@ -338,6 +398,72 @@
         </div>
     </div>
 
+    <!-- Modal 1 : Formulaire de sortie définitive -->
+    <div class="modal-overlay" id="modal-sortie">
+        <div class="modal">
+            <h2 id="modal-sortie-titre">📤 Enregistrer une sortie</h2>
+            <div class="sortie-avertissement">
+                ℹ️ Une sortie déplace le résident vers la section <strong>"Résidents sortis"</strong>. Il n'apparaîtra plus dans les listes actives (présences, service, production).
+            </div>
+            <form id="form-sortie" onsubmit="etape2Sortie(event)">
+                <input type="hidden" id="sortie-resident-id">
+
+                <div class="form-group">
+                    <label for="sortie-date">Date de sortie *</label>
+                    <input type="date" id="sortie-date" required>
+                </div>
+
+                <div class="form-group">
+                    <label for="sortie-motif">Motif de sortie *</label>
+                    <select id="sortie-motif" required>
+                        <option value="">— Sélectionner un motif —</option>
+                        <option value="deces">Décès</option>
+                        <option value="changement_institution">Changement d'institution</option>
+                        <option value="retour_domicile">Retour à domicile</option>
+                        <option value="autre">Autre</option>
+                    </select>
+                    <small style="color:#666;">Information confidentielle — visible uniquement dans la section "Résidents sortis".</small>
+                </div>
+
+                <div class="form-group">
+                    <label for="sortie-note">Note libre (optionnel)</label>
+                    <textarea id="sortie-note" placeholder="Précisions éventuelles..."></textarea>
+                </div>
+
+                <div class="form-actions">
+                    <button type="button" class="btn-secondary" onclick="fermerModalSortie()">Annuler</button>
+                    <button type="submit" class="btn-primary">Suivant →</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Modal 2 : Confirmation finale de sortie -->
+    <div class="modal-overlay" id="modal-sortie-confirm">
+        <div class="modal">
+            <h2>⚠️ Confirmer la sortie définitive</h2>
+
+            <div class="sortie-recap" id="sortie-recap-contenu">
+                <!-- Rempli dynamiquement -->
+            </div>
+
+            <div class="sortie-danger">
+                Ce résident va <strong>disparaître des listes actives</strong> et sera déplacé dans la section <strong>"Résidents sortis"</strong>.<br>
+                Il ne s'agit pas d'un archivage temporaire.
+            </div>
+
+            <label class="sortie-checkbox-zone" for="sortie-confirm-check">
+                <input type="checkbox" id="sortie-confirm-check" onchange="majBoutonConfirmSortie()">
+                <span>J'ai vérifié les informations ci-dessus et je confirme cette sortie définitive.</span>
+            </label>
+
+            <div class="form-actions">
+                <button type="button" class="btn-secondary" onclick="retourEtape1Sortie()">← Retour</button>
+                <button type="button" class="btn-danger btn-confirmer-sortie" id="btn-confirmer-sortie" onclick="confirmerSortie()" disabled>Confirmer la sortie</button>
+            </div>
+        </div>
+    </div>
+
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script src="shared.js"></script>
     <script>
@@ -347,6 +473,9 @@
         let tousLesResidents = [];
         let tousLesLieux = [];
         let residentDocCourant = null;
+
+        // Données temporaires pour le process de sortie en 2 étapes
+        let sortieEnCours = null;
 
         const BUCKET_DOCUMENTS = 'documents-residents';
 
@@ -390,7 +519,6 @@
             });
         }
 
-        // ⭐ FILTRAGE DES LIEUX PAR UNITÉ
         async function chargerLieux() {
             const { data, error } = await supaClient
                 .from('lieux_repas')
@@ -475,7 +603,7 @@
                             <span class="resident-actions">
                                 <button class="btn-print" onclick="ouvrirModalDoc(${r.id})">📎 Document</button>
                                 <button class="btn-edit" onclick="modifierResident(${r.id})">✏️ Modifier</button>
-                                <button class="btn-danger" onclick="archiverResident(${r.id}, '${r.prenom} ${r.nom}')">🗑️ Archiver</button>
+                                <button class="btn-danger btn-sortie" onclick="ouvrirModalSortie(${r.id})">📤 Enregistrer une sortie</button>
                             </span>
                         </h3>
                         ${lieuxRecap}
@@ -579,10 +707,109 @@
             charger();
         }
 
-        async function archiverResident(id, nomComplet) {
-            if (!confirm(`Archiver ${nomComplet} ?`)) return;
-            const { error } = await supaClient.from(TABLE_RESIDENTS).update({ actif: false }).eq('id', id);
-            if (error) return alert('Erreur : ' + error.message);
+        // ============================================================
+        // SORTIE DÉFINITIVE — Process en 2 étapes
+        // ============================================================
+
+        function libelleMotifSortie(code) {
+            const map = {
+                deces: 'Décès',
+                changement_institution: "Changement d'institution",
+                retour_domicile: 'Retour à domicile',
+                autre: 'Autre'
+            };
+            return map[code] || code;
+        }
+
+        function ouvrirModalSortie(id) {
+            const r = tousLesResidents.find(x => x.id === id);
+            if (!r) return;
+            sortieEnCours = { resident: r };
+
+            document.getElementById('modal-sortie-titre').textContent =
+                `📤 Enregistrer une sortie — ${r.prenom} ${r.nom}`;
+            document.getElementById('form-sortie').reset();
+            document.getElementById('sortie-resident-id').value = r.id;
+            document.getElementById('sortie-date').value = aujourdhui();
+            document.getElementById('modal-sortie').classList.add('active');
+        }
+
+        function fermerModalSortie() {
+            document.getElementById('modal-sortie').classList.remove('active');
+            sortieEnCours = null;
+        }
+
+        // Étape 1 → Étape 2 : on valide le formulaire et on affiche le récap
+        function etape2Sortie(event) {
+            event.preventDefault();
+            if (!sortieEnCours) return;
+
+            const date = document.getElementById('sortie-date').value;
+            const motif = document.getElementById('sortie-motif').value;
+            const note = document.getElementById('sortie-note').value.trim();
+
+            if (!date || !motif) {
+                alert('La date et le motif sont obligatoires.');
+                return;
+            }
+
+            sortieEnCours.date = date;
+            sortieEnCours.motif = motif;
+            sortieEnCours.note = note || null;
+
+            // Construire le récap
+            const r = sortieEnCours.resident;
+            let recapHtml = `
+                <div class="sortie-recap-ligne"><span class="sortie-recap-label">Résident :</span> <strong>${r.prenom} ${r.nom}</strong></div>
+                <div class="sortie-recap-ligne"><span class="sortie-recap-label">Unité :</span> ${nomUniteSansEmoji(UNITE_COURANTE)}</div>
+                <div class="sortie-recap-ligne"><span class="sortie-recap-label">Date de sortie :</span> ${dateFr(date)}</div>
+                <div class="sortie-recap-ligne"><span class="sortie-recap-label">Motif :</span> ${libelleMotifSortie(motif)}</div>`;
+            if (note) {
+                recapHtml += `<div class="sortie-recap-ligne"><span class="sortie-recap-label">Note :</span> ${note}</div>`;
+            }
+            document.getElementById('sortie-recap-contenu').innerHTML = recapHtml;
+
+            // Réinitialiser la case à cocher et le bouton
+            document.getElementById('sortie-confirm-check').checked = false;
+            majBoutonConfirmSortie();
+
+            // Basculer de la modale 1 vers la modale 2
+            document.getElementById('modal-sortie').classList.remove('active');
+            document.getElementById('modal-sortie-confirm').classList.add('active');
+        }
+
+        function retourEtape1Sortie() {
+            document.getElementById('modal-sortie-confirm').classList.remove('active');
+            document.getElementById('modal-sortie').classList.add('active');
+        }
+
+        function majBoutonConfirmSortie() {
+            const checked = document.getElementById('sortie-confirm-check').checked;
+            document.getElementById('btn-confirmer-sortie').disabled = !checked;
+        }
+
+        async function confirmerSortie() {
+            if (!sortieEnCours) return;
+            if (!document.getElementById('sortie-confirm-check').checked) return;
+
+            const r = sortieEnCours.resident;
+            const { error } = await supaClient
+                .from(TABLE_RESIDENTS)
+                .update({
+                    actif: false,
+                    date_sortie: sortieEnCours.date,
+                    motif_sortie: sortieEnCours.motif,
+                    note_sortie: sortieEnCours.note
+                })
+                .eq('id', r.id);
+
+            if (error) {
+                alert('Erreur : ' + error.message);
+                return;
+            }
+
+            document.getElementById('modal-sortie-confirm').classList.remove('active');
+            sortieEnCours = null;
             charger();
         }
 

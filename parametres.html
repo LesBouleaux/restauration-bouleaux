@@ -1,0 +1,378 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Paramètres - Restauration Les Bouleaux</title>
+    <link rel="stylesheet" href="shared.css">
+    <style>
+        .bandeau-info {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            padding: 12px 16px;
+            border-radius: 8px;
+            margin: 10px 0 20px 0;
+            font-weight: 600;
+            background: #eceff1;
+            color: #37474f;
+            border-left: 5px solid #607d8b;
+        }
+        .bandeau-info .emoji-grand { font-size: 28px; }
+        .bandeau-info small { font-weight: 400; }
+
+        .param-carte {
+            background: white;
+            border: 1px solid #ddd;
+            border-radius: 8px;
+            padding: 18px 22px;
+            margin-bottom: 16px;
+        }
+        .param-carte h3 {
+            margin: 0 0 6px 0;
+            color: #2c5530;
+        }
+        .param-description {
+            color: #666;
+            font-size: 14px;
+            margin-bottom: 14px;
+        }
+
+        .param-valeur-actuelle {
+            display: flex;
+            align-items: baseline;
+            gap: 10px;
+            padding: 12px 16px;
+            background: #f5faf5;
+            border-left: 4px solid #2c5530;
+            border-radius: 6px;
+            margin-bottom: 14px;
+        }
+        .param-valeur-nombre {
+            font-size: 32px;
+            font-weight: 700;
+            color: #2c5530;
+            line-height: 1;
+        }
+        .param-valeur-label {
+            font-size: 14px;
+            color: #555;
+        }
+
+        .param-trace {
+            font-size: 12px;
+            color: #888;
+            font-style: italic;
+            margin-bottom: 14px;
+        }
+
+        .param-avertissement {
+            background: #fff3e0;
+            border-left: 4px solid #b35900;
+            padding: 12px 14px;
+            border-radius: 6px;
+            margin: 14px 0;
+            font-size: 13px;
+            color: #6b3500;
+        }
+
+        .param-form-ligne {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            flex-wrap: wrap;
+            margin: 14px 0;
+        }
+        .param-form-ligne label {
+            font-weight: 600;
+            font-size: 14px;
+        }
+        .param-form-ligne input[type="number"] {
+            width: 90px;
+            padding: 8px 10px;
+            border: 2px solid #2c5530;
+            border-radius: 6px;
+            font-size: 15px;
+            font-weight: 600;
+            text-align: center;
+        }
+        .param-form-ligne .unite-txt {
+            font-size: 14px;
+            color: #555;
+        }
+
+        .btn-enregistrer-param {
+            background: #2c5530;
+            color: white;
+            border: none;
+            padding: 8px 18px;
+            border-radius: 6px;
+            font-size: 14px;
+            font-weight: 600;
+            cursor: pointer;
+        }
+        .btn-enregistrer-param:hover { background: #1f3a22; }
+        .btn-enregistrer-param:disabled {
+            background: #ccc;
+            cursor: not-allowed;
+        }
+
+        #message-param { margin: 12px 0; }
+
+        /* Modale de confirmation */
+        .confirm-recap {
+            background: #f7f7f7;
+            border: 1px solid #ddd;
+            border-radius: 6px;
+            padding: 12px 14px;
+            margin: 12px 0;
+            font-size: 14px;
+        }
+        .confirm-recap-ligne { padding: 3px 0; }
+        .confirm-recap-label {
+            font-weight: 700;
+            color: #555;
+            display: inline-block;
+            min-width: 130px;
+        }
+        .confirm-danger {
+            background: #fff3e0;
+            border-left: 4px solid #b35900;
+            padding: 12px 14px;
+            border-radius: 6px;
+            margin: 12px 0;
+            font-size: 14px;
+            color: #6b3500;
+        }
+        .confirm-checkbox-zone {
+            display: flex;
+            align-items: flex-start;
+            gap: 8px;
+            padding: 12px 14px;
+            background: #fff8e1;
+            border: 1px solid #e0c068;
+            border-radius: 6px;
+            margin: 14px 0;
+            cursor: pointer;
+            user-select: none;
+        }
+        .confirm-checkbox-zone input {
+            margin-top: 2px;
+            cursor: pointer;
+            width: 18px;
+            height: 18px;
+        }
+        .btn-confirmer-param:disabled {
+            background: #ccc;
+            border-color: #ccc;
+            color: #888;
+            cursor: not-allowed;
+        }
+    </style>
+</head>
+<body>
+    <div id="app-header"></div>
+    <h1>🍽️ Restauration Les Bouleaux</h1>
+    <div id="menu"></div>
+
+    <h2>⚙️ Paramètres</h2>
+
+    <div class="bandeau-info">
+        <span class="emoji-grand">⚙️</span>
+        <div>
+            <strong>Réglages de l'application</strong><br>
+            <small>Ces paramètres encadrent le fonctionnement de l'application. Toute modification est tracée.</small>
+        </div>
+    </div>
+
+    <div id="contenu">
+        <p class="loading">⏳ Chargement...</p>
+    </div>
+
+    <!-- Modale de confirmation de modification -->
+    <div class="modal-overlay" id="modal-confirm">
+        <div class="modal">
+            <h2>⚠️ Confirmer la modification</h2>
+
+            <div class="confirm-recap" id="confirm-recap-contenu">
+                <!-- Rempli dynamiquement -->
+            </div>
+
+            <div class="confirm-danger">
+                Le délai de conservation RGPD doit correspondre à une <strong>obligation légale validée par votre direction</strong>. Une valeur trop courte pourrait entraîner la suppression de données que vous êtes légalement tenu de conserver.
+            </div>
+
+            <label class="confirm-checkbox-zone" for="confirm-check">
+                <input type="checkbox" id="confirm-check" onchange="majBoutonConfirm()">
+                <span>Je confirme que ce délai correspond à une obligation légale validée par ma direction.</span>
+            </label>
+
+            <div class="form-actions">
+                <button type="button" class="btn-secondary" onclick="fermerModalConfirm()">Annuler</button>
+                <button type="button" class="btn-primary btn-confirmer-param" id="btn-confirmer-param" onclick="confirmerModification()" disabled>Confirmer la modification</button>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="shared.js"></script>
+    <script>
+        const PAGE_ACTIVE = 'parametres';
+
+        let parametreDelai = null;   // l'objet { cle, valeur, description, modifie_par, modifie_le }
+        let userEmail = null;
+        let modificationEnCours = null;
+
+        async function charger() {
+            const { data, error } = await supaClient
+                .from('parametres')
+                .select('*')
+                .eq('cle', 'delai_conservation_annees')
+                .single();
+
+            if (error) {
+                document.getElementById('contenu').innerHTML =
+                    `<div class="error">Erreur de chargement : ${error.message}</div>`;
+                return;
+            }
+
+            parametreDelai = data;
+            afficher();
+        }
+
+        function formatDateHeure(iso) {
+            if (!iso) return '—';
+            const d = new Date(iso);
+            if (isNaN(d.getTime())) return '—';
+            return d.toLocaleString('fr-FR', {
+                day: '2-digit', month: '2-digit', year: 'numeric',
+                hour: '2-digit', minute: '2-digit'
+            });
+        }
+
+        function afficher() {
+            const contenu = document.getElementById('contenu');
+            const valeur = parseInt(parametreDelai.valeur) || 10;
+
+            contenu.innerHTML = `
+                <div class="param-carte">
+                    <h3>🗑️ Délai de conservation RGPD</h3>
+                    <p class="param-description">${parametreDelai.description || ''}</p>
+
+                    <div class="param-valeur-actuelle">
+                        <span class="param-valeur-nombre">${valeur}</span>
+                        <span class="param-valeur-label">ans — délai actuellement en vigueur</span>
+                    </div>
+
+                    <p class="param-trace">
+                        Dernière modification : ${formatDateHeure(parametreDelai.modifie_le)}
+                        ${parametreDelai.modifie_par ? `— par ${parametreDelai.modifie_par}` : ''}
+                    </p>
+
+                    <div class="param-avertissement">
+                        ℹ️ Au-delà de ce délai, les résidents sortis sont signalés en rouge dans la section "Résidents sortis" comme prêts pour suppression définitive. Le délai n'entraîne <strong>aucune suppression automatique</strong> — chaque suppression reste une action manuelle.
+                    </div>
+
+                    <div class="param-form-ligne">
+                        <label for="input-delai">Nouveau délai :</label>
+                        <input type="number" id="input-delai" min="1" max="30" value="${valeur}" oninput="majBoutonEnregistrer()">
+                        <span class="unite-txt">ans (entre 1 et 30)</span>
+                        <button class="btn-enregistrer-param" id="btn-enregistrer" onclick="ouvrirConfirmation()" disabled>💾 Enregistrer la modification</button>
+                    </div>
+
+                    <div id="message-param"></div>
+                </div>
+            `;
+        }
+
+        function majBoutonEnregistrer() {
+            const input = document.getElementById('input-delai');
+            const nouvelle = parseInt(input.value);
+            const actuelle = parseInt(parametreDelai.valeur);
+            const btn = document.getElementById('btn-enregistrer');
+
+            // Le bouton s'active seulement si la valeur est valide ET différente de l'actuelle
+            const valide = !isNaN(nouvelle) && nouvelle >= 1 && nouvelle <= 30;
+            btn.disabled = !(valide && nouvelle !== actuelle);
+        }
+
+        function ouvrirConfirmation() {
+            const input = document.getElementById('input-delai');
+            const nouvelle = parseInt(input.value);
+            const actuelle = parseInt(parametreDelai.valeur);
+
+            if (isNaN(nouvelle) || nouvelle < 1 || nouvelle > 30) {
+                alert('Le délai doit être un nombre entre 1 et 30 ans.');
+                return;
+            }
+            if (nouvelle === actuelle) return;
+
+            modificationEnCours = { ancienne: actuelle, nouvelle: nouvelle };
+
+            document.getElementById('confirm-recap-contenu').innerHTML = `
+                <div class="confirm-recap-ligne"><span class="confirm-recap-label">Délai actuel :</span> ${actuelle} ans</div>
+                <div class="confirm-recap-ligne"><span class="confirm-recap-label">Nouveau délai :</span> <strong>${nouvelle} ans</strong></div>
+            `;
+
+            document.getElementById('confirm-check').checked = false;
+            majBoutonConfirm();
+            document.getElementById('modal-confirm').classList.add('active');
+        }
+
+        function fermerModalConfirm() {
+            document.getElementById('modal-confirm').classList.remove('active');
+            modificationEnCours = null;
+        }
+
+        function majBoutonConfirm() {
+            const checked = document.getElementById('confirm-check').checked;
+            document.getElementById('btn-confirmer-param').disabled = !checked;
+        }
+
+        async function confirmerModification() {
+            if (!modificationEnCours) return;
+            if (!document.getElementById('confirm-check').checked) return;
+
+            const btn = document.getElementById('btn-confirmer-param');
+            btn.disabled = true;
+            btn.textContent = '⏳ Enregistrement...';
+
+            const { error } = await supaClient
+                .from('parametres')
+                .update({
+                    valeur: String(modificationEnCours.nouvelle),
+                    modifie_par: userEmail || 'inconnu',
+                    modifie_le: new Date().toISOString()
+                })
+                .eq('cle', 'delai_conservation_annees');
+
+            if (error) {
+                alert('Erreur : ' + error.message);
+                btn.disabled = false;
+                btn.textContent = 'Confirmer la modification';
+                return;
+            }
+
+            fermerModalConfirm();
+            btn.textContent = 'Confirmer la modification';
+
+            // Recharger les données et réafficher
+            await charger();
+
+            const msg = document.getElementById('message-param');
+            if (msg) {
+                msg.innerHTML = `<div class="success">✓ Délai de conservation mis à jour avec succès.</div>`;
+                setTimeout(() => { if (msg) msg.innerHTML = ''; }, 4000);
+            }
+        }
+
+        (async () => {
+            const auth = await verifierAuthEtRole(['admin']);
+            if (!auth) return;
+            userEmail = auth.user.email;
+            afficherMenuComplet(PAGE_ACTIVE, auth.user.email, auth.profil.role, auth.profil.nom_affiche);
+            charger();
+        })();
+    </script>
+</body>
+</html>

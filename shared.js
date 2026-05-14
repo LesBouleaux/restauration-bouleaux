@@ -257,6 +257,7 @@ function genererMenuOnglets(pageActive, role) {
         { id: 'dashboard',              titre: '🏠 Accueil',               url: 'dashboard.html' },
         { id: 'residents-bouleaux',     titre: '👥 Résidents Bouleaux',    url: 'residents-bouleaux.html' },
         { id: 'residents-passerelle',   titre: '🌉 Résidents Passerelle',  url: 'residents-passerelle.html' },
+        { id: 'residents-sortis',       titre: '📤 Résidents sortis',      url: 'residents-sortis.html' },
         { id: 'presences-bouleaux',     titre: '✅ Présences Bouleaux',    url: 'presences-bouleaux.html' },
         { id: 'presences-passerelle',   titre: '✅ Présences Passerelle',  url: 'presences-passerelle.html' },
         { id: 'production',             titre: '📋 Production J-1',        url: 'production.html' },
@@ -265,7 +266,8 @@ function genererMenuOnglets(pageActive, role) {
         { id: 'recap-clients',          titre: '📊 Récap clients',         url: 'recap-clients.html' },
         { id: 'categories-clients',     titre: '🏷️ Catégories clients',    url: 'categories-clients.html' },
         { id: 'factures-clients-admin', titre: '🧾 Factures clients',      url: 'factures-clients-admin.html' },
-        { id: 'stats',                  titre: '📊 Statistiques',          url: 'stats.html' }
+        { id: 'stats',                  titre: '📊 Statistiques',          url: 'stats.html' },
+        { id: 'parametres',             titre: '⚙️ Paramètres',            url: 'parametres.html' }
     ];
 
     const ongletsEjc = [
