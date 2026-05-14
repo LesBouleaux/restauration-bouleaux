@@ -6,7 +6,6 @@
     <title>Production J-1 - Restauration Les Bouleaux</title>
     <link rel="stylesheet" href="shared.css">
     <style>
-        /* ============ TOOLBAR STYLE TOGGLE ============ */
         .toolbar-prod {
             background: white;
             padding: 14px 18px;
@@ -29,8 +28,6 @@
             color: #2c5530;
             min-width: 85px;
         }
-
-        /* === Navigation date === */
         .date-nav {
             display: inline-flex;
             align-items: center;
@@ -74,8 +71,6 @@
             cursor: pointer;
         }
         .btn-demain:hover { background: #f0f8f0; }
-
-        /* === Toggle group === */
         .toggle-group {
             display: inline-flex;
             border: 1px solid #2c5530;
@@ -102,8 +97,6 @@
             color: white;
             font-weight: 600;
         }
-
-        /* === Boutons action === */
         .toolbar-actions {
             display: flex;
             gap: 10px;
@@ -134,8 +127,6 @@
             cursor: pointer;
         }
         .btn-imprimer:hover { background: #f0f8f0; }
-
-        /* ============ FEUILLE DE PRODUCTION ============ */
         .feuille-prod {
             background: white;
             border: 0.5px solid #ddd;
@@ -145,7 +136,6 @@
             color: #222;
             margin-bottom: 18px;
         }
-
         .feuille-entete {
             display: flex;
             justify-content: space-between;
@@ -169,7 +159,6 @@
             text-transform: uppercase;
             letter-spacing: 0.5px;
         }
-
         .feuille-filtres-actifs {
             margin-bottom: 10px;
             padding: 6px 10px;
@@ -178,7 +167,6 @@
             font-size: 12px;
             color: #6b3500;
         }
-
         .grid-2cols {
             display: grid;
             grid-template-columns: 1fr 1fr;
@@ -187,7 +175,6 @@
         @media (max-width: 700px) {
             .grid-2cols { grid-template-columns: 1fr; }
         }
-
         .section-titre {
             font-size: 11px;
             font-weight: 700;
@@ -196,7 +183,6 @@
             margin-bottom: 6px;
             text-transform: uppercase;
         }
-
         .feuille-prod table {
             width: 100%;
             border-collapse: collapse;
@@ -224,7 +210,6 @@
             font-weight: 600;
             color: #c0392b;
         }
-
         .bloc-info {
             margin-top: 10px;
             padding: 8px 10px;
@@ -250,7 +235,6 @@
             font-style: italic;
             font-size: 11px;
         }
-
         .liste-b-table thead tr {
             border-bottom: 1px solid #2c5530;
         }
@@ -277,14 +261,11 @@
             padding: 6px 0 0;
             font-weight: 600;
         }
-
         .feuille-vide {
             padding: 30px;
             text-align: center;
             color: #888;
         }
-
-        /* ============ IMPRESSION ============ */
         @media print {
             body { background: white !important; }
             .toolbar-prod,
@@ -300,7 +281,6 @@
                 font-size: 11px !important;
                 margin-bottom: 0 !important;
             }
-            /* Saut de page entre chaque feuille-repas */
             .feuille-prod + .feuille-prod {
                 page-break-before: always;
             }
@@ -321,7 +301,6 @@
     <h2>📋 Production J-1 — Feuille de production cuisine</h2>
 
     <div class="toolbar-prod">
-        <!-- Ligne Date + Repas -->
         <div class="toolbar-ligne">
             <span class="toolbar-label">📅 Date :</span>
             <div class="date-nav">
@@ -339,7 +318,6 @@
             </div>
         </div>
 
-        <!-- Ligne Unité -->
         <div class="toolbar-ligne">
             <span class="toolbar-label">🏘️ Unité :</span>
             <div class="toggle-group" id="toggle-unite">
@@ -350,17 +328,14 @@
             </div>
         </div>
 
-        <!-- Ligne Clients externes (chargée dynamiquement) -->
         <div class="toolbar-ligne">
             <span class="toolbar-label">🍴 Clients :</span>
             <div class="toggle-group" id="toggle-client">
                 <button class="toggle-btn active" data-value="tous" onclick="setToggle('client', this)">🍴 Tous</button>
                 <button class="toggle-btn" data-value="aucun" onclick="setToggle('client', this)">⛔ Aucun</button>
-                <!-- Boutons clients ajoutés dynamiquement -->
             </div>
         </div>
 
-        <!-- Boutons d'action -->
         <div class="toolbar-actions">
             <button class="btn-charger" onclick="genererFeuille()">🔄 Charger</button>
             <button class="btn-imprimer" onclick="window.print()">🖨️ Imprimer</button>
@@ -374,20 +349,17 @@
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script src="shared.js"></script>
     <script>
-        // ============================================================
-        // CONFIG
-        // ============================================================
         let tousLesClients = [];
         let toutesLesCategories = [];
 
-        // Valeurs des toggles (états)
-        let valRepas = ['dejeuner'];   // multi-sélection
+        // Repas à domicile : référentiel des formules + jours de la semaine
+        let formulesDomicile = [];
+        const JOURS_DOMICILE = ['lundi','mardi','mercredi','jeudi','vendredi','samedi','dimanche'];
+
+        let valRepas = ['dejeuner'];
         let valUnite = 'toutes';
         let valClient = 'tous';
 
-        // ============================================================
-        // INIT
-        // ============================================================
         function demainIso() {
             const d = new Date();
             d.setDate(d.getDate() + 1);
@@ -414,7 +386,6 @@
             genererFeuille();
         }
 
-        // Toggle Repas = multi-sélection (on peut cocher plusieurs repas)
         function setToggleRepas(btn) {
             btn.classList.toggle('active');
             const actifs = Array.from(document.querySelectorAll('#toggle-repas .toggle-btn.active'))
@@ -423,7 +394,6 @@
             genererFeuille();
         }
 
-        // Toggle simple = un seul actif par groupe
         function setToggle(groupe, btn) {
             const containerId = `toggle-${groupe}`;
             const container = document.getElementById(containerId);
@@ -449,11 +419,24 @@
                 btn.onclick = function() { setToggle('client', this); };
                 container.insertBefore(btn, btnAucun);
             }
+
+            // Bouton "Domicile" parmi les clients
+            const btnDomicile = document.createElement('button');
+            btnDomicile.className = 'toggle-btn';
+            btnDomicile.dataset.value = 'domicile';
+            btnDomicile.textContent = '🏠 Domicile';
+            btnDomicile.onclick = function() { setToggle('client', this); };
+            container.insertBefore(btnDomicile, btnAucun);
+
+            // Référentiel des formules de repas à domicile
+            const { data: formules } = await supaClient
+                .from('formules_repas')
+                .select('code, libelle, ordre_affichage')
+                .eq('actif', true)
+                .order('ordre_affichage', { ascending: true });
+            formulesDomicile = formules || [];
         }
 
-        // ============================================================
-        // CHARGEMENT DES DONNÉES (commun à tous les repas d'une date)
-        // ============================================================
         async function chargerDonneesProd(date) {
             const { data: residents, error: errR } = await supaClient
                 .from(TABLE_RESIDENTS)
@@ -483,13 +466,28 @@
 
             toutesLesCategories = await chargerCategoriesEjc(true);
 
+            // Personnes à domicile actives + exceptions du jour
+            const { data: personnesDomicile, error: errPD } = await supaClient
+                .from('personnes_domicile')
+                .select('*')
+                .eq('actif', true);
+            if (errPD) throw errPD;
+
+            const { data: exceptionsDomicile, error: errED } = await supaClient
+                .from('livraisons_exceptions')
+                .select('*')
+                .eq('date_repas', date);
+            if (errED) throw errED;
+
             return {
                 residents: residents || [],
                 presences: presences || [],
                 absences: absences || [],
                 commandes: commandes || [],
                 annulations: annulations || [],
-                categories: toutesLesCategories
+                categories: toutesLesCategories,
+                personnesDomicile: personnesDomicile || [],
+                exceptionsDomicile: exceptionsDomicile || []
             };
         }
 
@@ -512,8 +510,41 @@
         }
 
         // ============================================================
-        // GÉNÉRATION DE LA FEUILLE (boucle sur les repas cochés)
+        // REPAS À DOMICILE : quantité d'une personne pour une date
         // ============================================================
+        // Quantité prévue par le rythme (colonnes qte_lundi, etc.)
+        function quantiteRythmeDomicile(personne, dateStr) {
+            const [a, m, j] = dateStr.split('-').map(Number);
+            const d = new Date(a, m - 1, j);
+            const indexJs = d.getDay(); // 0=dimanche..6=samedi
+            const indexJour = (indexJs === 0) ? 6 : indexJs - 1; // 0=lundi..6=dimanche
+            const nomJour = JOURS_DOMICILE[indexJour];
+            return personne['qte_' + nomJour] || 0;
+        }
+
+        // Renvoie [{ personne, quantite }, ...] pour les personnes ayant
+        // une quantité > 0 à cette date (exception si elle existe, sinon rythme).
+        function domicileDuJourAvecQuantites(donnees, date) {
+            const exceptionParPersonne = {};
+            for (const ex of donnees.exceptionsDomicile) {
+                exceptionParPersonne[ex.personne_id] = ex.quantite;
+            }
+
+            const resultat = [];
+            for (const p of donnees.personnesDomicile) {
+                let qte;
+                if (exceptionParPersonne.hasOwnProperty(p.id)) {
+                    qte = exceptionParPersonne[p.id];
+                } else {
+                    qte = quantiteRythmeDomicile(p, date);
+                }
+                if (qte > 0) {
+                    resultat.push({ personne: p, quantite: qte });
+                }
+            }
+            return resultat;
+        }
+
         async function genererFeuille() {
             const date = document.getElementById('date-prod').value;
             const contenu = document.getElementById('contenu');
@@ -541,7 +572,6 @@
                 return;
             }
 
-            // Ordre fixe des repas pour l'affichage
             const ordreRepas = ['petit_dej', 'dejeuner', 'diner'];
             const repasAffiches = ordreRepas.filter(r => valRepas.includes(r));
 
@@ -553,11 +583,7 @@
             contenu.innerHTML = htmlComplet;
         }
 
-        // ============================================================
-        // CONSTRUCTION D'UNE FEUILLE POUR UN REPAS DONNÉ
-        // ============================================================
         function construireFeuillePourRepas(repas, date, donnees, filtreUnite, filtreClient) {
-            // === FILTRAGE RÉSIDENTS PAR UNITÉ ===
             let residentsFiltres = donnees.residents;
             if (filtreUnite === 'bouleaux') {
                 residentsFiltres = residentsFiltres.filter(r => r.unite === 'bouleaux');
@@ -567,7 +593,6 @@
                 residentsFiltres = [];
             }
 
-            // Map des présences pour ce repas
             const mapPresences = {};
             for (const p of donnees.presences) {
                 if (p.repas === repas) {
@@ -579,15 +604,15 @@
                 estPresentAuRepas(r, repas, date, donnees.absences, mapPresences)
             );
 
-            // === FILTRAGE COMMANDES PAR CLIENT (FIX UUID) ===
             let commandesFiltrees = donnees.commandes;
             if (filtreClient === 'aucun') {
+                commandesFiltrees = [];
+            } else if (filtreClient === 'domicile') {
                 commandesFiltrees = [];
             } else if (filtreClient !== 'tous') {
                 commandesFiltrees = commandesFiltrees.filter(c => c.client_id === filtreClient);
             }
 
-            // FIX UUID : séparateur '::'
             const mapAnnulations = {};
             for (const a of donnees.annulations) {
                 const k = `${a.client_id}::${a.categorie_id}`;
@@ -599,6 +624,14 @@
                 return { ...c, quantite_nette: Math.max(0, qte) };
             }).filter(c => c.quantite_nette > 0);
 
+            // Repas à domicile : uniquement sur le déjeuner, et seulement si
+            // le filtre client est 'tous' ou 'domicile'.
+            let domicileItems = [];
+            const domicileAutorise = (filtreClient === 'tous' || filtreClient === 'domicile');
+            if (repas === 'dejeuner' && domicileAutorise) {
+                domicileItems = domicileDuJourAvecQuantites(donnees, date);
+            }
+
             return construireFeuille({
                 date, repas,
                 residentsPresents,
@@ -607,20 +640,20 @@
                 categories: donnees.categories,
                 clients: tousLesClients,
                 filtreUnite,
-                filtreClient
+                filtreClient,
+                domicileItems
             });
         }
 
-        // ============================================================
-        // CONSTRUCTION DU HTML D'UNE FEUILLE
-        // ============================================================
         function construireFeuille(ctx) {
             const { date, repas, residentsPresents, mapPresences, commandesNettes,
-                    categories, clients, filtreUnite, filtreClient } = ctx;
+                    categories, clients, filtreUnite, filtreClient, domicileItems } = ctx;
 
             const nbResidents = residentsPresents.length;
             const nbClients = commandesNettes.reduce((s, c) => s + c.quantite_nette, 0);
-            const totalRepas = nbResidents + nbClients;
+            // Total domicile = SOMME DES QUANTITÉS (le foyer de 2 compte pour 2)
+            const nbDomicile = (domicileItems || []).reduce((s, item) => s + item.quantite, 0);
+            const totalRepas = nbResidents + nbClients + nbDomicile;
 
             if (totalRepas === 0) {
                 return `<div class="feuille-prod">
@@ -648,6 +681,13 @@
             for (const c of commandesNettes) {
                 const k = `${c.client_id}::${c.categorie_id}`;
                 clientCatCounts[k] = (clientCatCounts[k] || 0) + c.quantite_nette;
+            }
+
+            // Comptage des repas à domicile PAR FORMULE = somme des quantités
+            const domicileCounts = {};
+            for (const item of (domicileItems || [])) {
+                const code = item.personne.formule_code || '_sans_formule';
+                domicileCounts[code] = (domicileCounts[code] || 0) + item.quantite;
             }
 
             const allergeneCounts = {};
@@ -725,6 +765,14 @@
                 portions[cle].qte += c.quantite_nette;
             }
 
+            // Les repas à domicile dans le détail des portions (somme des quantités)
+            for (const code in domicileCounts) {
+                const formule = formulesDomicile.find(f => f.code === code);
+                const nomFormule = formule ? formule.libelle : 'Formule non renseignée';
+                const cle = `D::${code}`;
+                portions[cle] = { qte: domicileCounts[code], libelle: `Domicile — ${nomFormule}` };
+            }
+
             const portionsArr = Object.values(portions).sort((a, b) => b.qte - a.qte);
             const totalRecettes = portionsArr.length;
 
@@ -748,7 +796,7 @@
                     <div class="grid-2cols">
                         <div>
                             <div class="section-titre">Vue d'ensemble</div>
-                            ${construireTableEnsemble(textureCounts, clientCatCounts, allergeneCounts, commandesNettes, categories, clients, nbResidents, nbClients)}
+                            ${construireTableEnsemble(textureCounts, clientCatCounts, allergeneCounts, commandesNettes, categories, clients, nbResidents, nbClients, domicileCounts, nbDomicile)}
                             ${construireBlocAutresAllergies(autresAllergies)}
                             ${construireBlocNonGouts(nonGouts)}
                         </div>
@@ -774,6 +822,7 @@
             else if (filtreUnite === 'aucune') parts.push('Aucune unité');
 
             if (filtreClient === 'aucun') parts.push('Aucun client externe');
+            else if (filtreClient === 'domicile') parts.push('🏠 Repas à domicile uniquement');
             else if (filtreClient !== 'tous') {
                 const c = clients.find(x => x.id === filtreClient);
                 if (c) parts.push(`Client : ${c.nom}`);
@@ -783,7 +832,7 @@
             return `<div class="feuille-filtres-actifs">🔍 Filtres actifs : ${parts.join(' · ')}</div>`;
         }
 
-        function construireTableEnsemble(textureCounts, clientCatCounts, allergeneCounts, commandesNettes, categories, clients, nbResidents, nbClients) {
+        function construireTableEnsemble(textureCounts, clientCatCounts, allergeneCounts, commandesNettes, categories, clients, nbResidents, nbClients, domicileCounts, nbDomicile) {
             let html = '<table>';
 
             if (nbResidents > 0) {
@@ -813,6 +862,21 @@
                 lignes.sort((a, b) => b.qte - a.qte);
                 for (const l of lignes) {
                     html += `<tr><td>${l.libelle}</td><td class="nombre-cellule">${l.qte}</td></tr>`;
+                }
+            }
+
+            // Bloc Repas à domicile, par formule (quantités)
+            if (nbDomicile > 0) {
+                html += `<tr><td colspan="2" class="table-bloc-titre">Repas à domicile (${nbDomicile})</td></tr>`;
+                for (const f of formulesDomicile) {
+                    const n = domicileCounts[f.code] || 0;
+                    if (n > 0) {
+                        html += `<tr><td>${f.libelle}</td><td class="nombre-cellule">${n}</td></tr>`;
+                    }
+                }
+                const nSansFormule = domicileCounts['_sans_formule'] || 0;
+                if (nSansFormule > 0) {
+                    html += `<tr><td>Formule non renseignée</td><td class="nombre-cellule">${nSansFormule}</td></tr>`;
                 }
             }
 
@@ -879,9 +943,6 @@
             return html;
         }
 
-        // ============================================================
-        // DÉMARRAGE
-        // ============================================================
         (async () => {
             const auth = await verifierAuthEtRole(['admin']);
             if (!auth) return;

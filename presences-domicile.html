@@ -45,9 +45,9 @@
       <div id="pointage-signataires" style="margin-top:10px; font-size:13px; color:#666; font-style:italic;"></div>
 
       <div style="margin-top:14px; padding-top:12px; border-top:1px solid #eee; font-size:13px; color:#666; line-height:1.9;">
-        <div><span style="display:inline-block; width:16px; height:16px; background:#2c5530; border-radius:3px; vertical-align:middle;"></span> Repas prévu (rythme habituel)</div>
-        <div><span style="display:inline-block; width:16px; height:16px; background:#fff3cd; border:2px solid #f0ad4e; border-radius:3px; vertical-align:middle;"></span> Repas ajouté exceptionnellement</div>
-        <div><span style="display:inline-block; width:16px; height:16px; background:#fdecea; border:2px dashed #c0392b; border-radius:3px; vertical-align:middle;"></span> Absence signalée (repas retiré)</div>
+        <div><span style="display:inline-block; width:16px; height:16px; background:#eef3ee; border:1px solid #cdddcd; border-radius:3px; vertical-align:middle;"></span> Conforme au rythme habituel</div>
+        <div><span style="display:inline-block; width:16px; height:16px; background:#fff3cd; border:2px solid #f0ad4e; border-radius:3px; vertical-align:middle;"></span> Quantité augmentée (invité, etc.)</div>
+        <div><span style="display:inline-block; width:16px; height:16px; background:#fdecea; border:2px solid #c0392b; border-radius:3px; vertical-align:middle;"></span> Quantité réduite ou absence</div>
       </div>
 
       <div class="form-group" style="margin-top:16px;">
@@ -69,7 +69,7 @@
   <script>
   // ================================================
   // PAGE PRÉSENCES REPAS À DOMICILE
-  // Liste des personnes + pop-up de pointage mensuel
+  // Liste des personnes + pop-up de pointage mensuel EN QUANTITÉS
   // + feuille de livraison imprimable
   // ================================================
 
@@ -77,17 +77,21 @@
   const NOMS_MOIS = ['janvier','février','mars','avril','mai','juin',
                      'juillet','août','septembre','octobre','novembre','décembre'];
 
-  // Référentiels chargés une fois
+  // Référentiels
   let formulesParCode = {};
   let villagesParCode = {};
-  let villagesOrdre = {}; // code village -> ordre d'affichage
+  let villagesOrdre = {};
 
-  // Personne en cours de pointage dans le pop-up
+  // Personne en cours de pointage
   let personneCourante = null;
   let anneeAffichee = null;
   let moisAffiche = null;
+  // Exceptions de la personne courante, par date "AAAA-MM-JJ"
+  // valeur = { quantite: N, signe_par: '...' }
   let exceptionsCourantes = {};
-  let etatJours = {};
+  // Quantité saisie pour chaque jour affiché, par date "AAAA-MM-JJ"
+  // C'est ce que l'utilisateur modifie dans les champs
+  let quantitesJours = {};
 
   document.addEventListener('DOMContentLoaded', async () => {
     const auth = await verifierAuthEtRole(['admin']);
@@ -103,12 +107,10 @@
     await chargerReferentiels();
     await chargerListePersonnes();
 
-    // Date par défaut de la feuille de livraison : demain
     const demain = new Date();
     demain.setDate(demain.getDate() + 1);
     document.getElementById('date-livraison').value = formatDateObjet(demain);
 
-    // Branchements du pop-up de pointage
     document.getElementById('btn-fermer-pointage')
       .addEventListener('click', fermerPointage);
     document.getElementById('btn-enregistrer-pointage')
@@ -118,7 +120,6 @@
     document.getElementById('btn-mois-suivant')
       .addEventListener('click', () => changerMois(1));
 
-    // Branchements de la feuille de livraison
     document.getElementById('btn-imprimer-livraison')
       .addEventListener('click', genererFeuilleLivraison);
     document.getElementById('btn-jour-precedent')
@@ -185,27 +186,27 @@
     conteneur.innerHTML = html;
   }
 
-  // ----- Résumé court du rythme (ex : "Lu Me Ve") -----
+  // ----- Résumé court du rythme en quantités (ex : "Lu 1 · Je 2") -----
   function resumeRythme(p) {
     const abrev = {
       lundi:'Lu', mardi:'Ma', mercredi:'Me', jeudi:'Je',
       vendredi:'Ve', samedi:'Sa', dimanche:'Di'
     };
-    const joursActifs = JOURS
-      .filter(jour => p['livraison_' + jour])
-      .map(jour => abrev[jour]);
+    const morceaux = JOURS
+      .filter(jour => (p['qte_' + jour] || 0) > 0)
+      .map(jour => abrev[jour] + ' ' + p['qte_' + jour]);
 
-    if (joursActifs.length === 0) return '—';
-    if (joursActifs.length === 7) return 'Tous les jours';
-    return joursActifs.join(' ');
+    if (morceaux.length === 0) return '—';
+    return morceaux.join(' · ');
   }
 
-  // ----- Rythme complet en toutes lettres -----
+  // ----- Rythme complet en toutes lettres (sous-titre du pop-up) -----
   function rythmeEnToutesLettres(p) {
-    const joursActifs = JOURS.filter(jour => p['livraison_' + jour]);
-    if (joursActifs.length === 0) return 'aucun rythme par défaut (uniquement ponctuel)';
-    if (joursActifs.length === 7) return 'tous les jours';
-    return joursActifs.join(', ');
+    const morceaux = JOURS
+      .filter(jour => (p['qte_' + jour] || 0) > 0)
+      .map(jour => jour + ' ' + p['qte_' + jour]);
+    if (morceaux.length === 0) return 'aucun rythme par défaut (uniquement ponctuel)';
+    return morceaux.join(', ');
   }
 
   // ================================================
@@ -234,7 +235,7 @@
     document.getElementById('pointage-titre').textContent =
       'Présences — ' + (data.prenom || '') + ' ' + (data.nom || '');
     document.getElementById('pointage-rythme').textContent =
-      'Rythme par défaut : ' + rythmeEnToutesLettres(data);
+      'Quantité par défaut : ' + rythmeEnToutesLettres(data);
 
     document.getElementById('pointage-signature').value = '';
     document.getElementById('pointage-message').innerHTML = '';
@@ -270,39 +271,41 @@
       return;
     }
 
+    // Range les exceptions par date
     exceptionsCourantes = {};
     (data || []).forEach(ex => {
       exceptionsCourantes[ex.date_repas] = {
-        type: ex.type_exception,
+        quantite: ex.quantite,
         signe_par: ex.signe_par
       };
     });
 
-    etatJours = {};
+    // Construit la quantité de chaque jour du mois :
+    // - si exception => sa quantité
+    // - sinon => la quantité du rythme pour ce jour de la semaine
+    quantitesJours = {};
     for (let jour = 1; jour <= nbJours; jour++) {
       const dateStr = formatDate(anneeAffichee, moisAffiche, jour);
-      etatJours[dateStr] = jourEstCoche(dateStr);
+      const exception = exceptionsCourantes[dateStr];
+      if (exception) {
+        quantitesJours[dateStr] = exception.quantite;
+      } else {
+        quantitesJours[dateStr] = quantiteRythme(personneCourante, dateStr);
+      }
     }
 
     dessinerCalendrier();
     afficherSignataires();
   }
 
-  function jourEstCoche(dateStr) {
-    const exception = exceptionsCourantes[dateStr];
-    if (exception && exception.type === 'absence') return false;
-    if (exception && exception.type === 'ajout') return true;
-    return rythmePrevoit(personneCourante, dateStr);
-  }
-
-  // ----- Est-ce que le rythme d'une personne prévoit ce jour-là ? -----
-  function rythmePrevoit(personne, dateStr) {
+  // ----- Quantité prévue par le rythme pour une date donnée -----
+  function quantiteRythme(personne, dateStr) {
     const [a, m, j] = dateStr.split('-').map(Number);
     const d = new Date(a, m - 1, j);
-    const indexJs = d.getDay();
-    const indexJour = (indexJs === 0) ? 6 : indexJs - 1;
+    const indexJs = d.getDay();                       // 0=dimanche..6=samedi
+    const indexJour = (indexJs === 0) ? 6 : indexJs - 1; // 0=lundi..6=dimanche
     const nomJour = JOURS[indexJour];
-    return !!personne['livraison_' + nomJour];
+    return personne['qte_' + nomJour] || 0;
   }
 
   function dessinerCalendrier() {
@@ -329,34 +332,52 @@
 
     for (let jour = 1; jour <= nbJours; jour++) {
       const dateStr = formatDate(anneeAffichee, moisAffiche, jour);
-      const coche = etatJours[dateStr];
-      const prevu = rythmePrevoit(personneCourante, dateStr);
+      const qteSaisie = quantitesJours[dateStr];
+      const qtePrevue = quantiteRythme(personneCourante, dateStr);
 
-      let style = 'aspect-ratio:1; border-radius:5px; cursor:pointer; '
-                + 'display:flex; flex-direction:column; align-items:center; '
-                + 'justify-content:center; font-size:13px;';
-      let contenu = '';
+      // Couleur de la case selon l'écart entre saisie et rythme
+      let styleCase = 'aspect-ratio:1; border-radius:5px; padding:2px; '
+                    + 'display:flex; flex-direction:column; align-items:center; '
+                    + 'justify-content:center;';
+      let styleChamp = 'width:30px; text-align:center; border-radius:4px; '
+                     + 'font-size:13px; font-family:inherit;';
+      let styleNum = 'font-size:10px;';
 
-      if (coche && prevu) {
-        style += 'background:#2c5530; color:white;';
-        contenu = jour + '<span style="font-size:14px;">✓</span>';
-      } else if (coche && !prevu) {
-        style += 'background:#fff3cd; border:2px solid #f0ad4e; color:#a05000;';
-        contenu = jour + '<span style="font-size:14px;">✓</span>';
-      } else if (!coche && prevu) {
-        style += 'background:#fdecea; border:2px dashed #c0392b; color:#922b21;';
-        contenu = jour;
+      if (qteSaisie > qtePrevue) {
+        // Augmentation => jaune
+        styleCase += 'background:#fff3cd; border:2px solid #f0ad4e;';
+        styleChamp += 'border:1px solid #f0ad4e; color:#a05000;';
+        styleNum += 'color:#a05000;';
+      } else if (qteSaisie < qtePrevue) {
+        // Réduction ou absence => rouge
+        styleCase += 'background:#fdecea; border:2px solid #c0392b;';
+        styleChamp += 'border:1px solid #c0392b; color:#922b21;';
+        styleNum += 'color:#922b21;';
       } else {
-        style += 'background:#fafafa; border:1px solid #e0e0e0; color:#999;';
-        contenu = jour;
+        // Conforme au rythme => vert pâle
+        styleCase += 'background:#eef3ee; border:1px solid #cdddcd;';
+        styleChamp += 'border:1px solid #2c5530; color:#2c5530;';
+        styleNum += 'color:#888;';
       }
 
-      html += '<div style="' + style + '" onclick="basculerJour(\'' + dateStr + '\')">'
-            + contenu + '</div>';
+      html += '<div style="' + styleCase + '">'
+            + '<span style="' + styleNum + '">' + jour + '</span>'
+            + '<input type="number" min="0" value="' + qteSaisie + '" '
+            + 'style="' + styleChamp + '" '
+            + 'onchange="changerQuantite(\'' + dateStr + '\', this.value)">'
+            + '</div>';
     }
 
     html += '</div>';
     document.getElementById('pointage-calendrier').innerHTML = html;
+  }
+
+  // ----- L'utilisateur change la quantité d'un jour -----
+  function changerQuantite(dateStr, valeur) {
+    let n = parseInt(valeur, 10);
+    if (isNaN(n) || n < 0) n = 0;
+    quantitesJours[dateStr] = n;
+    dessinerCalendrier();
   }
 
   function afficherSignataires() {
@@ -378,11 +399,7 @@
     }
   }
 
-  function basculerJour(dateStr) {
-    etatJours[dateStr] = !etatJours[dateStr];
-    dessinerCalendrier();
-  }
-
+  // ----- Enregistrer le pointage du mois -----
   async function enregistrerPointage() {
     const message = document.getElementById('pointage-message');
     message.innerHTML = '';
@@ -396,24 +413,26 @@
 
     const nbJours = new Date(anneeAffichee, moisAffiche + 1, 0).getDate();
 
-    const aSupprimer = [];
-    const aPoser = [];
+    const aSupprimer = []; // dates dont l'exception doit disparaître
+    const aPoser = [];     // exceptions à créer/mettre à jour
 
     for (let jour = 1; jour <= nbJours; jour++) {
       const dateStr = formatDate(anneeAffichee, moisAffiche, jour);
-      const coche = etatJours[dateStr];
-      const prevu = rythmePrevoit(personneCourante, dateStr);
+      const qteSaisie = quantitesJours[dateStr];
+      const qtePrevue = quantiteRythme(personneCourante, dateStr);
 
-      if (coche === prevu) {
+      if (qteSaisie === qtePrevue) {
+        // Conforme au rythme : aucune exception nécessaire.
+        // Si une exception existait pour ce jour, elle doit être supprimée.
         if (exceptionsCourantes[dateStr]) {
           aSupprimer.push(dateStr);
         }
       } else {
-        const type = coche ? 'ajout' : 'absence';
+        // Écart par rapport au rythme : une exception enregistre la quantité réelle.
         aPoser.push({
           personne_id: personneCourante.id,
           date_repas: dateStr,
-          type_exception: type,
+          quantite: qteSaisie,
           signe_par: signature
         });
       }
@@ -462,7 +481,6 @@
   // FEUILLE DE LIVRAISON
   // ================================================
 
-  // ----- Décaler la date de livraison d'un jour (-1 ou +1) -----
   function decalerJourLivraison(sens) {
     const champDate = document.getElementById('date-livraison');
     if (!champDate.value) return;
@@ -472,7 +490,6 @@
     champDate.value = formatDateObjet(d);
   }
 
-  // ----- Générer la feuille de livraison pour la date choisie -----
   async function genererFeuilleLivraison() {
     const zone = document.getElementById('zone-livraison');
     const dateStr = document.getElementById('date-livraison').value;
@@ -484,7 +501,7 @@
 
     zone.innerHTML = '<div class="loading">Préparation de la feuille…</div>';
 
-    // 1) Charger toutes les personnes actives
+    // 1) Toutes les personnes actives
     const { data: personnes, error: errP } = await supaClient
       .from('personnes_domicile')
       .select('*')
@@ -496,7 +513,7 @@
       return;
     }
 
-    // 2) Charger toutes les exceptions qui tombent ce jour-là
+    // 2) Toutes les exceptions de ce jour-là
     const { data: exceptions, error: errE } = await supaClient
       .from('livraisons_exceptions')
       .select('*')
@@ -511,18 +528,24 @@
     // Range les exceptions du jour par personne
     const exceptionParPersonne = {};
     (exceptions || []).forEach(ex => {
-      exceptionParPersonne[ex.personne_id] = ex.type_exception;
+      exceptionParPersonne[ex.personne_id] = ex.quantite;
     });
 
-    // 3) Décider, pour chaque personne, si elle a un repas ce jour-là :
-    //    - exception "absence" => pas de repas
-    //    - exception "ajout"   => repas
-    //    - sinon => on suit le rythme
-    const aLivrer = (personnes || []).filter(p => {
-      const exception = exceptionParPersonne[p.id];
-      if (exception === 'absence') return false;
-      if (exception === 'ajout') return true;
-      return rythmePrevoit(p, dateStr);
+    // 3) Pour chaque personne, la quantité du jour :
+    //    - exception => sa quantité
+    //    - sinon => la quantité du rythme
+    //    On ne garde que les personnes avec une quantité > 0.
+    const aLivrer = [];
+    (personnes || []).forEach(p => {
+      let qte;
+      if (exceptionParPersonne.hasOwnProperty(p.id)) {
+        qte = exceptionParPersonne[p.id];
+      } else {
+        qte = quantiteRythme(p, dateStr);
+      }
+      if (qte > 0) {
+        aLivrer.push({ personne: p, quantite: qte });
+      }
     });
 
     if (aLivrer.length === 0) {
@@ -534,24 +557,25 @@
 
     // 4) Regrouper par village
     const parVillage = {};
-    aLivrer.forEach(p => {
-      const codeV = p.village_code || '_sans_village';
+    aLivrer.forEach(item => {
+      const codeV = item.personne.village_code || '_sans_village';
       if (!parVillage[codeV]) parVillage[codeV] = [];
-      parVillage[codeV].push(p);
+      parVillage[codeV].push(item);
     });
 
-    // Ordre des villages : selon l'ordre d'affichage du référentiel,
-    // les éventuels "sans village" à la fin
     const codesVillages = Object.keys(parVillage).sort((a, b) => {
       if (a === '_sans_village') return 1;
       if (b === '_sans_village') return -1;
       return (villagesOrdre[a] || 999) - (villagesOrdre[b] || 999);
     });
 
+    // Total général de repas (somme des quantités)
+    const totalRepas = aLivrer.reduce((s, item) => s + item.quantite, 0);
+
     // 5) Construire la feuille imprimable
     let html = '<div class="print-area">';
     html += '<h2>Feuille de livraison — ' + dateEnToutesLettres(dateStr) + '</h2>';
-    html += '<p>' + aLivrer.length + ' repas à livrer</p>';
+    html += '<p>' + totalRepas + ' repas à livrer</p>';
 
     codesVillages.forEach(codeV => {
       const nomVillage = (codeV === '_sans_village')
@@ -559,24 +583,28 @@
         : (villagesParCode[codeV] || codeV);
 
       // Trie les personnes du village par nom
-      const gens = parVillage[codeV].sort((a, b) => {
-        const nomA = (a.nom || '').toLowerCase();
-        const nomB = (b.nom || '').toLowerCase();
+      const items = parVillage[codeV].sort((a, b) => {
+        const nomA = (a.personne.nom || '').toLowerCase();
+        const nomB = (b.personne.nom || '').toLowerCase();
         if (nomA < nomB) return -1;
         if (nomA > nomB) return 1;
         return 0;
       });
 
+      const totalVillage = items.reduce((s, item) => s + item.quantite, 0);
+
       html += '<div class="print-section">';
-      html += '<h3>' + echapper(nomVillage) + ' — ' + gens.length + ' repas</h3>';
+      html += '<h3>' + echapper(nomVillage) + ' — ' + totalVillage + ' repas</h3>';
       html += '<table class="presences"><thead><tr>'
-            + '<th>Nom</th><th>Prénom</th><th>Adresse</th>'
+            + '<th>Nb</th><th>Nom</th><th>Prénom</th><th>Adresse</th>'
             + '<th>Téléphone</th><th>Formule</th><th>Consignes</th>'
             + '</tr></thead><tbody>';
 
-      gens.forEach(p => {
+      items.forEach(item => {
+        const p = item.personne;
         const libelleFormule = formulesParCode[p.formule_code] || p.formule_code || '—';
         html += '<tr>'
+              + '<td><strong>' + item.quantite + '</strong></td>'
               + '<td>' + echapper(p.nom) + '</td>'
               + '<td>' + echapper(p.prenom) + '</td>'
               + '<td>' + echapper(p.adresse_livraison || '—') + '</td>'
@@ -595,8 +623,6 @@
     html += '</div>';
 
     zone.innerHTML = html;
-
-    // Amène la feuille à l'écran
     zone.scrollIntoView({ behavior: 'smooth' });
   }
 
@@ -604,19 +630,16 @@
   // OUTILS DE DATE
   // ================================================
 
-  // Fabrique "AAAA-MM-JJ" à partir d'année, mois (0-11), jour
   function formatDate(annee, mois, jour) {
     const mm = String(mois + 1).padStart(2, '0');
     const jj = String(jour).padStart(2, '0');
     return annee + '-' + mm + '-' + jj;
   }
 
-  // Fabrique "AAAA-MM-JJ" à partir d'un objet Date
   function formatDateObjet(d) {
     return formatDate(d.getFullYear(), d.getMonth(), d.getDate());
   }
 
-  // Transforme "AAAA-MM-JJ" en "lundi 15 mai 2026"
   function dateEnToutesLettres(dateStr) {
     const [a, m, j] = dateStr.split('-').map(Number);
     const d = new Date(a, m - 1, j);
@@ -624,7 +647,6 @@
     return jours[d.getDay()] + ' ' + j + ' ' + NOMS_MOIS[m - 1] + ' ' + a;
   }
 
-  // ----- Échapper le texte pour l'affichage -----
   function echapper(texte) {
     if (texte === null || texte === undefined) return '';
     return String(texte)

@@ -55,15 +55,25 @@
       </div>
 
       <div class="form-group">
-        <label>Jours de livraison par défaut</label>
+        <label>Quantité de repas par défaut, par jour</label>
+        <p style="margin:4px 0 8px; color:#888; font-size:13px;">
+          Nombre de repas livrés ce jour-là en temps normal. 0 = pas de livraison.
+        </p>
         <div style="display:flex; flex-wrap:wrap; gap:14px; margin-top:5px;">
-          <label style="font-weight:normal;"><input type="checkbox" id="jour-lundi"> Lundi</label>
-          <label style="font-weight:normal;"><input type="checkbox" id="jour-mardi"> Mardi</label>
-          <label style="font-weight:normal;"><input type="checkbox" id="jour-mercredi"> Mercredi</label>
-          <label style="font-weight:normal;"><input type="checkbox" id="jour-jeudi"> Jeudi</label>
-          <label style="font-weight:normal;"><input type="checkbox" id="jour-vendredi"> Vendredi</label>
-          <label style="font-weight:normal;"><input type="checkbox" id="jour-samedi"> Samedi</label>
-          <label style="font-weight:normal;"><input type="checkbox" id="jour-dimanche"> Dimanche</label>
+          <label style="font-weight:normal;">Lundi<br>
+            <input type="number" id="qte-lundi" min="0" value="0" style="width:60px;"></label>
+          <label style="font-weight:normal;">Mardi<br>
+            <input type="number" id="qte-mardi" min="0" value="0" style="width:60px;"></label>
+          <label style="font-weight:normal;">Mercredi<br>
+            <input type="number" id="qte-mercredi" min="0" value="0" style="width:60px;"></label>
+          <label style="font-weight:normal;">Jeudi<br>
+            <input type="number" id="qte-jeudi" min="0" value="0" style="width:60px;"></label>
+          <label style="font-weight:normal;">Vendredi<br>
+            <input type="number" id="qte-vendredi" min="0" value="0" style="width:60px;"></label>
+          <label style="font-weight:normal;">Samedi<br>
+            <input type="number" id="qte-samedi" min="0" value="0" style="width:60px;"></label>
+          <label style="font-weight:normal;">Dimanche<br>
+            <input type="number" id="qte-dimanche" min="0" value="0" style="width:60px;"></label>
         </div>
       </div>
 
@@ -135,15 +145,25 @@
         </div>
 
         <div class="form-group">
-          <label>Jours de livraison par défaut</label>
+          <label>Quantité de repas par défaut, par jour</label>
+          <p style="margin:4px 0 8px; color:#888; font-size:13px;">
+            Nombre de repas livrés ce jour-là en temps normal. 0 = pas de livraison.
+          </p>
           <div style="display:flex; flex-wrap:wrap; gap:14px; margin-top:5px;">
-            <label style="font-weight:normal;"><input type="checkbox" id="modif-jour-lundi"> Lundi</label>
-            <label style="font-weight:normal;"><input type="checkbox" id="modif-jour-mardi"> Mardi</label>
-            <label style="font-weight:normal;"><input type="checkbox" id="modif-jour-mercredi"> Mercredi</label>
-            <label style="font-weight:normal;"><input type="checkbox" id="modif-jour-jeudi"> Jeudi</label>
-            <label style="font-weight:normal;"><input type="checkbox" id="modif-jour-vendredi"> Vendredi</label>
-            <label style="font-weight:normal;"><input type="checkbox" id="modif-jour-samedi"> Samedi</label>
-            <label style="font-weight:normal;"><input type="checkbox" id="modif-jour-dimanche"> Dimanche</label>
+            <label style="font-weight:normal;">Lundi<br>
+              <input type="number" id="modif-qte-lundi" min="0" value="0" style="width:60px;"></label>
+            <label style="font-weight:normal;">Mardi<br>
+              <input type="number" id="modif-qte-mardi" min="0" value="0" style="width:60px;"></label>
+            <label style="font-weight:normal;">Mercredi<br>
+              <input type="number" id="modif-qte-mercredi" min="0" value="0" style="width:60px;"></label>
+            <label style="font-weight:normal;">Jeudi<br>
+              <input type="number" id="modif-qte-jeudi" min="0" value="0" style="width:60px;"></label>
+            <label style="font-weight:normal;">Vendredi<br>
+              <input type="number" id="modif-qte-vendredi" min="0" value="0" style="width:60px;"></label>
+            <label style="font-weight:normal;">Samedi<br>
+              <input type="number" id="modif-qte-samedi" min="0" value="0" style="width:60px;"></label>
+            <label style="font-weight:normal;">Dimanche<br>
+              <input type="number" id="modif-qte-dimanche" min="0" value="0" style="width:60px;"></label>
           </div>
         </div>
 
@@ -169,7 +189,7 @@
   // ================================================
   // PAGE REPAS À DOMICILE
   // Création + liste active + modification + archivage
-  // + vue des fiches archivées + rythme + village
+  // + vue archivées + rythme EN QUANTITÉS + village
   // ================================================
 
   let formulesParCode = {};
@@ -205,7 +225,7 @@
       .addEventListener('click', fermerModale);
   });
 
-  // ----- Charger les formules (listes déroulantes création + modale) -----
+  // ----- Charger les formules -----
   async function chargerFormules() {
     const { data, error } = await supaClient
       .from('formules_repas')
@@ -238,7 +258,7 @@
     });
   }
 
-  // ----- Charger les villages (listes déroulantes création + modale) -----
+  // ----- Charger les villages -----
   async function chargerVillages() {
     const { data, error } = await supaClient
       .from('villages')
@@ -271,6 +291,13 @@
     });
   }
 
+  // ----- Lit une quantité dans un champ, renvoie un entier >= 0 -----
+  function lireQuantite(idChamp) {
+    const valeur = parseInt(document.getElementById(idChamp).value, 10);
+    if (isNaN(valeur) || valeur < 0) return 0;
+    return valeur;
+  }
+
   // ----- Enregistrer une nouvelle fiche -----
   async function enregistrerPersonne(event) {
     event.preventDefault();
@@ -288,8 +315,9 @@
       consignes_livraison: document.getElementById('consignes_livraison').value.trim() || null
     };
 
+    // Les 7 quantités par défaut : qte_lundi, qte_mardi, etc.
     JOURS.forEach(jour => {
-      fiche['livraison_' + jour] = document.getElementById('jour-' + jour).checked;
+      fiche['qte_' + jour] = lireQuantite('qte-' + jour);
     });
 
     if (!fiche.prenom || !fiche.nom || !fiche.formule_code || !fiche.village_code) {
@@ -317,7 +345,7 @@
     await chargerPersonnes();
   }
 
-  // ----- Changer de vue (actives <-> archivées) -----
+  // ----- Changer de vue -----
   function changerVue(vue) {
     vueCourante = vue;
     majBoutonsVue();
@@ -337,22 +365,21 @@
     }
   }
 
-  // ----- Résumé court du rythme (ex : "Lu Me Ve") -----
+  // ----- Résumé court du rythme en quantités (ex : "Lu 1 · Me 2 · Ve 1") -----
   function resumeRythme(p) {
     const abrev = {
       lundi:'Lu', mardi:'Ma', mercredi:'Me', jeudi:'Je',
       vendredi:'Ve', samedi:'Sa', dimanche:'Di'
     };
-    const joursActifs = JOURS
-      .filter(jour => p['livraison_' + jour])
-      .map(jour => abrev[jour]);
+    const morceaux = JOURS
+      .filter(jour => (p['qte_' + jour] || 0) > 0)
+      .map(jour => abrev[jour] + ' ' + p['qte_' + jour]);
 
-    if (joursActifs.length === 0) return '—';
-    if (joursActifs.length === 7) return 'Tous les jours';
-    return joursActifs.join(' ');
+    if (morceaux.length === 0) return '—';
+    return morceaux.join(' · ');
   }
 
-  // ----- Charger et afficher la liste (selon la vue) -----
+  // ----- Charger et afficher la liste -----
   async function chargerPersonnes() {
     const conteneur = document.getElementById('liste-personnes');
     conteneur.innerHTML = '<div class="loading">Chargement…</div>';
@@ -383,7 +410,7 @@
 
     let html = '<table class="presences"><thead><tr>'
              + '<th>Nom</th><th>Prénom</th><th>Adresse</th><th>Village</th>'
-             + '<th>Téléphone</th><th>Formule</th><th>Jours</th><th>Consignes</th>'
+             + '<th>Téléphone</th><th>Formule</th><th>Rythme</th><th>Consignes</th>'
              + '<th>Actions</th>'
              + '</tr></thead><tbody>';
 
@@ -445,8 +472,9 @@
     document.getElementById('modif-formule').value   = data.formule_code || '';
     document.getElementById('modif-consignes').value = data.consignes_livraison || '';
 
+    // Pré-remplit les 7 champs de quantité
     JOURS.forEach(jour => {
-      document.getElementById('modif-jour-' + jour).checked = !!data['livraison_' + jour];
+      document.getElementById('modif-qte-' + jour).value = data['qte_' + jour] || 0;
     });
 
     document.getElementById('modal-titre').textContent =
@@ -481,7 +509,7 @@
     };
 
     JOURS.forEach(jour => {
-      fiche['livraison_' + jour] = document.getElementById('modif-jour-' + jour).checked;
+      fiche['qte_' + jour] = lireQuantite('modif-qte-' + jour);
     });
 
     if (!fiche.prenom || !fiche.nom || !fiche.formule_code || !fiche.village_code) {
@@ -506,7 +534,7 @@
     await chargerPersonnes();
   }
 
-  // ----- Archiver une fiche (actif = false) -----
+  // ----- Archiver une fiche -----
   async function archiverPersonne(id) {
     const ok = confirm('Archiver cette fiche ?\n\n'
                      + 'La personne sortira de la liste active, '
@@ -527,7 +555,7 @@
     await chargerPersonnes();
   }
 
-  // ----- Réactiver une fiche (actif = true) -----
+  // ----- Réactiver une fiche -----
   async function reactiverPersonne(id) {
     const ok = confirm('Réactiver cette fiche ?\n\n'
                      + 'La personne réapparaîtra dans la liste des fiches actives.');

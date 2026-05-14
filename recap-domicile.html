@@ -1,0 +1,652 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Récapitulatif repas à domicile - Restauration Les Bouleaux</title>
+    <link rel="stylesheet" href="shared.css">
+    <style>
+        .selecteur-mois {
+            background: #fff8e1;
+            border: 2px solid #ffc107;
+            padding: 12px 18px;
+            border-radius: 8px;
+            margin: 15px 0;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            flex-wrap: wrap;
+        }
+        .selecteur-mois label {
+            font-weight: bold;
+            color: #856404;
+        }
+        .selecteur-mois input {
+            padding: 6px 10px;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+            font-size: 15px;
+        }
+        .stats-cards {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+            gap: 15px;
+            margin: 20px 0;
+        }
+        .stat-card {
+            background: white;
+            padding: 18px;
+            border-radius: 8px;
+            text-align: center;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.06);
+            border-top: 4px solid #2c5530;
+        }
+        .stat-card .label {
+            color: #666;
+            font-size: 13px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+        .stat-card .valeur {
+            font-size: 28px;
+            font-weight: bold;
+            color: #2c5530;
+            margin-top: 6px;
+        }
+        .stat-card .sub {
+            color: #888;
+            font-size: 12px;
+        }
+        table.recap {
+            width: 100%;
+            border-collapse: collapse;
+            background: white;
+            border-radius: 8px;
+            overflow: hidden;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            margin: 15px 0;
+            font-size: 14px;
+        }
+        table.recap th, table.recap td {
+            padding: 9px 12px;
+            border-bottom: 1px solid #eee;
+        }
+        table.recap th {
+            background: #2c5530;
+            color: white;
+            text-align: left;
+        }
+        table.recap td.col-nom {
+            text-align: left;
+            font-weight: bold;
+        }
+        table.recap td.col-total {
+            text-align: center;
+            font-weight: bold;
+            color: #2c5530;
+            font-size: 16px;
+            width: 110px;
+        }
+        table.recap th.col-total {
+            text-align: center;
+            width: 110px;
+        }
+        table.recap td.col-action {
+            text-align: center;
+            width: 110px;
+        }
+        table.recap tr.ligne-zero td {
+            color: #aaa;
+        }
+        table.recap tr.ligne-zero td.col-total {
+            color: #aaa;
+        }
+        table.recap tr.ligne-total {
+            background: #f0f8f0;
+            font-weight: bold;
+        }
+        .empty-cats {
+            background: white;
+            padding: 40px;
+            border-radius: 8px;
+            text-align: center;
+            color: #888;
+        }
+
+        /* ===== POP-UP : LE JUSTIFICATIF ===== */
+        #modal-detail .modal {
+            max-width: 540px;
+        }
+        .justif {
+            font-family: Arial, Helvetica, sans-serif;
+            color: #222;
+            background: white;
+            padding: 8px 4px;
+        }
+        .justif-entete {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            border-bottom: 3px solid #2c5530;
+            padding-bottom: 14px;
+            margin-bottom: 20px;
+        }
+        .justif-entete-gauche {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+        .justif-logo {
+            width: 56px;
+            height: 56px;
+            object-fit: contain;
+        }
+        .justif-residence {
+            font-size: 16px;
+            font-weight: bold;
+            color: #2c5530;
+        }
+        .justif-residence-adresse {
+            font-size: 11px;
+            color: #888;
+            margin-top: 2px;
+        }
+        .justif-entete-droite {
+            text-align: right;
+        }
+        .justif-type {
+            font-size: 11px;
+            color: #888;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+        .justif-mois {
+            font-size: 13px;
+            font-weight: bold;
+            color: #2c5530;
+            margin-top: 2px;
+        }
+        .justif-benef-intitule {
+            font-size: 10px;
+            color: #888;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            margin-bottom: 3px;
+        }
+        .justif-benef-nom {
+            font-size: 18px;
+            font-weight: bold;
+            color: #222;
+        }
+        .justif-benef-adresse {
+            font-size: 12px;
+            color: #666;
+            margin-top: 2px;
+        }
+        .justif-chiffres {
+            display: flex;
+            border: 1px solid #e0e0e0;
+            border-radius: 4px;
+            overflow: hidden;
+            margin: 22px 0;
+        }
+        .justif-chiffre {
+            flex: 1;
+            padding: 14px 16px;
+            text-align: center;
+        }
+        .justif-chiffre + .justif-chiffre {
+            border-left: 1px solid #e0e0e0;
+        }
+        .justif-chiffre-nombre {
+            font-size: 28px;
+            font-weight: bold;
+            color: #2c5530;
+            line-height: 1;
+        }
+        .justif-chiffre-label {
+            font-size: 10px;
+            color: #888;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            margin-top: 4px;
+        }
+        .justif-section-titre {
+            font-size: 10px;
+            color: #888;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            margin-bottom: 8px;
+        }
+        table.justif-table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 12.5px;
+        }
+        table.justif-table thead tr {
+            border-bottom: 1.5px solid #2c5530;
+        }
+        table.justif-table th {
+            color: #2c5530;
+            font-size: 10px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            padding: 6px 4px;
+        }
+        table.justif-table th.col-date { text-align: left; }
+        table.justif-table th.col-repas { text-align: right; }
+        table.justif-table td {
+            padding: 5px 4px;
+            border-bottom: 1px solid #f0f0f0;
+        }
+        table.justif-table td.col-repas {
+            text-align: right;
+            font-weight: bold;
+        }
+        table.justif-table tfoot tr {
+            border-top: 2px solid #2c5530;
+        }
+        table.justif-table tfoot td {
+            padding: 8px 4px;
+            font-weight: bold;
+            color: #2c5530;
+        }
+        table.justif-table tfoot td.col-repas {
+            text-align: right;
+            font-size: 14px;
+        }
+        .justif-vide {
+            color: #aaa;
+            font-style: italic;
+            font-size: 12.5px;
+        }
+        .justif-pied {
+            margin-top: 24px;
+            padding-top: 12px;
+            border-top: 1px solid #e0e0e0;
+            font-size: 10px;
+            color: #999;
+            text-align: center;
+        }
+
+        /* ===== IMPRESSION : on n'imprime que le justificatif ===== */
+        @media print {
+            body { background: white !important; }
+            #app-header, #menu, h1, h2,
+            .selecteur-mois, #contenu {
+                display: none !important;
+            }
+            .modal-overlay {
+                display: block !important;
+                position: static !important;
+                background: white !important;
+                padding: 0 !important;
+            }
+            .modal-overlay .modal {
+                box-shadow: none !important;
+                max-width: 100% !important;
+                margin: 0 !important;
+                padding: 0 !important;
+            }
+            .modal-actions { display: none !important; }
+            @page { size: A4 portrait; margin: 15mm; }
+        }
+    </style>
+</head>
+<body>
+    <div id="app-header"></div>
+    <h1>🍽️ Restauration Les Bouleaux</h1>
+    <div id="menu"></div>
+
+    <h2>📊 Récapitulatif repas à domicile</h2>
+
+    <div class="selecteur-mois no-print">
+        <span style="background:#856404;color:white;padding:3px 10px;border-radius:12px;font-size:12px;font-weight:bold;">👑 ADMIN</span>
+        <label for="input-mois">Mois consulté :</label>
+        <input type="month" id="input-mois" onchange="charger()">
+        <button class="btn-primary" onclick="charger()">🔄 Actualiser</button>
+    </div>
+
+    <div id="contenu">
+        <p class="loading">⏳ Chargement...</p>
+    </div>
+
+    <!-- POP-UP : LE JUSTIFICATIF D'UNE PERSONNE -->
+    <div id="modal-detail" class="modal-overlay">
+        <div class="modal">
+            <div id="detail-contenu"></div>
+            <div class="form-actions modal-actions">
+                <button type="button" class="btn btn-secondary" onclick="fermerDetail()">Fermer</button>
+                <button type="button" class="btn btn-print" onclick="window.print()">🖨️ Imprimer ce récap</button>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="shared.js"></script>
+    <script>
+        // ================================================
+        // RÉCAPITULATIF REPAS À DOMICILE
+        // Liste compacte + pop-up justificatif individuel imprimable
+        // ================================================
+
+        // Coordonnées de la résidence (en dur, pour l'en-tête du justificatif)
+        const RESIDENCE_NOM = 'Résidence Les Bouleaux';
+        const RESIDENCE_ADRESSE = 'Sur le Crêt 12 — 2606 Corgémont';
+        const RESIDENCE_LOGO = 'images/logo.png';
+
+        const JOURS_DOMICILE = ['lundi','mardi','mercredi','jeudi','vendredi','samedi','dimanche'];
+        const NOMS_JOURS = ['dimanche','lundi','mardi','mercredi','jeudi','vendredi','samedi'];
+        const NOMS_MOIS = ['janvier','février','mars','avril','mai','juin',
+                           'juillet','août','septembre','octobre','novembre','décembre'];
+
+        let donneesCache = null;
+
+        // ----- Quantité prévue par le rythme pour une date -----
+        function quantiteRythme(personne, dateStr) {
+            const [a, m, j] = dateStr.split('-').map(Number);
+            const d = new Date(a, m - 1, j);
+            const indexJs = d.getDay();
+            const indexJour = (indexJs === 0) ? 6 : indexJs - 1;
+            const nomJour = JOURS_DOMICILE[indexJour];
+            return personne['qte_' + nomJour] || 0;
+        }
+
+        function formatDate(annee, mois, jour) {
+            const mm = String(mois).padStart(2, '0');
+            const jj = String(jour).padStart(2, '0');
+            return annee + '-' + mm + '-' + jj;
+        }
+
+        function moisIso() {
+            const v = document.getElementById('input-mois').value;
+            if (v) return v;
+            const now = new Date();
+            return `${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}`;
+        }
+
+        // Date du jour en toutes lettres, pour le pied de page
+        function dateDuJourLisible() {
+            const d = new Date();
+            return d.getDate() + ' ' + NOMS_MOIS[d.getMonth()] + ' ' + d.getFullYear();
+        }
+
+        // ================================================
+        // CHARGEMENT ET CALCUL
+        // ================================================
+        async function charger() {
+            const contenu = document.getElementById('contenu');
+            contenu.innerHTML = '<p class="loading">⏳ Chargement...</p>';
+
+            const mois = moisIso();
+            const [anneeStr, moisStr] = mois.split('-');
+            const annee = parseInt(anneeStr, 10);
+            const moisNum = parseInt(moisStr, 10);
+            const nbJours = new Date(annee, moisNum, 0).getDate();
+
+            const premierJour = formatDate(annee, moisNum, 1);
+            const dernierJour = formatDate(annee, moisNum, nbJours);
+
+            // 1) Toutes les personnes actives
+            const { data: personnes, error: errP } = await supaClient
+                .from('personnes_domicile')
+                .select('*')
+                .eq('actif', true)
+                .order('nom', { ascending: true })
+                .order('prenom', { ascending: true });
+
+            if (errP) {
+                console.error('Erreur chargement personnes :', errP);
+                contenu.innerHTML = '<div class="erreur-msg">Erreur : impossible de charger les personnes.</div>';
+                return;
+            }
+
+            // 2) Toutes les exceptions du mois
+            const { data: exceptions, error: errE } = await supaClient
+                .from('livraisons_exceptions')
+                .select('*')
+                .gte('date_repas', premierJour)
+                .lte('date_repas', dernierJour);
+
+            if (errE) {
+                console.error('Erreur chargement exceptions :', errE);
+                contenu.innerHTML = '<div class="erreur-msg">Erreur : impossible de charger les présences.</div>';
+                return;
+            }
+
+            const exceptionsParPersonne = {};
+            (exceptions || []).forEach(ex => {
+                if (!exceptionsParPersonne[ex.personne_id]) {
+                    exceptionsParPersonne[ex.personne_id] = {};
+                }
+                exceptionsParPersonne[ex.personne_id][ex.date_repas] = ex.quantite;
+            });
+
+            // 3) Pour chaque personne, parcourt tous les jours du mois
+            const lignes = [];
+            (personnes || []).forEach(p => {
+                const exceptionsPersonne = exceptionsParPersonne[p.id] || {};
+                let totalMois = 0;
+                const detailJours = []; // [{ jour, quantite, nomJour }, ...]
+
+                for (let jour = 1; jour <= nbJours; jour++) {
+                    const dateStr = formatDate(annee, moisNum, jour);
+                    let qte;
+                    if (exceptionsPersonne.hasOwnProperty(dateStr)) {
+                        qte = exceptionsPersonne[dateStr];
+                    } else {
+                        qte = quantiteRythme(p, dateStr);
+                    }
+                    if (qte > 0) {
+                        totalMois += qte;
+                        const d = new Date(annee, moisNum - 1, jour);
+                        detailJours.push({
+                            jour: jour,
+                            quantite: qte,
+                            nomJour: NOMS_JOURS[d.getDay()]
+                        });
+                    }
+                }
+
+                lignes.push({
+                    personne: p,
+                    totalMois: totalMois,
+                    detailJours: detailJours,
+                    nbJoursLivraison: detailJours.length
+                });
+            });
+
+            donneesCache = {
+                annee, moisNum, nbJours,
+                libelleMois: NOMS_MOIS[moisNum - 1] + ' ' + annee,
+                lignes
+            };
+
+            afficher();
+        }
+
+        // ================================================
+        // AFFICHAGE DE LA LISTE COMPACTE
+        // ================================================
+        function afficher() {
+            const contenu = document.getElementById('contenu');
+            if (!donneesCache) return;
+
+            const { libelleMois, lignes } = donneesCache;
+
+            if (lignes.length === 0) {
+                contenu.innerHTML = `<div class="empty-cats">
+                    <div style="font-size:48px;">🏠</div>
+                    <p><strong>Aucune personne active.</strong></p>
+                    <p>Créez des fiches dans l'onglet Repas à domicile.</p>
+                </div>`;
+                return;
+            }
+
+            const totalGeneral = lignes.reduce((s, l) => s + l.totalMois, 0);
+            const nbAvecRepas = lignes.filter(l => l.totalMois > 0).length;
+
+            let html = `<h3 style="margin-top:0;">Repas à domicile — ${echapper(libelleMois)}</h3>
+                <div class="stats-cards">
+                    <div class="stat-card">
+                        <div class="label">Repas livrés</div>
+                        <div class="valeur">${totalGeneral}</div>
+                        <div class="sub">total du mois</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="label">Personnes livrées</div>
+                        <div class="valeur">${nbAvecRepas}</div>
+                        <div class="sub">sur ${lignes.length} fiches actives</div>
+                    </div>
+                </div>`;
+
+            html += `<table class="recap"><thead><tr>
+                <th>Personne</th>
+                <th class="col-total">Total repas</th>
+                <th style="width:110px;"></th>
+            </tr></thead><tbody>`;
+
+            lignes.forEach((ligne, index) => {
+                const p = ligne.personne;
+                const nomComplet = (p.nom || '') + ' ' + (p.prenom || '');
+                const classeLigne = (ligne.totalMois === 0) ? 'ligne-zero' : '';
+
+                html += `<tr class="${classeLigne}">
+                    <td class="col-nom">${echapper(nomComplet)}</td>
+                    <td class="col-total">${ligne.totalMois}</td>
+                    <td class="col-action">
+                        <button type="button" class="btn-print btn-small"
+                                onclick="ouvrirDetail(${index})">Détail</button>
+                    </td>
+                </tr>`;
+            });
+
+            html += `<tr class="ligne-total">
+                <td class="col-nom">TOTAL</td>
+                <td class="col-total">${totalGeneral}</td>
+                <td></td>
+            </tr>`;
+            html += '</tbody></table>';
+
+            contenu.innerHTML = html;
+        }
+
+        // ================================================
+        // POP-UP : LE JUSTIFICATIF
+        // ================================================
+        function ouvrirDetail(index) {
+            const ligne = donneesCache.lignes[index];
+            if (!ligne) return;
+
+            const p = ligne.personne;
+            const nomComplet = (p.nom || '') + ' ' + (p.prenom || '');
+            const adresse = p.adresse_livraison || '';
+            const libelleMois = donneesCache.libelleMois;
+            // "mai 2026" -> "Mai 2026" pour l'en-tête
+            const moisTitre = libelleMois.charAt(0).toUpperCase() + libelleMois.slice(1);
+
+            let html = `<div class="justif">`;
+
+            // En-tête : logo + résidence à gauche, type + mois à droite
+            html += `<div class="justif-entete">
+                <div class="justif-entete-gauche">
+                    <img src="${RESIDENCE_LOGO}" alt="Logo" class="justif-logo"
+                         onerror="this.style.display='none'">
+                    <div>
+                        <div class="justif-residence">${echapper(RESIDENCE_NOM)}</div>
+                        <div class="justif-residence-adresse">${echapper(RESIDENCE_ADRESSE)}</div>
+                    </div>
+                </div>
+                <div class="justif-entete-droite">
+                    <div class="justif-type">Récapitulatif mensuel</div>
+                    <div class="justif-mois">${echapper(moisTitre)}</div>
+                </div>
+            </div>`;
+
+            // Bénéficiaire
+            html += `<div>
+                <div class="justif-benef-intitule">Repas livrés à domicile — bénéficiaire</div>
+                <div class="justif-benef-nom">${echapper(nomComplet)}</div>`;
+            if (adresse) {
+                html += `<div class="justif-benef-adresse">${echapper(adresse)}</div>`;
+            }
+            html += `</div>`;
+
+            // Les deux chiffres encadrés
+            html += `<div class="justif-chiffres">
+                <div class="justif-chiffre">
+                    <div class="justif-chiffre-nombre">${ligne.totalMois}</div>
+                    <div class="justif-chiffre-label">Repas livrés</div>
+                </div>
+                <div class="justif-chiffre">
+                    <div class="justif-chiffre-nombre">${ligne.nbJoursLivraison}</div>
+                    <div class="justif-chiffre-label">Jours de livraison</div>
+                </div>
+            </div>`;
+
+            // Tableau du détail, une ligne par date, date entière
+            html += `<div class="justif-section-titre">Détail des livraisons</div>`;
+
+            if (ligne.detailJours.length === 0) {
+                html += `<div class="justif-vide">Aucun repas livré ce mois.</div>`;
+            } else {
+                html += `<table class="justif-table">
+                    <thead><tr>
+                        <th class="col-date">Date</th>
+                        <th class="col-repas">Repas</th>
+                    </tr></thead><tbody>`;
+                for (const d of ligne.detailJours) {
+                    const dateEntiere = d.nomJour + ' ' + d.jour + ' ' + libelleMois;
+                    html += `<tr>
+                        <td>${echapper(dateEntiere)}</td>
+                        <td class="col-repas">${d.quantite}</td>
+                    </tr>`;
+                }
+                html += `</tbody>
+                    <tfoot><tr>
+                        <td>Total du mois</td>
+                        <td class="col-repas">${ligne.totalMois}</td>
+                    </tr></tfoot>
+                </table>`;
+            }
+
+            // Pied de page
+            html += `<div class="justif-pied">
+                Document établi le ${echapper(dateDuJourLisible())} — ${echapper(RESIDENCE_NOM)}, service restauration
+            </div>`;
+
+            html += `</div>`;
+
+            document.getElementById('detail-contenu').innerHTML = html;
+            document.getElementById('modal-detail').classList.add('active');
+        }
+
+        function fermerDetail() {
+            document.getElementById('modal-detail').classList.remove('active');
+        }
+
+        function echapper(texte) {
+            if (texte === null || texte === undefined) return '';
+            return String(texte)
+                .replace(/&/g, '&amp;')
+                .replace(/</g, '&lt;')
+                .replace(/>/g, '&gt;');
+        }
+
+        // ================================================
+        // DÉMARRAGE
+        // ================================================
+        (async () => {
+            const auth = await verifierAuthEtRole(['admin']);
+            if (!auth) return;
+            afficherMenuComplet('recap-domicile', auth.user.email, auth.profil.role, auth.profil.nom_affiche);
+
+            const now = new Date();
+            document.getElementById('input-mois').value =
+                `${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}`;
+
+            charger();
+        })();
+    </script>
+</body>
+</html>
