@@ -1,7 +1,7 @@
  /* ===== STYLES PARTAGÉS — Restauration Les Bouleaux ===== */
 
 /* ===== EN-TÊTE AVEC LOGO (VERSION ULTRA-STRICTE) ===== */
-#app-header, .app-header {
+.app-header {
     background: white;
     padding: 15px;
     border-radius: 0 0 12px 12px;
@@ -13,10 +13,8 @@
     display: flex;
     align-items: center;
     justify-content: center;
-    user-select: none;
-    cursor: default;
 }
-#app-header img.logo, .app-header img.logo {
+.app-header img.logo {
     display: block;
     height: 100px !important;
     max-height: 100px !important;
@@ -25,12 +23,12 @@
     object-fit: contain;
 }
 @media (max-width: 600px) {
-    #app-header, .app-header { padding: 10px; height: 90px; margin: -10px -10px 15px -10px; }
-    #app-header img.logo, .app-header img.logo { height: 70px !important; max-height: 70px !important; }
+    .app-header { padding: 10px; height: 90px; margin: -10px -10px 15px -10px; }
+    .app-header img.logo { height: 70px !important; max-height: 70px !important; }
 }
 @media print {
-    #app-header, .app-header { box-shadow: none; padding: 5px 0; margin: 0 0 10px 0; height: 70px; }
-    #app-header img.logo, .app-header img.logo { height: 50px !important; max-height: 50px !important; }
+    .app-header { box-shadow: none; padding: 5px 0; margin: 0 0 10px 0; height: 70px; }
+    .app-header img.logo { height: 50px !important; max-height: 50px !important; }
 }
 
 * { box-sizing: border-box; }
