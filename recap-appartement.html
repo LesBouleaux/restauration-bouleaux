@@ -1,0 +1,951 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Récap appartement - Restauration Les Bouleaux</title>
+    <link rel="stylesheet" href="shared.css">
+    <style>
+        .selecteur-periode {
+            background: #fff8e1;
+            border: 2px solid #ffc107;
+            padding: 12px 18px;
+            border-radius: 8px;
+            margin: 15px 0;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            flex-wrap: wrap;
+        }
+        .selecteur-periode label { font-weight: bold; color: #856404; }
+        .selecteur-periode input[type="date"] {
+            padding: 6px 10px;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+            font-size: 15px;
+        }
+        .selecteur-periode label.checkbox {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            font-weight: normal;
+            color: #555;
+        }
+
+        .stats-cards {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+            gap: 15px;
+            margin: 20px 0;
+        }
+        .stat-card {
+            background: white;
+            padding: 18px;
+            border-radius: 8px;
+            text-align: center;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.06);
+            border-top: 4px solid #1976d2;
+        }
+        .stat-card .label {
+            color: #666;
+            font-size: 13px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+        .stat-card .valeur {
+            font-size: 28px;
+            font-weight: bold;
+            color: #1976d2;
+            margin-top: 6px;
+        }
+        .stat-card .sub { color: #888; font-size: 12px; }
+
+        table.recap {
+            width: 100%;
+            border-collapse: collapse;
+            background: white;
+            border-radius: 8px;
+            overflow: hidden;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            margin: 15px 0;
+            font-size: 14px;
+        }
+        table.recap th, table.recap td {
+            padding: 9px 12px;
+            border-bottom: 1px solid #eee;
+        }
+        table.recap th {
+            background: #1976d2;
+            color: white;
+            text-align: left;
+        }
+        table.recap td.col-num { text-align: center; font-weight: bold; }
+        table.recap td.col-total {
+            text-align: right;
+            font-weight: bold;
+            color: #2c5530;
+            font-size: 15px;
+        }
+        table.recap tr.ligne-total {
+            background: #f0f8f0;
+            font-weight: bold;
+        }
+        .badge-mini {
+            display: inline-block;
+            padding: 2px 8px;
+            border-radius: 10px;
+            font-size: 11px;
+            font-weight: bold;
+            text-transform: uppercase;
+        }
+        .badge-termine  { background: #e3f2fd; color: #0d47a1; }
+        .badge-en_cours { background: #e8f4e8; color: #2c5530; }
+
+        /* ===== POP-UP : LE JUSTIFICATIF ===== */
+        #modal-detail .modal { max-width: 720px; }
+        .justif {
+            font-family: Arial, Helvetica, sans-serif;
+            color: #222;
+            background: white;
+            padding: 8px 4px;
+        }
+        .justif-entete {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            border-bottom: 3px solid #1976d2;
+            padding-bottom: 14px;
+            margin-bottom: 20px;
+        }
+        .justif-entete-gauche {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+        .justif-logo { width: 56px; height: 56px; object-fit: contain; }
+        .justif-residence { font-size: 16px; font-weight: bold; color: #1976d2; }
+        .justif-residence-adresse { font-size: 11px; color: #888; margin-top: 2px; }
+        .justif-entete-droite { text-align: right; }
+        .justif-type {
+            font-size: 11px;
+            color: #888;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+        .justif-periode {
+            font-size: 13px;
+            font-weight: bold;
+            color: #1976d2;
+            margin-top: 2px;
+        }
+        .justif-benef-intitule {
+            font-size: 10px;
+            color: #888;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            margin-bottom: 3px;
+        }
+        .justif-benef-nom { font-size: 18px; font-weight: bold; color: #222; }
+        .justif-benef-info { font-size: 12px; color: #666; margin-top: 3px; }
+
+        .justif-chiffres {
+            display: flex;
+            border: 1px solid #e0e0e0;
+            border-radius: 4px;
+            overflow: hidden;
+            margin: 18px 0;
+            flex-wrap: wrap;
+        }
+        .justif-chiffre {
+            flex: 1;
+            min-width: 110px;
+            padding: 12px 14px;
+            text-align: center;
+            border-right: 1px solid #e0e0e0;
+        }
+        .justif-chiffre:last-child { border-right: none; }
+        .justif-chiffre-nombre {
+            font-size: 22px;
+            font-weight: bold;
+            color: #1976d2;
+            line-height: 1;
+        }
+        .justif-chiffre-label {
+            font-size: 10px;
+            color: #888;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            margin-top: 4px;
+        }
+
+        .justif-section-titre {
+            font-size: 11px;
+            color: #888;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            margin: 20px 0 6px 0;
+            padding-bottom: 4px;
+            border-bottom: 1.5px solid #1976d2;
+        }
+
+        table.t-repas, table.t-ventes {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 12.5px;
+        }
+        table.t-repas th, table.t-ventes th {
+            color: #1976d2;
+            font-size: 10px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            padding: 5px 6px;
+            text-align: left;
+            border-bottom: 1px solid #e0e0e0;
+        }
+        table.t-repas td, table.t-ventes td {
+            padding: 5px 6px;
+            border-bottom: 1px solid #f0f0f0;
+        }
+        table.t-repas td.num, table.t-ventes td.num {
+            text-align: right;
+            font-weight: bold;
+        }
+        .panier-bloc {
+            margin: 10px 0 14px 0;
+            border: 1px solid #e0e0e0;
+            border-radius: 4px;
+            overflow: hidden;
+        }
+        .panier-entete {
+            background: #f5f5f5;
+            padding: 6px 10px;
+            font-size: 11px;
+            color: #555;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 8px;
+        }
+        .panier-entete .ref {
+            font-weight: bold;
+            color: #1976d2;
+        }
+        .panier-bloc.annulee { opacity: 0.6; background: #fce4e4; }
+        .panier-bloc.annulee .panier-entete { background: #fce4e4; color: #922b21; }
+
+        .justif-total-final {
+            margin-top: 18px;
+            padding: 14px 16px;
+            background: #1976d2;
+            color: white;
+            border-radius: 6px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .justif-total-final .montant { font-size: 24px; font-weight: bold; }
+
+        .justif-pied {
+            margin-top: 20px;
+            padding-top: 10px;
+            border-top: 1px solid #e0e0e0;
+            font-size: 10px;
+            color: #999;
+            text-align: center;
+        }
+
+        @media print {
+            body { background: white !important; }
+            #app-header, #menu, h1, h2,
+            .selecteur-periode, #contenu, .vue-tabs {
+                display: none !important;
+            }
+            .modal-overlay {
+                display: block !important;
+                position: static !important;
+                background: white !important;
+                padding: 0 !important;
+            }
+            .modal-overlay .modal {
+                box-shadow: none !important;
+                max-width: 100% !important;
+                margin: 0 !important;
+                padding: 0 !important;
+            }
+            .modal-actions { display: none !important; }
+            @page { size: A4 portrait; margin: 15mm; }
+        }
+    </style>
+</head>
+<body>
+    <div id="app-header"></div>
+    <h1>🍽️ Restauration Les Bouleaux</h1>
+    <div id="menu"></div>
+
+    <h2>📊 Récap appartement — compta</h2>
+
+    <div class="selecteur-periode no-print">
+        <span style="background:#856404;color:white;padding:3px 10px;border-radius:12px;font-size:12px;font-weight:bold;">👑 ADMIN</span>
+        <label for="date-debut">Du :</label>
+        <input type="date" id="date-debut" onchange="charger()">
+        <label for="date-fin">au :</label>
+        <input type="date" id="date-fin" onchange="charger()">
+        <label class="checkbox">
+            <input type="checkbox" id="inclure-en-cours" onchange="charger()">
+            Inclure les séjours en cours
+        </label>
+        <button class="btn-primary" onclick="charger()">🔄 Actualiser</button>
+        <button class="btn-print" onclick="imprimerPageRecap()">📄 PDF de la page récap</button>
+        <button class="btn-print" onclick="imprimerCompileTousDetails()">📚 PDF compilé (tous les détails)</button>
+    </div>
+
+    <div id="contenu">
+        <p class="loading">⏳ Chargement...</p>
+    </div>
+
+    <!-- POP-UP : LE JUSTIFICATIF D'UN SÉJOUR -->
+    <div id="modal-detail" class="modal-overlay">
+        <div class="modal">
+            <div id="detail-contenu"></div>
+            <div class="form-actions modal-actions">
+                <button type="button" class="btn btn-secondary" onclick="fermerDetail()">Fermer</button>
+                <button type="button" class="btn btn-print" onclick="window.print()">🖨️ Imprimer ce récap</button>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="shared.js"></script>
+    <script>
+        // ================================================
+        // RÉCAP APPARTEMENT — COMPTA
+        // ================================================
+
+        const RESIDENCE_NOM = 'Résidence Les Bouleaux';
+        const RESIDENCE_ADRESSE = 'Sur le Crêt 12 — 2606 Corgémont';
+        const RESIDENCE_LOGO = 'images/logo.png';
+
+        const NOMS_MOIS_R = ['janvier','février','mars','avril','mai','juin',
+                             'juillet','août','septembre','octobre','novembre','décembre'];
+
+        let donneesCache = null;  // { sejours: [...], periode: {debut, fin}, inclureEnCours }
+
+        // ================================================
+        // UTILITAIRES
+        // ================================================
+        function dateFrR(isoDate) {
+            if (!isoDate) return '';
+            const [a, m, j] = isoDate.split('-').map(Number);
+            return String(j).padStart(2,'0') + '.' + String(m).padStart(2,'0') + '.' + a;
+        }
+
+        function dateFrLong(isoDate) {
+            if (!isoDate) return '';
+            const [a, m, j] = isoDate.split('-').map(Number);
+            return j + ' ' + NOMS_MOIS_R[m - 1] + ' ' + a;
+        }
+
+        function formatDateHeure(isoTimestamp) {
+            if (!isoTimestamp) return '';
+            const d = new Date(isoTimestamp);
+            const j = String(d.getDate()).padStart(2, '0');
+            const m = String(d.getMonth() + 1).padStart(2, '0');
+            const a = d.getFullYear();
+            const h = String(d.getHours()).padStart(2, '0');
+            const mi = String(d.getMinutes()).padStart(2, '0');
+            return j + '.' + m + '.' + a + ' ' + h + ':' + mi;
+        }
+
+        function dateDuJourLisible() {
+            const d = new Date();
+            return d.getDate() + ' ' + NOMS_MOIS_R[d.getMonth()] + ' ' + d.getFullYear();
+        }
+
+        function nbNuits(arrivee, depart) {
+            const a = new Date(arrivee + 'T00:00:00');
+            const d = new Date(depart + 'T00:00:00');
+            return Math.round((d - a) / (1000 * 60 * 60 * 24));
+        }
+
+        function libelleRepasR(code) {
+            const map = {
+                petit_dej: '🥐 Petit-déjeuner',
+                dejeuner: '🍽️ Déjeuner',
+                diner: '🌙 Dîner'
+            };
+            return map[code] || code;
+        }
+
+        // ================================================
+        // CHARGEMENT
+        // ================================================
+        async function charger() {
+            const contenu = document.getElementById('contenu');
+            contenu.innerHTML = '<p class="loading">⏳ Chargement...</p>';
+
+            const dateDebut = document.getElementById('date-debut').value;
+            const dateFin   = document.getElementById('date-fin').value;
+            const inclureEnCours = document.getElementById('inclure-en-cours').checked;
+
+            if (!dateDebut || !dateFin) {
+                contenu.innerHTML = '<div class="info-msg">Choisis une période de dates.</div>';
+                return;
+            }
+            if (dateFin < dateDebut) {
+                contenu.innerHTML = '<div class="erreur-msg">La date de fin doit être après la date de début.</div>';
+                return;
+            }
+
+            // 1) Récupère les séjours qui couvrent la période
+            const statutsAutorises = inclureEnCours ? ['termine', 'en_cours'] : ['termine'];
+            const { data: sejours, error: errS } = await supaClient
+                .from('sejours_appartement')
+                .select('*')
+                .in('statut', statutsAutorises)
+                .lte('date_arrivee', dateFin)
+                .gte('date_depart', dateDebut)
+                .order('date_arrivee', { ascending: true });
+
+            if (errS) {
+                contenu.innerHTML = '<div class="erreur-msg">Erreur : ' + errS.message + '</div>';
+                return;
+            }
+
+            if (!sejours || sejours.length === 0) {
+                donneesCache = { sejours: [], periode: { debut: dateDebut, fin: dateFin }, inclureEnCours };
+                afficher();
+                return;
+            }
+
+            // 2) Personnes liées
+            const idsPersonnes = [...new Set(sejours.map(s => s.personne_id))];
+            const { data: personnes, error: errP } = await supaClient
+                .from('personnes_appartement')
+                .select('*')
+                .in('id', idsPersonnes);
+            if (errP) {
+                contenu.innerHTML = '<div class="erreur-msg">Erreur : ' + errP.message + '</div>';
+                return;
+            }
+            const personnesParId = {};
+            (personnes || []).forEach(p => { personnesParId[p.id] = p; });
+
+            // 3) Présences pour ces séjours
+            const idsSejours = sejours.map(s => s.id);
+            const { data: presences, error: errPr } = await supaClient
+                .from('presences_appartement')
+                .select('*')
+                .in('sejour_id', idsSejours);
+            if (errPr) {
+                contenu.innerHTML = '<div class="erreur-msg">Erreur : ' + errPr.message + '</div>';
+                return;
+            }
+
+            // 4) Ventes pour ces séjours (avec lignes)
+            const { data: ventes, error: errV } = await supaClient
+                .from('ventes_appartement')
+                .select('*, lignes:lignes_vente_appartement(*)')
+                .in('sejour_id', idsSejours)
+                .order('cree_le', { ascending: true });
+            if (errV) {
+                contenu.innerHTML = '<div class="erreur-msg">Erreur : ' + errV.message + '</div>';
+                return;
+            }
+
+            // 5) Catalogue produits (pour les noms)
+            const { data: produits, error: errProd } = await supaClient
+                .from('catalogue_produits_appartement')
+                .select('id, nom, categorie');
+            if (errProd) {
+                contenu.innerHTML = '<div class="erreur-msg">Erreur : ' + errProd.message + '</div>';
+                return;
+            }
+            const produitsParId = {};
+            (produits || []).forEach(p => { produitsParId[p.id] = p; });
+
+            // 6) Construit l'objet par séjour
+            const presencesParSejour = {};
+            (presences || []).forEach(pr => {
+                if (!presencesParSejour[pr.sejour_id]) presencesParSejour[pr.sejour_id] = [];
+                presencesParSejour[pr.sejour_id].push(pr);
+            });
+
+            const ventesParSejour = {};
+            (ventes || []).forEach(v => {
+                if (!ventesParSejour[v.sejour_id]) ventesParSejour[v.sejour_id] = [];
+                ventesParSejour[v.sejour_id].push(v);
+            });
+
+            const sejoursEnrichis = sejours.map(s => {
+                const personne = personnesParId[s.personne_id] || { nom: 'Inconnu', prenom: '' };
+                const pres = presencesParSejour[s.id] || [];
+                const compteRepas = { petit_dej: 0, dejeuner: 0, diner: 0 };
+                pres.forEach(p => {
+                    if (p.present && compteRepas[p.repas] !== undefined) {
+                        compteRepas[p.repas]++;
+                    }
+                });
+                const totalRepas = compteRepas.petit_dej + compteRepas.dejeuner + compteRepas.diner;
+
+                const ventesS = ventesParSejour[s.id] || [];
+                const ventesActives = ventesS.filter(v => !v.annulee);
+                const totalVentes = ventesActives.reduce((sum, v) => sum + parseFloat(v.total || 0), 0);
+
+                return {
+                    sejour: s,
+                    personne: personne,
+                    compteRepas: compteRepas,
+                    totalRepas: totalRepas,
+                    ventes: ventesS,           // toutes les ventes (annulées comprises pour info)
+                    ventesActives: ventesActives,
+                    totalVentes: totalVentes,
+                    produitsParId: produitsParId
+                };
+            });
+
+            donneesCache = {
+                sejours: sejoursEnrichis,
+                periode: { debut: dateDebut, fin: dateFin },
+                inclureEnCours
+            };
+            afficher();
+        }
+
+        // ================================================
+        // AFFICHAGE
+        // ================================================
+        function afficher() {
+            const contenu = document.getElementById('contenu');
+            if (!donneesCache) return;
+            const { sejours, periode, inclureEnCours } = donneesCache;
+
+            const periodeTxt = dateFrLong(periode.debut) + ' au ' + dateFrLong(periode.fin);
+
+            if (sejours.length === 0) {
+                contenu.innerHTML = '<div class="info-msg">'
+                    + '<strong>Aucun séjour</strong> ' + (inclureEnCours ? '(terminé ou en cours)' : 'terminé')
+                    + ' sur la période du ' + periodeTxt + '.</div>';
+                return;
+            }
+
+            const totalSejours = sejours.length;
+            const totalRepasGlobal = sejours.reduce((s, x) => s + x.totalRepas, 0);
+            const totalVentesGlobal = sejours.reduce((s, x) => s + x.totalVentes, 0);
+
+            let html = '<h3 style="margin-top:0;">Période : ' + periodeTxt + '</h3>';
+            html += '<div class="stats-cards">'
+                  +   '<div class="stat-card">'
+                  +     '<div class="label">Séjours</div>'
+                  +     '<div class="valeur">' + totalSejours + '</div>'
+                  +     '<div class="sub">' + (inclureEnCours ? 'terminés + en cours' : 'terminés') + '</div>'
+                  +   '</div>'
+                  +   '<div class="stat-card">'
+                  +     '<div class="label">Repas pris</div>'
+                  +     '<div class="valeur">' + totalRepasGlobal + '</div>'
+                  +     '<div class="sub">tous repas confondus</div>'
+                  +   '</div>'
+                  +   '<div class="stat-card">'
+                  +     '<div class="label">Ventes compl.</div>'
+                  +     '<div class="valeur">' + totalVentesGlobal.toFixed(2) + '</div>'
+                  +     '<div class="sub">CHF, total facturable</div>'
+                  +   '</div>'
+                  + '</div>';
+
+            html += '<table class="recap"><thead><tr>'
+                  + '<th>Personne</th>'
+                  + '<th>Chambre</th>'
+                  + '<th>Arrivée</th>'
+                  + '<th>Départ</th>'
+                  + '<th>Nuits</th>'
+                  + '<th>Statut</th>'
+                  + '<th>P-déj</th>'
+                  + '<th>Déj.</th>'
+                  + '<th>Dîner</th>'
+                  + '<th>Total ventes (CHF)</th>'
+                  + '<th></th>'
+                  + '</tr></thead><tbody>';
+
+            sejours.forEach((row, index) => {
+                const nomComplet = row.personne.nom + ' ' + row.personne.prenom;
+                const cls = 'badge-mini badge-' + row.sejour.statut;
+                const libStatut = row.sejour.statut === 'termine' ? 'Terminé' : 'En cours';
+
+                html += '<tr>'
+                      + '<td><strong>' + echapper(nomComplet) + '</strong></td>'
+                      + '<td>Chambre ' + row.sejour.numero_chambre + '</td>'
+                      + '<td>' + dateFrR(row.sejour.date_arrivee) + '</td>'
+                      + '<td>' + dateFrR(row.sejour.date_depart) + '</td>'
+                      + '<td class="col-num">' + nbNuits(row.sejour.date_arrivee, row.sejour.date_depart) + '</td>'
+                      + '<td><span class="' + cls + '">' + libStatut + '</span></td>'
+                      + '<td class="col-num">' + row.compteRepas.petit_dej + '</td>'
+                      + '<td class="col-num">' + row.compteRepas.dejeuner + '</td>'
+                      + '<td class="col-num">' + row.compteRepas.diner + '</td>'
+                      + '<td class="col-total">' + row.totalVentes.toFixed(2) + '</td>'
+                      + '<td><button type="button" class="btn-print btn-small" onclick="ouvrirDetail(' + index + ')">Détail</button></td>'
+                      + '</tr>';
+            });
+
+            html += '<tr class="ligne-total">'
+                  + '<td colspan="6">TOTAL</td>'
+                  + '<td class="col-num">' + sejours.reduce((s, x) => s + x.compteRepas.petit_dej, 0) + '</td>'
+                  + '<td class="col-num">' + sejours.reduce((s, x) => s + x.compteRepas.dejeuner, 0) + '</td>'
+                  + '<td class="col-num">' + sejours.reduce((s, x) => s + x.compteRepas.diner, 0) + '</td>'
+                  + '<td class="col-total">' + totalVentesGlobal.toFixed(2) + '</td>'
+                  + '<td></td>'
+                  + '</tr>';
+            html += '</tbody></table>';
+
+            contenu.innerHTML = html;
+        }
+
+        // ================================================
+        // POP-UP DÉTAIL D'UN SÉJOUR
+        // ================================================
+        function ouvrirDetail(index) {
+            const row = donneesCache.sejours[index];
+            if (!row) return;
+            document.getElementById('detail-contenu').innerHTML = construireJustificatifHtml(row);
+            document.getElementById('modal-detail').classList.add('active');
+        }
+
+        function fermerDetail() {
+            document.getElementById('modal-detail').classList.remove('active');
+        }
+
+        function construireJustificatifHtml(row) {
+            const s = row.sejour;
+            const p = row.personne;
+            const nomComplet = p.nom + ' ' + p.prenom;
+            const periodeTxt = dateFrR(s.date_arrivee) + ' → ' + dateFrR(s.date_depart);
+
+            let html = '<div class="justif">';
+
+            // En-tête
+            html += '<div class="justif-entete">'
+                  +   '<div class="justif-entete-gauche">'
+                  +     '<img src="' + RESIDENCE_LOGO + '" alt="Logo" class="justif-logo" onerror="this.style.display=\'none\'">'
+                  +     '<div>'
+                  +       '<div class="justif-residence">' + echapper(RESIDENCE_NOM) + '</div>'
+                  +       '<div class="justif-residence-adresse">' + echapper(RESIDENCE_ADRESSE) + '</div>'
+                  +     '</div>'
+                  +   '</div>'
+                  +   '<div class="justif-entete-droite">'
+                  +     '<div class="justif-type">Récapitulatif Appartement Corgémont</div>'
+                  +     '<div class="justif-periode">' + echapper(periodeTxt) + '</div>'
+                  +   '</div>'
+                  + '</div>';
+
+            // Bénéficiaire
+            html += '<div>'
+                  +   '<div class="justif-benef-intitule">Bénéficiaire du séjour</div>'
+                  +   '<div class="justif-benef-nom">' + echapper(nomComplet) + '</div>'
+                  +   '<div class="justif-benef-info">'
+                  +     'Chambre ' + s.numero_chambre + ' · '
+                  +     nbNuits(s.date_arrivee, s.date_depart) + ' nuit(s)'
+                  +   '</div>'
+                  + '</div>';
+
+            // Chiffres clés
+            html += '<div class="justif-chiffres">'
+                  +   '<div class="justif-chiffre">'
+                  +     '<div class="justif-chiffre-nombre">' + row.compteRepas.petit_dej + '</div>'
+                  +     '<div class="justif-chiffre-label">Petits-déj</div>'
+                  +   '</div>'
+                  +   '<div class="justif-chiffre">'
+                  +     '<div class="justif-chiffre-nombre">' + row.compteRepas.dejeuner + '</div>'
+                  +     '<div class="justif-chiffre-label">Déjeuners</div>'
+                  +   '</div>'
+                  +   '<div class="justif-chiffre">'
+                  +     '<div class="justif-chiffre-nombre">' + row.compteRepas.diner + '</div>'
+                  +     '<div class="justif-chiffre-label">Dîners</div>'
+                  +   '</div>'
+                  +   '<div class="justif-chiffre">'
+                  +     '<div class="justif-chiffre-nombre">' + row.ventesActives.length + '</div>'
+                  +     '<div class="justif-chiffre-label">Paniers de vente</div>'
+                  +   '</div>'
+                  + '</div>';
+
+            // Décompte des repas (sans prix, à titre informatif)
+            html += '<div class="justif-section-titre">Décompte des repas</div>';
+            html += '<table class="t-repas"><thead><tr>'
+                  + '<th>Repas</th><th style="text-align:right;">Nombre pris</th>'
+                  + '</tr></thead><tbody>'
+                  + '<tr><td>🥐 Petit-déjeuner</td><td class="num">' + row.compteRepas.petit_dej + '</td></tr>'
+                  + '<tr><td>🍽️ Déjeuner</td><td class="num">' + row.compteRepas.dejeuner + '</td></tr>'
+                  + '<tr><td>🌙 Dîner</td><td class="num">' + row.compteRepas.diner + '</td></tr>'
+                  + '<tr style="border-top:2px solid #1976d2;font-weight:bold;color:#1976d2;">'
+                  + '<td style="padding-top:8px;">TOTAL</td>'
+                  + '<td class="num" style="padding-top:8px;">' + row.totalRepas + '</td>'
+                  + '</tr>'
+                  + '</tbody></table>';
+
+            // Détail des ventes complémentaires
+            html += '<div class="justif-section-titre">Ventes complémentaires</div>';
+
+            if (row.ventes.length === 0) {
+                html += '<p style="color:#aaa;font-style:italic;font-size:12.5px;">Aucune vente complémentaire enregistrée pour ce séjour.</p>';
+            } else {
+                row.ventes.forEach(v => {
+                    const clsBloc = v.annulee ? 'panier-bloc annulee' : 'panier-bloc';
+                    const collab = v.nom_collaborateur || '—';
+
+                    html += '<div class="' + clsBloc + '">'
+                          +   '<div class="panier-entete">'
+                          +     '<div>'
+                          +       '<span class="ref">Panier #' + v.id + '</span>'
+                          +       ' · ' + formatDateHeure(v.cree_le)
+                          +       ' · 👤 ' + echapper(collab);
+                    if (v.annulee) {
+                        html += ' · <strong>❌ ANNULÉ</strong>';
+                    }
+                    html +=     '</div>'
+                          +     '<div><strong>' + parseFloat(v.total || 0).toFixed(2) + ' CHF</strong></div>'
+                          +   '</div>';
+
+                    html += '<table class="t-ventes"><thead><tr>'
+                          + '<th>Produit</th>'
+                          + '<th style="text-align:right;">Qté</th>'
+                          + '<th style="text-align:right;">Prix unit.</th>'
+                          + '<th style="text-align:right;">Sous-total</th>'
+                          + '</tr></thead><tbody>';
+
+                    (v.lignes || []).forEach(l => {
+                        const prod = row.produitsParId[l.produit_id];
+                        const nomP = prod ? prod.nom : 'Produit #' + l.produit_id;
+                        html += '<tr>'
+                              + '<td>' + echapper(nomP) + '</td>'
+                              + '<td class="num">' + l.quantite + '</td>'
+                              + '<td class="num">' + parseFloat(l.prix_unitaire).toFixed(2) + '</td>'
+                              + '<td class="num">' + parseFloat(l.sous_total).toFixed(2) + '</td>'
+                              + '</tr>';
+                    });
+                    html += '</tbody></table>';
+
+                    if (v.annulee && v.annulee_motif) {
+                        html += '<div style="padding:6px 10px;font-size:11px;color:#922b21;">Motif annulation : ' + echapper(v.annulee_motif) + '</div>';
+                    }
+                    html += '</div>';
+                });
+            }
+
+            // Total final
+            html += '<div class="justif-total-final">'
+                  +   '<span>Total à facturer (ventes complémentaires)</span>'
+                  +   '<span class="montant">' + row.totalVentes.toFixed(2) + ' CHF</span>'
+                  + '</div>';
+
+            html += '<div class="justif-pied">'
+                  + 'Document établi le ' + echapper(dateDuJourLisible())
+                  + ' — ' + echapper(RESIDENCE_NOM) + ', service restauration'
+                  + '</div>';
+
+            html += '</div>';
+            return html;
+        }
+
+        // ================================================
+        // PDF DE LA PAGE RÉCAP
+        // ================================================
+        function imprimerPageRecap() {
+            if (!donneesCache || donneesCache.sejours.length === 0) {
+                alert('Aucune donnée à imprimer. Choisis une période et clique Actualiser.');
+                return;
+            }
+            const { sejours, periode } = donneesCache;
+            const periodeTxt = dateFrLong(periode.debut) + ' au ' + dateFrLong(periode.fin);
+
+            const totalRepasGlobal = sejours.reduce((s, x) => s + x.totalRepas, 0);
+            const totalVentesGlobal = sejours.reduce((s, x) => s + x.totalVentes, 0);
+
+            let lignesHtml = '';
+            sejours.forEach(row => {
+                const nomComplet = row.personne.nom + ' ' + row.personne.prenom;
+                lignesHtml += '<tr>'
+                            + '<td><strong>' + echapper(nomComplet) + '</strong></td>'
+                            + '<td>Ch. ' + row.sejour.numero_chambre + '</td>'
+                            + '<td>' + dateFrR(row.sejour.date_arrivee) + '</td>'
+                            + '<td>' + dateFrR(row.sejour.date_depart) + '</td>'
+                            + '<td style="text-align:center;">' + row.compteRepas.petit_dej + '</td>'
+                            + '<td style="text-align:center;">' + row.compteRepas.dejeuner + '</td>'
+                            + '<td style="text-align:center;">' + row.compteRepas.diner + '</td>'
+                            + '<td style="text-align:right;font-weight:bold;color:#2c5530;">' + row.totalVentes.toFixed(2) + '</td>'
+                            + '</tr>';
+            });
+            lignesHtml += '<tr style="background:#f0f8f0;font-weight:bold;">'
+                        + '<td colspan="4" style="text-align:right;padding:10px 12px;">TOTAL</td>'
+                        + '<td style="text-align:center;padding:10px 12px;">' + sejours.reduce((s,x)=>s+x.compteRepas.petit_dej,0) + '</td>'
+                        + '<td style="text-align:center;padding:10px 12px;">' + sejours.reduce((s,x)=>s+x.compteRepas.dejeuner,0) + '</td>'
+                        + '<td style="text-align:center;padding:10px 12px;">' + sejours.reduce((s,x)=>s+x.compteRepas.diner,0) + '</td>'
+                        + '<td style="text-align:right;padding:10px 12px;color:#2c5530;font-size:15px;">' + totalVentesGlobal.toFixed(2) + '</td>'
+                        + '</tr>';
+
+            const css = ''
+                + '@page { size: A4 landscape; margin: 12mm; }'
+                + 'body { font-family: Arial, Helvetica, sans-serif; color: #222; margin: 0; padding: 0; }'
+                + '.entete { display: flex; justify-content: space-between; align-items: flex-start; border-bottom: 3px solid #1976d2; padding-bottom: 14px; margin-bottom: 20px; }'
+                + '.entete-gauche { display: flex; align-items: center; gap: 12px; }'
+                + '.logo { width: 56px; height: 56px; object-fit: contain; }'
+                + '.nom-residence { font-size: 16px; font-weight: bold; color: #1976d2; }'
+                + '.adresse-residence { font-size: 11px; color: #888; margin-top: 2px; }'
+                + '.entete-droite { text-align: right; }'
+                + '.type { font-size: 11px; color: #888; text-transform: uppercase; letter-spacing: 0.5px; }'
+                + '.periode { font-size: 13px; font-weight: bold; color: #1976d2; margin-top: 2px; }'
+                + '.stats { display: flex; gap: 12px; margin: 22px 0; }'
+                + '.stat { flex: 1; padding: 14px 16px; text-align: center; border: 1px solid #e0e0e0; border-radius: 4px; }'
+                + '.stat-valeur { font-size: 24px; font-weight: bold; color: #1976d2; }'
+                + '.stat-label { font-size: 10px; color: #888; text-transform: uppercase; letter-spacing: 0.5px; margin-top: 4px; }'
+                + 'table { width: 100%; border-collapse: collapse; font-size: 12.5px; }'
+                + 'thead tr { border-bottom: 1.5px solid #1976d2; }'
+                + 'th { padding: 8px 10px; text-align: left; color: #1976d2; font-size: 10px; text-transform: uppercase; }'
+                + 'td { padding: 8px 10px; border-bottom: 1px solid #eee; }'
+                + '.pied { margin-top: 24px; padding-top: 12px; border-top: 1px solid #e0e0e0; font-size: 10px; color: #999; text-align: center; }';
+
+            const corps = ''
+                + '<div class="entete">'
+                +   '<div class="entete-gauche">'
+                +     '<img src="' + RESIDENCE_LOGO + '" alt="Logo" class="logo" onerror="this.style.display=\'none\'">'
+                +     '<div>'
+                +       '<div class="nom-residence">' + echapper(RESIDENCE_NOM) + '</div>'
+                +       '<div class="adresse-residence">' + echapper(RESIDENCE_ADRESSE) + '</div>'
+                +     '</div>'
+                +   '</div>'
+                +   '<div class="entete-droite">'
+                +     '<div class="type">Récap Appartement Corgémont — compta</div>'
+                +     '<div class="periode">' + echapper(periodeTxt) + '</div>'
+                +   '</div>'
+                + '</div>'
+                + '<div class="stats">'
+                +   '<div class="stat"><div class="stat-valeur">' + sejours.length + '</div><div class="stat-label">Séjours sur la période</div></div>'
+                +   '<div class="stat"><div class="stat-valeur">' + totalRepasGlobal + '</div><div class="stat-label">Repas pris (total)</div></div>'
+                +   '<div class="stat"><div class="stat-valeur">' + totalVentesGlobal.toFixed(2) + '</div><div class="stat-label">Ventes complémentaires (CHF)</div></div>'
+                + '</div>'
+                + '<table>'
+                +   '<thead><tr>'
+                +     '<th>Personne</th>'
+                +     '<th>Chambre</th>'
+                +     '<th>Arrivée</th>'
+                +     '<th>Départ</th>'
+                +     '<th style="text-align:center;">P-déj</th>'
+                +     '<th style="text-align:center;">Déj.</th>'
+                +     '<th style="text-align:center;">Dîner</th>'
+                +     '<th style="text-align:right;">Total ventes (CHF)</th>'
+                +   '</tr></thead>'
+                +   '<tbody>' + lignesHtml + '</tbody>'
+                + '</table>'
+                + '<div class="pied">Document établi le ' + echapper(dateDuJourLisible()) + ' — ' + echapper(RESIDENCE_NOM) + ', service restauration</div>';
+
+            ouvrirFenetreImpression('Récap Appartement — ' + periodeTxt, css, corps);
+        }
+
+        // ================================================
+        // PDF COMPILÉ DE TOUS LES DÉTAILS
+        // ================================================
+        function imprimerCompileTousDetails() {
+            if (!donneesCache || donneesCache.sejours.length === 0) {
+                alert('Aucune donnée à imprimer.');
+                return;
+            }
+
+            const cssJustif = ''
+                + '@page { size: A4 portrait; margin: 15mm; }'
+                + 'body { font-family: Arial, Helvetica, sans-serif; color: #222; margin: 0; padding: 0; }'
+                + '.justif { padding: 0; page-break-after: always; }'
+                + '.justif:last-child { page-break-after: auto; }'
+                + '.justif-entete { display: flex; justify-content: space-between; align-items: flex-start; border-bottom: 3px solid #1976d2; padding-bottom: 14px; margin-bottom: 20px; }'
+                + '.justif-entete-gauche { display: flex; align-items: center; gap: 12px; }'
+                + '.justif-logo { width: 56px; height: 56px; object-fit: contain; }'
+                + '.justif-residence { font-size: 16px; font-weight: bold; color: #1976d2; }'
+                + '.justif-residence-adresse { font-size: 11px; color: #888; margin-top: 2px; }'
+                + '.justif-entete-droite { text-align: right; }'
+                + '.justif-type { font-size: 11px; color: #888; text-transform: uppercase; letter-spacing: 0.5px; }'
+                + '.justif-periode { font-size: 13px; font-weight: bold; color: #1976d2; margin-top: 2px; }'
+                + '.justif-benef-intitule { font-size: 10px; color: #888; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 3px; }'
+                + '.justif-benef-nom { font-size: 18px; font-weight: bold; color: #222; }'
+                + '.justif-benef-info { font-size: 12px; color: #666; margin-top: 3px; }'
+                + '.justif-chiffres { display: flex; border: 1px solid #e0e0e0; border-radius: 4px; overflow: hidden; margin: 18px 0; flex-wrap: wrap; }'
+                + '.justif-chiffre { flex: 1; min-width: 110px; padding: 12px 14px; text-align: center; border-right: 1px solid #e0e0e0; }'
+                + '.justif-chiffre:last-child { border-right: none; }'
+                + '.justif-chiffre-nombre { font-size: 22px; font-weight: bold; color: #1976d2; line-height: 1; }'
+                + '.justif-chiffre-label { font-size: 10px; color: #888; text-transform: uppercase; letter-spacing: 0.5px; margin-top: 4px; }'
+                + '.justif-section-titre { font-size: 11px; color: #888; text-transform: uppercase; letter-spacing: 0.5px; margin: 20px 0 6px 0; padding-bottom: 4px; border-bottom: 1.5px solid #1976d2; }'
+                + 'table.t-repas, table.t-ventes { width: 100%; border-collapse: collapse; font-size: 12.5px; }'
+                + 'table.t-repas th, table.t-ventes th { color: #1976d2; font-size: 10px; text-transform: uppercase; letter-spacing: 0.5px; padding: 5px 6px; text-align: left; border-bottom: 1px solid #e0e0e0; }'
+                + 'table.t-repas td, table.t-ventes td { padding: 5px 6px; border-bottom: 1px solid #f0f0f0; }'
+                + 'table.t-repas td.num, table.t-ventes td.num { text-align: right; font-weight: bold; }'
+                + '.panier-bloc { margin: 10px 0 14px 0; border: 1px solid #e0e0e0; border-radius: 4px; overflow: hidden; }'
+                + '.panier-entete { background: #f5f5f5; padding: 6px 10px; font-size: 11px; color: #555; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 8px; }'
+                + '.panier-entete .ref { font-weight: bold; color: #1976d2; }'
+                + '.panier-bloc.annulee { opacity: 0.6; background: #fce4e4; }'
+                + '.panier-bloc.annulee .panier-entete { background: #fce4e4; color: #922b21; }'
+                + '.justif-total-final { margin-top: 18px; padding: 14px 16px; background: #1976d2; color: white; border-radius: 6px; display: flex; justify-content: space-between; align-items: center; }'
+                + '.justif-total-final .montant { font-size: 24px; font-weight: bold; }'
+                + '.justif-pied { margin-top: 20px; padding-top: 10px; border-top: 1px solid #e0e0e0; font-size: 10px; color: #999; text-align: center; }';
+
+            let corps = '';
+            donneesCache.sejours.forEach(row => {
+                corps += construireJustificatifHtml(row);
+            });
+
+            const periodeTxt = dateFrLong(donneesCache.periode.debut) + ' au ' + dateFrLong(donneesCache.periode.fin);
+            ouvrirFenetreImpression('Justificatifs compilés — ' + periodeTxt, cssJustif, corps);
+        }
+
+        // ================================================
+        // OUVRE UNE FENÊTRE D'IMPRESSION PROPRE
+        // ================================================
+        function ouvrirFenetreImpression(titre, css, corpsHtml) {
+            const fenetre = window.open('', '_blank');
+            if (!fenetre) {
+                alert('Le navigateur a bloqué l\'ouverture de la fenêtre. Autorise les pop-ups pour ce site.');
+                return;
+            }
+            const doc = fenetre.document;
+            doc.title = titre;
+
+            const meta = doc.createElement('meta');
+            meta.setAttribute('charset', 'UTF-8');
+            doc.head.appendChild(meta);
+
+            const styleEl = doc.createElement('style');
+            styleEl.textContent = css;
+            doc.head.appendChild(styleEl);
+
+            doc.body.innerHTML = corpsHtml;
+
+            fenetre.setTimeout(function() {
+                fenetre.focus();
+                fenetre.print();
+            }, 500);
+        }
+
+        function echapper(texte) {
+            if (texte === null || texte === undefined) return '';
+            return String(texte)
+                .replace(/&/g, '&amp;')
+                .replace(/</g, '&lt;')
+                .replace(/>/g, '&gt;')
+                .replace(/"/g, '&quot;');
+        }
+
+        // ================================================
+        // DÉMARRAGE
+        // ================================================
+        (async () => {
+            const auth = await verifierAuthEtRole(['admin']);
+            if (!auth) return;
+            afficherMenuComplet('recap-appartement', auth.user.email, auth.profil.role, auth.profil.nom_affiche);
+
+            // Période par défaut = mois courant
+            const now = new Date();
+            const premierJourMois = new Date(now.getFullYear(), now.getMonth(), 1);
+            const dernierJourMois = new Date(now.getFullYear(), now.getMonth() + 1, 0);
+            const fmt = d => d.getFullYear() + '-' + String(d.getMonth()+1).padStart(2,'0') + '-' + String(d.getDate()).padStart(2,'0');
+            document.getElementById('date-debut').value = fmt(premierJourMois);
+            document.getElementById('date-fin').value = fmt(dernierJourMois);
+
+            charger();
+        })();
+    </script>
+</body>
+</html>
