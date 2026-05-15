@@ -1,0 +1,292 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Présences appartement - Restauration Les Bouleaux</title>
+    <link rel="stylesheet" href="shared.css">
+    <style>
+        .bandeau-info {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            padding: 12px 16px;
+            border-radius: 8px;
+            margin: 10px 0 20px 0;
+            font-weight: 500;
+            background: #e3f2fd;
+            color: #0d47a1;
+            border-left: 5px solid #1976d2;
+        }
+        .bandeau-info .emoji-grand { font-size: 28px; }
+
+        .infos-sejour {
+            font-size: 13px;
+            color: #555;
+        }
+        .infos-sejour .puce {
+            display: inline-block;
+            padding: 2px 8px;
+            background: #e8f4e8;
+            color: #2c5530;
+            border-radius: 10px;
+            font-weight: bold;
+            font-size: 11px;
+            margin-right: 4px;
+        }
+    </style>
+</head>
+<body>
+    <div id="app-header"></div>
+    <h1>🍽️ Restauration Les Bouleaux</h1>
+    <div id="menu"></div>
+
+    <h2>✅ Saisie des présences — Appartement</h2>
+
+    <div class="bandeau-info">
+        <span class="emoji-grand">🏨</span>
+        <div>
+            <strong>Pointage repas — Appartement Corgémont</strong><br>
+            <small>Seules les personnes dont le séjour est « En cours » à la date choisie apparaissent dans la liste.</small>
+        </div>
+    </div>
+
+    <div class="toolbar">
+        <label><strong>Date :</strong></label>
+        <input type="date" id="date-saisie">
+        <label><strong>Repas :</strong></label>
+        <select id="repas-saisie">
+            <option value="petit_dej">🥐 Petit-déjeuner</option>
+            <option value="dejeuner" selected>🍽️ Déjeuner</option>
+            <option value="diner">🌙 Dîner</option>
+        </select>
+        <button class="btn-primary" onclick="chargerPresences()">🔄 Charger</button>
+    </div>
+
+    <div id="message"></div>
+
+    <div id="contenu">
+        <p class="info-msg">Choisis une date et un repas, puis clique sur « Charger ».</p>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="shared.js"></script>
+    <script>
+        // ================================================
+        // PRÉSENCES APPARTEMENT
+        // Affiche uniquement les séjours "en_cours" couvrant la date choisie.
+        // ================================================
+
+        const PAGE_ACTIVE = 'presences-appartement';
+
+        let personnesParId = {};   // id -> fiche personne
+        let sejoursEnCoursCe = []; // séjours en cours pour la date affichée
+        let presencesCache = {};   // sejour_id -> { present, commentaire }
+
+        function libelleRepasShort(code) {
+            const map = { petit_dej: 'Petit-déj', dejeuner: 'Déjeuner', diner: 'Dîner' };
+            return map[code] || code;
+        }
+
+        function tagsPersonne(p) {
+            const tags = [];
+            if (p.allergenes && p.allergenes.length) {
+                const list = p.allergenes.map(c => nomAllergene(c)).join(' · ');
+                tags.push('<span class="tag tag-allergie">⚠️ ' + list + '</span>');
+            }
+            if (p.allergies && p.allergies.trim()) {
+                tags.push('<span class="tag tag-allergie">⚠️ ' + echapper(p.allergies) + '</span>');
+            }
+            if (p.non_gouts && p.non_gouts.trim()) {
+                tags.push('<span class="tag tag-aversion">🙅 ' + echapper(p.non_gouts) + '</span>');
+            }
+            return tags.length ? tags.join(' ') : '<span class="empty">—</span>';
+        }
+
+        // ================================================
+        // CHARGEMENT
+        // ================================================
+        async function chargerPresences() {
+            const date = document.getElementById('date-saisie').value;
+            const repas = document.getElementById('repas-saisie').value;
+            const contenu = document.getElementById('contenu');
+
+            if (!date) {
+                contenu.innerHTML = '<p class="info-msg">Choisis une date.</p>';
+                return;
+            }
+
+            contenu.innerHTML = '<p class="loading">⏳ Chargement...</p>';
+
+            // 1) Tous les séjours en cours qui couvrent la date
+            const { data: sejours, error: errS } = await supaClient
+                .from('sejours_appartement')
+                .select('*')
+                .eq('statut', 'en_cours')
+                .lte('date_arrivee', date)
+                .gte('date_depart', date)
+                .order('numero_chambre', { ascending: true });
+
+            if (errS) {
+                console.error(errS);
+                contenu.innerHTML = '<div class="erreur-msg">Erreur : ' + errS.message + '</div>';
+                return;
+            }
+
+            sejoursEnCoursCe = sejours || [];
+
+            if (sejoursEnCoursCe.length === 0) {
+                contenu.innerHTML = `<div class="info-msg">
+                    Aucun séjour « En cours » couvre le ${dateFr(date)}.<br>
+                    Vérifie le statut des séjours dans l'onglet « 📅 Séjours appartement ».
+                </div>`;
+                return;
+            }
+
+            // 2) Personnes liées à ces séjours
+            const idsPersonnes = [...new Set(sejoursEnCoursCe.map(s => s.personne_id))];
+            const { data: personnes, error: errP } = await supaClient
+                .from('personnes_appartement')
+                .select('*')
+                .in('id', idsPersonnes);
+
+            if (errP) {
+                console.error(errP);
+                contenu.innerHTML = '<div class="erreur-msg">Erreur : ' + errP.message + '</div>';
+                return;
+            }
+
+            personnesParId = {};
+            (personnes || []).forEach(p => { personnesParId[p.id] = p; });
+
+            // 3) Présences déjà enregistrées pour cette date + ce repas
+            const idsSejours = sejoursEnCoursCe.map(s => s.id);
+            const { data: presences, error: errPr } = await supaClient
+                .from('presences_appartement')
+                .select('*')
+                .in('sejour_id', idsSejours)
+                .eq('date', date)
+                .eq('repas', repas);
+
+            if (errPr) {
+                console.error(errPr);
+                contenu.innerHTML = '<div class="erreur-msg">Erreur : ' + errPr.message + '</div>';
+                return;
+            }
+
+            presencesCache = {};
+            (presences || []).forEach(p => {
+                presencesCache[p.sejour_id] = {
+                    present: p.present,
+                    commentaire: p.commentaire || ''
+                };
+            });
+
+            afficherTableau(date, repas);
+        }
+
+        function afficherTableau(date, repas) {
+            const contenu = document.getElementById('contenu');
+
+            let html = `<p>${dateFr(date)} — ${libelleRepas(repas)} — ${sejoursEnCoursCe.length} personne(s) en séjour</p>`;
+            html += `<table class="presences">
+                <thead>
+                    <tr>
+                        <th>Personne</th>
+                        <th>Chambre</th>
+                        <th>Séjour</th>
+                        <th class="col-center">Présent</th>
+                        <th>Allergies / Souhaits</th>
+                    </tr>
+                </thead>
+                <tbody>`;
+
+            sejoursEnCoursCe.forEach(s => {
+                const p = personnesParId[s.personne_id];
+                if (!p) return;
+
+                const nomComplet = (p.nom || '') + ' ' + (p.prenom || '');
+
+                // Par défaut : présent (sauf si déjà enregistré comme absent)
+                const dataPresence = presencesCache[s.id];
+                const present = dataPresence ? dataPresence.present : true;
+
+                const infoSejour = '<span class="puce">' + dateFr(s.date_arrivee) + ' → ' + dateFr(s.date_depart) + '</span>';
+
+                html += `<tr>
+                    <td><strong>${echapper(nomComplet)}</strong></td>
+                    <td>Chambre ${s.numero_chambre}</td>
+                    <td><div class="infos-sejour">${infoSejour}</div></td>
+                    <td class="col-center">
+                        <input type="checkbox"
+                               data-sejour-id="${s.id}"
+                               ${present ? 'checked' : ''}
+                               onchange="enregistrerPresence(${s.id}, this.checked)">
+                    </td>
+                    <td>${tagsPersonne(p)}</td>
+                </tr>`;
+            });
+
+            html += '</tbody></table>';
+            contenu.innerHTML = html;
+        }
+
+        // ================================================
+        // ENREGISTREMENT D'UNE PRÉSENCE
+        // ================================================
+        async function enregistrerPresence(sejourId, present) {
+            const date = document.getElementById('date-saisie').value;
+            const repas = document.getElementById('repas-saisie').value;
+            const msg = document.getElementById('message');
+
+            // On supprime l'éventuelle ligne existante puis on insère
+            await supaClient
+                .from('presences_appartement')
+                .delete()
+                .eq('sejour_id', sejourId)
+                .eq('date', date)
+                .eq('repas', repas);
+
+            const { error } = await supaClient
+                .from('presences_appartement')
+                .insert({
+                    sejour_id: sejourId,
+                    date: date,
+                    repas: repas,
+                    present: present
+                });
+
+            if (error) {
+                msg.innerHTML = '<div class="error">Erreur : ' + error.message + '</div>';
+                return;
+            }
+            msg.innerHTML = '<div class="success">✓ Enregistré</div>';
+            setTimeout(() => msg.innerHTML = '', 1500);
+
+            // Met à jour le cache local
+            presencesCache[sejourId] = { present: present, commentaire: '' };
+        }
+
+        function echapper(texte) {
+            if (texte === null || texte === undefined) return '';
+            return String(texte)
+                .replace(/&/g, '&amp;')
+                .replace(/</g, '&lt;')
+                .replace(/>/g, '&gt;')
+                .replace(/"/g, '&quot;');
+        }
+
+        // ================================================
+        // DÉMARRAGE
+        // ================================================
+        (async () => {
+            const auth = await verifierAuthEtRole(['admin']);
+            if (!auth) return;
+            afficherMenuComplet(PAGE_ACTIVE, auth.user.email, auth.profil.role, auth.profil.nom_affiche);
+
+            document.getElementById('date-saisie').value = aujourdhui();
+            chargerPresences();
+        })();
+    </script>
+</body>
+</html>
