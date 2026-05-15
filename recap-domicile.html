@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+ <!DOCTYPE html>
 <html lang="fr">
 <head>
     <meta charset="UTF-8">
@@ -305,6 +305,8 @@
         <label for="input-mois">Mois consulté :</label>
         <input type="month" id="input-mois" onchange="charger()">
         <button class="btn-primary" onclick="charger()">🔄 Actualiser</button>
+        <button class="btn-print" onclick="imprimerPageRecap()">📄 PDF de la page récap</button>
+        <button class="btn-print" onclick="imprimerCompileTousDetails()">📚 PDF compilé (tous les détails)</button>
     </div>
 
     <div id="contenu">
@@ -327,10 +329,8 @@
     <script>
         // ================================================
         // RÉCAPITULATIF REPAS À DOMICILE
-        // Liste compacte + pop-up justificatif individuel imprimable
         // ================================================
 
-        // Coordonnées de la résidence (en dur, pour l'en-tête du justificatif)
         const RESIDENCE_NOM = 'Résidence Les Bouleaux';
         const RESIDENCE_ADRESSE = 'Sur le Crêt 12 — 2606 Corgémont';
         const RESIDENCE_LOGO = 'images/logo.png';
@@ -340,9 +340,66 @@
         const NOMS_MOIS = ['janvier','février','mars','avril','mai','juin',
                            'juillet','août','septembre','octobre','novembre','décembre'];
 
+        // CSS du justificatif (réutilisé partout) — stocké comme variable simple
+        const CSS_JUSTIF = ''
+            + '@page { size: A4 portrait; margin: 15mm; }'
+            + 'body { font-family: Arial, Helvetica, sans-serif; color: #222; margin: 0; padding: 0; }'
+            + '.justif { padding: 0; page-break-after: always; }'
+            + '.justif:last-child { page-break-after: auto; }'
+            + '.justif-entete { display: flex; justify-content: space-between; align-items: flex-start; border-bottom: 3px solid #2c5530; padding-bottom: 14px; margin-bottom: 20px; }'
+            + '.justif-entete-gauche { display: flex; align-items: center; gap: 12px; }'
+            + '.justif-logo { width: 56px; height: 56px; object-fit: contain; }'
+            + '.justif-residence { font-size: 16px; font-weight: bold; color: #2c5530; }'
+            + '.justif-residence-adresse { font-size: 11px; color: #888; margin-top: 2px; }'
+            + '.justif-entete-droite { text-align: right; }'
+            + '.justif-type { font-size: 11px; color: #888; text-transform: uppercase; letter-spacing: 0.5px; }'
+            + '.justif-mois { font-size: 13px; font-weight: bold; color: #2c5530; margin-top: 2px; }'
+            + '.justif-benef-intitule { font-size: 10px; color: #888; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 3px; }'
+            + '.justif-benef-nom { font-size: 18px; font-weight: bold; color: #222; }'
+            + '.justif-benef-adresse { font-size: 12px; color: #666; margin-top: 2px; }'
+            + '.justif-chiffres { display: flex; border: 1px solid #e0e0e0; border-radius: 4px; overflow: hidden; margin: 22px 0; }'
+            + '.justif-chiffre { flex: 1; padding: 14px 16px; text-align: center; }'
+            + '.justif-chiffre + .justif-chiffre { border-left: 1px solid #e0e0e0; }'
+            + '.justif-chiffre-nombre { font-size: 28px; font-weight: bold; color: #2c5530; line-height: 1; }'
+            + '.justif-chiffre-label { font-size: 10px; color: #888; text-transform: uppercase; letter-spacing: 0.5px; margin-top: 4px; }'
+            + '.justif-section-titre { font-size: 10px; color: #888; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 8px; }'
+            + 'table.justif-table { width: 100%; border-collapse: collapse; font-size: 12.5px; }'
+            + 'table.justif-table thead tr { border-bottom: 1.5px solid #2c5530; }'
+            + 'table.justif-table th { color: #2c5530; font-size: 10px; text-transform: uppercase; letter-spacing: 0.5px; padding: 6px 4px; }'
+            + 'table.justif-table th.col-date { text-align: left; }'
+            + 'table.justif-table th.col-repas { text-align: right; }'
+            + 'table.justif-table td { padding: 5px 4px; border-bottom: 1px solid #f0f0f0; }'
+            + 'table.justif-table td.col-repas { text-align: right; font-weight: bold; }'
+            + 'table.justif-table tfoot tr { border-top: 2px solid #2c5530; }'
+            + 'table.justif-table tfoot td { padding: 8px 4px; font-weight: bold; color: #2c5530; }'
+            + 'table.justif-table tfoot td.col-repas { text-align: right; font-size: 14px; }'
+            + '.justif-vide { color: #aaa; font-style: italic; font-size: 12.5px; }'
+            + '.justif-pied { margin-top: 24px; padding-top: 12px; border-top: 1px solid #e0e0e0; font-size: 10px; color: #999; text-align: center; }';
+
+        // CSS de la page récap
+        const CSS_RECAP = ''
+            + '@page { size: A4 portrait; margin: 15mm; }'
+            + 'body { font-family: Arial, Helvetica, sans-serif; color: #222; margin: 0; padding: 0; }'
+            + '.entete { display: flex; justify-content: space-between; align-items: flex-start; border-bottom: 3px solid #2c5530; padding-bottom: 14px; margin-bottom: 20px; }'
+            + '.entete-gauche { display: flex; align-items: center; gap: 12px; }'
+            + '.logo { width: 56px; height: 56px; object-fit: contain; }'
+            + '.nom-residence { font-size: 16px; font-weight: bold; color: #2c5530; }'
+            + '.adresse-residence { font-size: 11px; color: #888; margin-top: 2px; }'
+            + '.entete-droite { text-align: right; }'
+            + '.type { font-size: 11px; color: #888; text-transform: uppercase; letter-spacing: 0.5px; }'
+            + '.mois { font-size: 13px; font-weight: bold; color: #2c5530; margin-top: 2px; }'
+            + '.stats { display: flex; gap: 12px; margin: 22px 0; }'
+            + '.stat { flex: 1; padding: 14px 16px; text-align: center; border: 1px solid #e0e0e0; border-radius: 4px; }'
+            + '.stat-valeur { font-size: 28px; font-weight: bold; color: #2c5530; }'
+            + '.stat-label { font-size: 10px; color: #888; text-transform: uppercase; letter-spacing: 0.5px; margin-top: 4px; }'
+            + 'table { width: 100%; border-collapse: collapse; font-size: 13px; }'
+            + 'thead tr { border-bottom: 1.5px solid #2c5530; }'
+            + 'th { padding: 8px 12px; text-align: left; color: #2c5530; font-size: 11px; text-transform: uppercase; }'
+            + 'th.col-total { text-align: center; width: 130px; }'
+            + '.pied { margin-top: 24px; padding-top: 12px; border-top: 1px solid #e0e0e0; font-size: 10px; color: #999; text-align: center; }';
+
         let donneesCache = null;
 
-        // ----- Quantité prévue par le rythme pour une date -----
         function quantiteRythme(personne, dateStr) {
             const [a, m, j] = dateStr.split('-').map(Number);
             const d = new Date(a, m - 1, j);
@@ -365,14 +422,13 @@
             return `${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}`;
         }
 
-        // Date du jour en toutes lettres, pour le pied de page
         function dateDuJourLisible() {
             const d = new Date();
             return d.getDate() + ' ' + NOMS_MOIS[d.getMonth()] + ' ' + d.getFullYear();
         }
 
         // ================================================
-        // CHARGEMENT ET CALCUL
+        // CHARGEMENT
         // ================================================
         async function charger() {
             const contenu = document.getElementById('contenu');
@@ -387,7 +443,6 @@
             const premierJour = formatDate(annee, moisNum, 1);
             const dernierJour = formatDate(annee, moisNum, nbJours);
 
-            // 1) Toutes les personnes actives
             const { data: personnes, error: errP } = await supaClient
                 .from('personnes_domicile')
                 .select('*')
@@ -401,7 +456,6 @@
                 return;
             }
 
-            // 2) Toutes les exceptions du mois
             const { data: exceptions, error: errE } = await supaClient
                 .from('livraisons_exceptions')
                 .select('*')
@@ -422,12 +476,11 @@
                 exceptionsParPersonne[ex.personne_id][ex.date_repas] = ex.quantite;
             });
 
-            // 3) Pour chaque personne, parcourt tous les jours du mois
             const lignes = [];
             (personnes || []).forEach(p => {
                 const exceptionsPersonne = exceptionsParPersonne[p.id] || {};
                 let totalMois = 0;
-                const detailJours = []; // [{ jour, quantite, nomJour }, ...]
+                const detailJours = [];
 
                 for (let jour = 1; jour <= nbJours; jour++) {
                     const dateStr = formatDate(annee, moisNum, jour);
@@ -466,7 +519,7 @@
         }
 
         // ================================================
-        // AFFICHAGE DE LA LISTE COMPACTE
+        // AFFICHAGE
         // ================================================
         function afficher() {
             const contenu = document.getElementById('contenu');
@@ -537,17 +590,19 @@
         function ouvrirDetail(index) {
             const ligne = donneesCache.lignes[index];
             if (!ligne) return;
+            document.getElementById('detail-contenu').innerHTML = construireJustificatifHtml(ligne);
+            document.getElementById('modal-detail').classList.add('active');
+        }
 
+        function construireJustificatifHtml(ligne) {
             const p = ligne.personne;
             const nomComplet = (p.nom || '') + ' ' + (p.prenom || '');
             const adresse = p.adresse_livraison || '';
             const libelleMois = donneesCache.libelleMois;
-            // "mai 2026" -> "Mai 2026" pour l'en-tête
             const moisTitre = libelleMois.charAt(0).toUpperCase() + libelleMois.slice(1);
 
             let html = `<div class="justif">`;
 
-            // En-tête : logo + résidence à gauche, type + mois à droite
             html += `<div class="justif-entete">
                 <div class="justif-entete-gauche">
                     <img src="${RESIDENCE_LOGO}" alt="Logo" class="justif-logo"
@@ -563,7 +618,6 @@
                 </div>
             </div>`;
 
-            // Bénéficiaire
             html += `<div>
                 <div class="justif-benef-intitule">Repas livrés à domicile — bénéficiaire</div>
                 <div class="justif-benef-nom">${echapper(nomComplet)}</div>`;
@@ -572,7 +626,6 @@
             }
             html += `</div>`;
 
-            // Les deux chiffres encadrés
             html += `<div class="justif-chiffres">
                 <div class="justif-chiffre">
                     <div class="justif-chiffre-nombre">${ligne.totalMois}</div>
@@ -584,7 +637,6 @@
                 </div>
             </div>`;
 
-            // Tableau du détail, une ligne par date, date entière
             html += `<div class="justif-section-titre">Détail des livraisons</div>`;
 
             if (ligne.detailJours.length === 0) {
@@ -610,19 +662,141 @@
                 </table>`;
             }
 
-            // Pied de page
             html += `<div class="justif-pied">
                 Document établi le ${echapper(dateDuJourLisible())} — ${echapper(RESIDENCE_NOM)}, service restauration
             </div>`;
 
             html += `</div>`;
-
-            document.getElementById('detail-contenu').innerHTML = html;
-            document.getElementById('modal-detail').classList.add('active');
+            return html;
         }
 
         function fermerDetail() {
             document.getElementById('modal-detail').classList.remove('active');
+        }
+
+        // ================================================
+        // OUVRE UNE FENÊTRE PROPRE ET Y MET LE HTML SANS document.write
+        // ================================================
+        function ouvrirFenetreImpression(titre, css, corpsHtml) {
+            const fenetre = window.open('', '_blank');
+            if (!fenetre) {
+                alert('Le navigateur a bloqué l\'ouverture de la fenêtre. Autorise les pop-ups pour ce site.');
+                return;
+            }
+
+            // On construit la nouvelle page via le DOM, sans aucun document.write
+            const doc = fenetre.document;
+            doc.title = titre;
+
+            // Ajout du charset
+            const meta = doc.createElement('meta');
+            meta.setAttribute('charset', 'UTF-8');
+            doc.head.appendChild(meta);
+
+            // Ajout du CSS
+            const styleEl = doc.createElement('style');
+            styleEl.textContent = css;
+            doc.head.appendChild(styleEl);
+
+            // Ajout du corps
+            doc.body.innerHTML = corpsHtml;
+
+            // On déclenche l'impression après un petit délai (le temps que les images chargent)
+            fenetre.setTimeout(function() {
+                fenetre.focus();
+                fenetre.print();
+            }, 400);
+        }
+
+        // ================================================
+        // BOUTON 1 : PDF DE LA PAGE RÉCAP
+        // ================================================
+        function imprimerPageRecap() {
+            if (!donneesCache) {
+                alert('Charge d\'abord les données du mois.');
+                return;
+            }
+
+            const { libelleMois, lignes } = donneesCache;
+            const moisTitre = libelleMois.charAt(0).toUpperCase() + libelleMois.slice(1);
+            const totalGeneral = lignes.reduce((s, l) => s + l.totalMois, 0);
+            const nbAvecRepas = lignes.filter(l => l.totalMois > 0).length;
+
+            let lignesHtml = '';
+            lignes.forEach(ligne => {
+                const p = ligne.personne;
+                const nomComplet = (p.nom || '') + ' ' + (p.prenom || '');
+                const styleLigne = (ligne.totalMois === 0) ? 'color:#aaa;' : '';
+                lignesHtml += `<tr style="${styleLigne}">
+                    <td style="padding:8px 12px;border-bottom:1px solid #eee;font-weight:bold;">${echapper(nomComplet)}</td>
+                    <td style="padding:8px 12px;border-bottom:1px solid #eee;text-align:center;font-weight:bold;color:#2c5530;font-size:15px;">${ligne.totalMois}</td>
+                </tr>`;
+            });
+            lignesHtml += `<tr style="background:#f0f8f0;font-weight:bold;">
+                <td style="padding:10px 12px;">TOTAL</td>
+                <td style="padding:10px 12px;text-align:center;color:#2c5530;font-size:16px;">${totalGeneral}</td>
+            </tr>`;
+
+            const corps = `
+                <div class="entete">
+                    <div class="entete-gauche">
+                        <img src="${RESIDENCE_LOGO}" alt="Logo" class="logo" onerror="this.style.display='none'">
+                        <div>
+                            <div class="nom-residence">${echapper(RESIDENCE_NOM)}</div>
+                            <div class="adresse-residence">${echapper(RESIDENCE_ADRESSE)}</div>
+                        </div>
+                    </div>
+                    <div class="entete-droite">
+                        <div class="type">Récapitulatif mensuel — Repas à domicile</div>
+                        <div class="mois">${echapper(moisTitre)}</div>
+                    </div>
+                </div>
+
+                <div class="stats">
+                    <div class="stat">
+                        <div class="stat-valeur">${totalGeneral}</div>
+                        <div class="stat-label">Repas livrés — total du mois</div>
+                    </div>
+                    <div class="stat">
+                        <div class="stat-valeur">${nbAvecRepas}</div>
+                        <div class="stat-label">Personnes livrées sur ${lignes.length} fiches actives</div>
+                    </div>
+                </div>
+
+                <table>
+                    <thead><tr>
+                        <th>Personne</th>
+                        <th class="col-total">Total repas</th>
+                    </tr></thead>
+                    <tbody>${lignesHtml}</tbody>
+                </table>
+
+                <div class="pied">
+                    Document établi le ${echapper(dateDuJourLisible())} — ${echapper(RESIDENCE_NOM)}, service restauration
+                </div>
+            `;
+
+            ouvrirFenetreImpression('Récap repas à domicile — ' + moisTitre, CSS_RECAP, corps);
+        }
+
+        // ================================================
+        // BOUTON 2 : PDF COMPILÉ (TOUS LES DÉTAILS)
+        // ================================================
+        function imprimerCompileTousDetails() {
+            if (!donneesCache) {
+                alert('Charge d\'abord les données du mois.');
+                return;
+            }
+
+            const { libelleMois, lignes } = donneesCache;
+            const moisTitre = libelleMois.charAt(0).toUpperCase() + libelleMois.slice(1);
+
+            let corps = '';
+            lignes.forEach(ligne => {
+                corps += construireJustificatifHtml(ligne);
+            });
+
+            ouvrirFenetreImpression('Justificatifs compilés — ' + moisTitre, CSS_JUSTIF, corps);
         }
 
         function echapper(texte) {
