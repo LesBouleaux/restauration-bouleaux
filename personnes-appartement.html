@@ -1,0 +1,591 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Personnes appartement - Restauration Les Bouleaux</title>
+    <link rel="stylesheet" href="shared.css">
+    <style>
+        .bandeau-info {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            padding: 12px 16px;
+            border-radius: 8px;
+            margin: 10px 0 20px 0;
+            font-weight: 500;
+            background: #e3f2fd;
+            color: #0d47a1;
+            border-left: 5px solid #1976d2;
+        }
+        .bandeau-info .emoji-grand { font-size: 28px; }
+
+        .allergenes-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(170px, 1fr));
+            gap: 8px;
+            margin-top: 6px;
+        }
+        .allergene-case {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            padding: 8px 12px;
+            background: #f5f5f5;
+            border-radius: 16px;
+            cursor: pointer;
+            user-select: none;
+            font-size: 14px;
+        }
+        .allergene-case:hover { background: #e8e8e8; }
+        .allergene-case input { margin: 0; }
+    </style>
+</head>
+<body>
+    <div id="app-header"></div>
+    <h1>🍽️ Restauration Les Bouleaux</h1>
+    <div id="menu"></div>
+
+    <h2>🏨 Personnes appartement</h2>
+
+    <div class="bandeau-info">
+        <span class="emoji-grand">🏨</span>
+        <div>
+            <strong>Carnet des bénéficiaires Appartement Corgémont</strong><br>
+            <small>Fiche permanente d'une personne. Une même personne peut faire plusieurs séjours dans l'année.</small>
+        </div>
+    </div>
+
+    <h2>➕ Nouvelle fiche personne</h2>
+
+    <div class="resident">
+        <form id="form-personne">
+
+            <div class="form-group">
+                <label for="prenom">Prénom *</label>
+                <input type="text" id="prenom" required>
+            </div>
+
+            <div class="form-group">
+                <label for="nom">Nom *</label>
+                <input type="text" id="nom" required>
+            </div>
+
+            <div class="form-group">
+                <label for="telephone">Téléphone de la personne</label>
+                <input type="text" id="telephone" placeholder="Optionnel">
+            </div>
+
+            <fieldset style="border: 1px solid #ddd; padding: 12px; border-radius: 6px; margin-bottom: 15px;">
+                <legend style="padding: 0 8px; font-weight: bold; color: #555;">Proche aidant / contact</legend>
+
+                <div class="form-group">
+                    <label for="contact-nom">Nom du contact</label>
+                    <input type="text" id="contact-nom" placeholder="Optionnel">
+                </div>
+
+                <div class="form-group">
+                    <label for="contact-tel">Téléphone du contact</label>
+                    <input type="text" id="contact-tel" placeholder="Optionnel">
+                </div>
+
+                <div class="form-group">
+                    <label for="contact-lien">Lien avec la personne</label>
+                    <input type="text" id="contact-lien" placeholder="Ex : fils, fille, épouse, voisin...">
+                </div>
+            </fieldset>
+
+            <div class="form-group">
+                <label>Allergènes officiels</label>
+                <p style="margin:4px 0 8px; color:#888; font-size:13px;">
+                    Coche les allergènes à éviter pour cette personne.
+                </p>
+                <div class="allergenes-grid" id="allergenes-grid"></div>
+            </div>
+
+            <div class="form-group">
+                <label for="allergies">Allergies (texte libre)</label>
+                <textarea id="allergies" placeholder="Précisions ou allergies hors liste officielle..."></textarea>
+            </div>
+
+            <div class="form-group">
+                <label for="non-gouts">Non-goûts et souhaits particuliers</label>
+                <textarea id="non-gouts" placeholder="Ex : n'aime pas le poisson, préfère les compotes en dessert..."></textarea>
+            </div>
+
+            <div class="form-group">
+                <label for="notes">Notes générales</label>
+                <textarea id="notes" placeholder="Informations utiles : mobilité, comportement, habitudes..."></textarea>
+            </div>
+
+            <div class="form-actions">
+                <button type="submit" class="btn btn-primary">Enregistrer la fiche</button>
+            </div>
+
+            <div id="form-message"></div>
+
+        </form>
+    </div>
+
+    <h2>📋 Fiches</h2>
+
+    <div class="toolbar">
+        <button type="button" id="btn-vue-actives" class="btn btn-primary">Fiches actives</button>
+        <button type="button" id="btn-vue-archivees" class="btn btn-secondary">Fiches archivées</button>
+        <input type="text" id="recherche" placeholder="🔍 Rechercher par nom ou prénom...">
+    </div>
+
+    <div id="liste-personnes">
+        <div class="loading">Chargement…</div>
+    </div>
+
+    <!-- ===== Modal modification ===== -->
+    <div id="modal-modif" class="modal-overlay">
+        <div class="modal">
+            <h2 id="modal-titre">Modifier la fiche</h2>
+
+            <form id="form-modif">
+                <input type="hidden" id="modif-id">
+
+                <div class="form-group">
+                    <label for="modif-prenom">Prénom *</label>
+                    <input type="text" id="modif-prenom" required>
+                </div>
+
+                <div class="form-group">
+                    <label for="modif-nom">Nom *</label>
+                    <input type="text" id="modif-nom" required>
+                </div>
+
+                <div class="form-group">
+                    <label for="modif-telephone">Téléphone de la personne</label>
+                    <input type="text" id="modif-telephone" placeholder="Optionnel">
+                </div>
+
+                <fieldset style="border: 1px solid #ddd; padding: 12px; border-radius: 6px; margin-bottom: 15px;">
+                    <legend style="padding: 0 8px; font-weight: bold; color: #555;">Proche aidant / contact</legend>
+
+                    <div class="form-group">
+                        <label for="modif-contact-nom">Nom du contact</label>
+                        <input type="text" id="modif-contact-nom" placeholder="Optionnel">
+                    </div>
+
+                    <div class="form-group">
+                        <label for="modif-contact-tel">Téléphone du contact</label>
+                        <input type="text" id="modif-contact-tel" placeholder="Optionnel">
+                    </div>
+
+                    <div class="form-group">
+                        <label for="modif-contact-lien">Lien avec la personne</label>
+                        <input type="text" id="modif-contact-lien" placeholder="Ex : fils, fille, épouse, voisin...">
+                    </div>
+                </fieldset>
+
+                <div class="form-group">
+                    <label>Allergènes officiels</label>
+                    <div class="allergenes-grid" id="modif-allergenes-grid"></div>
+                </div>
+
+                <div class="form-group">
+                    <label for="modif-allergies">Allergies (texte libre)</label>
+                    <textarea id="modif-allergies"></textarea>
+                </div>
+
+                <div class="form-group">
+                    <label for="modif-non-gouts">Non-goûts et souhaits particuliers</label>
+                    <textarea id="modif-non-gouts"></textarea>
+                </div>
+
+                <div class="form-group">
+                    <label for="modif-notes">Notes générales</label>
+                    <textarea id="modif-notes"></textarea>
+                </div>
+
+                <div id="modif-message"></div>
+
+                <div class="form-actions">
+                    <button type="button" class="btn btn-secondary" id="btn-annuler-modif">Annuler</button>
+                    <button type="submit" class="btn btn-primary">Enregistrer les modifications</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="shared.js"></script>
+    <script>
+    // ================================================
+    // PAGE PERSONNES APPARTEMENT
+    // Carnet des bénéficiaires d'un séjour Appartement Corgémont
+    // ================================================
+
+    let vueCourante = 'actives';
+    let toutesPersonnesCache = [];
+
+    document.addEventListener('DOMContentLoaded', async () => {
+        const auth = await verifierAuthEtRole(['admin']);
+        if (!auth) return;
+
+        afficherMenuComplet(
+            'personnes-appartement',
+            auth.user.email,
+            auth.profil.role,
+            auth.profil.nom_affiche
+        );
+
+        // Génère les cases à cocher d'allergènes (création + modification)
+        construireCasesAllergenes('allergenes-grid');
+        construireCasesAllergenes('modif-allergenes-grid');
+
+        await chargerPersonnes();
+
+        document.getElementById('form-personne')
+            .addEventListener('submit', enregistrerPersonne);
+        document.getElementById('btn-vue-actives')
+            .addEventListener('click', () => changerVue('actives'));
+        document.getElementById('btn-vue-archivees')
+            .addEventListener('click', () => changerVue('archivees'));
+        document.getElementById('form-modif')
+            .addEventListener('submit', enregistrerModification);
+        document.getElementById('btn-annuler-modif')
+            .addEventListener('click', fermerModale);
+        document.getElementById('recherche')
+            .addEventListener('input', afficherListe);
+    });
+
+    // ----- Cases à cocher d'allergènes -----
+    function construireCasesAllergenes(idConteneur) {
+        const conteneur = document.getElementById(idConteneur);
+        conteneur.innerHTML = '';
+        for (const a of ALLERGENES_LISTE) {
+            const label = document.createElement('label');
+            label.className = 'allergene-case';
+            label.innerHTML =
+                '<input type="checkbox" value="' + a.code + '" data-grid="' + idConteneur + '"> ' +
+                a.emoji + ' ' + a.nom;
+            conteneur.appendChild(label);
+        }
+    }
+
+    function lireAllergenes(idConteneur) {
+        const cases = document.querySelectorAll(
+            '#' + idConteneur + ' input[type="checkbox"]:checked'
+        );
+        return Array.from(cases).map(c => c.value);
+    }
+
+    function cocherAllergenes(idConteneur, liste) {
+        const set = new Set(liste || []);
+        const cases = document.querySelectorAll(
+            '#' + idConteneur + ' input[type="checkbox"]'
+        );
+        cases.forEach(c => {
+            c.checked = set.has(c.value);
+        });
+    }
+
+    // ----- Enregistrer une nouvelle fiche -----
+    async function enregistrerPersonne(event) {
+        event.preventDefault();
+
+        const message = document.getElementById('form-message');
+        message.innerHTML = '';
+
+        const fiche = {
+            prenom:       document.getElementById('prenom').value.trim(),
+            nom:          document.getElementById('nom').value.trim(),
+            telephone:    document.getElementById('telephone').value.trim() || null,
+            contact_nom:  document.getElementById('contact-nom').value.trim() || null,
+            contact_tel:  document.getElementById('contact-tel').value.trim() || null,
+            contact_lien: document.getElementById('contact-lien').value.trim() || null,
+            allergenes:   lireAllergenes('allergenes-grid'),
+            allergies:    document.getElementById('allergies').value.trim() || null,
+            non_gouts:    document.getElementById('non-gouts').value.trim() || null,
+            notes:        document.getElementById('notes').value.trim() || null
+        };
+
+        if (!fiche.prenom || !fiche.nom) {
+            message.innerHTML =
+                '<div class="erreur-msg">Merci de remplir au moins le prénom et le nom.</div>';
+            return;
+        }
+
+        const { error } = await supaClient
+            .from('personnes_appartement')
+            .insert([fiche]);
+
+        if (error) {
+            console.error('Erreur enregistrement :', error);
+            message.innerHTML =
+                '<div class="erreur-msg">Erreur : la fiche n\'a pas pu être enregistrée.</div>';
+            return;
+        }
+
+        message.innerHTML = '<div class="success">Fiche enregistrée ✔</div>';
+        document.getElementById('form-personne').reset();
+        cocherAllergenes('allergenes-grid', []);
+
+        vueCourante = 'actives';
+        majBoutonsVue();
+        await chargerPersonnes();
+    }
+
+    // ----- Changer de vue (actives/archivées) -----
+    function changerVue(vue) {
+        vueCourante = vue;
+        majBoutonsVue();
+        chargerPersonnes();
+    }
+
+    function majBoutonsVue() {
+        const btnActives   = document.getElementById('btn-vue-actives');
+        const btnArchivees = document.getElementById('btn-vue-archivees');
+        if (vueCourante === 'actives') {
+            btnActives.className   = 'btn btn-primary';
+            btnArchivees.className = 'btn btn-secondary';
+        } else {
+            btnActives.className   = 'btn btn-secondary';
+            btnArchivees.className = 'btn btn-primary';
+        }
+    }
+
+    // ----- Charger les fiches depuis la base -----
+    async function chargerPersonnes() {
+        const conteneur = document.getElementById('liste-personnes');
+        conteneur.innerHTML = '<div class="loading">Chargement…</div>';
+
+        const veutActives = (vueCourante === 'actives');
+
+        const { data, error } = await supaClient
+            .from('personnes_appartement')
+            .select('*')
+            .eq('actif', veutActives)
+            .order('nom', { ascending: true })
+            .order('prenom', { ascending: true });
+
+        if (error) {
+            console.error('Erreur chargement fiches :', error);
+            conteneur.innerHTML =
+                '<div class="erreur-msg">Erreur : impossible de charger les fiches.</div>';
+            return;
+        }
+
+        toutesPersonnesCache = data || [];
+        afficherListe();
+    }
+
+    // ----- Afficher la liste filtrée par la recherche -----
+    function afficherListe() {
+        const conteneur = document.getElementById('liste-personnes');
+        const recherche = document.getElementById('recherche').value.trim().toLowerCase();
+
+        let personnes = toutesPersonnesCache;
+        if (recherche) {
+            personnes = personnes.filter(p => {
+                const nom = (p.nom || '').toLowerCase();
+                const prenom = (p.prenom || '').toLowerCase();
+                return nom.includes(recherche) || prenom.includes(recherche);
+            });
+        }
+
+        if (personnes.length === 0) {
+            const texte = (vueCourante === 'actives')
+                ? (recherche ? 'Aucune fiche active ne correspond à la recherche.' : 'Aucune fiche active pour le moment.')
+                : (recherche ? 'Aucune fiche archivée ne correspond à la recherche.' : 'Aucune fiche archivée.');
+            conteneur.innerHTML = '<div class="info-msg">' + texte + '</div>';
+            return;
+        }
+
+        const veutActives = (vueCourante === 'actives');
+
+        let html = '<table class="presences"><thead><tr>'
+                 + '<th>Nom</th><th>Prénom</th><th>Téléphone</th><th>Contact aidant</th>'
+                 + '<th>Allergènes / souhaits</th>'
+                 + '<th>Actions</th>'
+                 + '</tr></thead><tbody>';
+
+        personnes.forEach(p => {
+            // Contact aidant : "Marie Dupont (fille) — 079 123 45 67"
+            const partsContact = [];
+            if (p.contact_nom) partsContact.push(echapper(p.contact_nom));
+            if (p.contact_lien) partsContact.push('(' + echapper(p.contact_lien) + ')');
+            const ligneContactGauche = partsContact.join(' ');
+            const contactComplet = ligneContactGauche
+                ? (ligneContactGauche + (p.contact_tel ? ' — ' + echapper(p.contact_tel) : ''))
+                : (p.contact_tel ? echapper(p.contact_tel) : '—');
+
+            // Tags allergènes + souhaits
+            const tags = [];
+            if (p.allergenes && p.allergenes.length) {
+                const list = p.allergenes.map(c => nomAllergene(c)).join(' · ');
+                tags.push('<span class="tag tag-allergie">⚠️ ' + list + '</span>');
+            }
+            if (p.allergies && p.allergies.trim()) {
+                tags.push('<span class="tag tag-allergie">⚠️ ' + echapper(p.allergies) + '</span>');
+            }
+            if (p.non_gouts && p.non_gouts.trim()) {
+                tags.push('<span class="tag tag-aversion">🙅 ' + echapper(p.non_gouts) + '</span>');
+            }
+            const cellTags = tags.length ? tags.join(' ') : '<span class="empty">—</span>';
+
+            let actions = '';
+            if (veutActives) {
+                actions = '<button type="button" class="btn-edit btn-small" '
+                        + 'onclick="ouvrirModale(' + p.id + ')">Modifier</button> '
+                        + '<button type="button" class="btn-secondary btn-small" '
+                        + 'onclick="archiverPersonne(' + p.id + ')">Archiver</button>';
+            } else {
+                actions = '<button type="button" class="btn-primary btn-small" '
+                        + 'onclick="reactiverPersonne(' + p.id + ')">Réactiver</button>';
+            }
+
+            html += '<tr>'
+                  + '<td>' + echapper(p.nom) + '</td>'
+                  + '<td>' + echapper(p.prenom) + '</td>'
+                  + '<td>' + echapper(p.telephone || '—') + '</td>'
+                  + '<td>' + contactComplet + '</td>'
+                  + '<td>' + cellTags + '</td>'
+                  + '<td>' + actions + '</td>'
+                  + '</tr>';
+        });
+
+        html += '</tbody></table>';
+        conteneur.innerHTML = html;
+    }
+
+    // ----- Modale modification -----
+    async function ouvrirModale(id) {
+        const message = document.getElementById('modif-message');
+        message.innerHTML = '';
+
+        const { data, error } = await supaClient
+            .from('personnes_appartement')
+            .select('*')
+            .eq('id', id)
+            .maybeSingle();
+
+        if (error || !data) {
+            console.error('Erreur chargement fiche :', error);
+            alert('Impossible de charger cette fiche.');
+            return;
+        }
+
+        document.getElementById('modif-id').value          = data.id;
+        document.getElementById('modif-prenom').value      = data.prenom || '';
+        document.getElementById('modif-nom').value         = data.nom || '';
+        document.getElementById('modif-telephone').value   = data.telephone || '';
+        document.getElementById('modif-contact-nom').value = data.contact_nom || '';
+        document.getElementById('modif-contact-tel').value = data.contact_tel || '';
+        document.getElementById('modif-contact-lien').value= data.contact_lien || '';
+        document.getElementById('modif-allergies').value   = data.allergies || '';
+        document.getElementById('modif-non-gouts').value   = data.non_gouts || '';
+        document.getElementById('modif-notes').value       = data.notes || '';
+
+        cocherAllergenes('modif-allergenes-grid', data.allergenes || []);
+
+        document.getElementById('modal-titre').textContent =
+            'Modifier la fiche — ' + (data.prenom || '') + ' ' + (data.nom || '');
+
+        document.getElementById('modal-modif').classList.add('active');
+    }
+
+    function fermerModale() {
+        document.getElementById('modal-modif').classList.remove('active');
+        document.getElementById('modif-message').innerHTML = '';
+    }
+
+    async function enregistrerModification(event) {
+        event.preventDefault();
+
+        const message = document.getElementById('modif-message');
+        message.innerHTML = '';
+
+        const id = document.getElementById('modif-id').value;
+
+        const fiche = {
+            prenom:       document.getElementById('modif-prenom').value.trim(),
+            nom:          document.getElementById('modif-nom').value.trim(),
+            telephone:    document.getElementById('modif-telephone').value.trim() || null,
+            contact_nom:  document.getElementById('modif-contact-nom').value.trim() || null,
+            contact_tel:  document.getElementById('modif-contact-tel').value.trim() || null,
+            contact_lien: document.getElementById('modif-contact-lien').value.trim() || null,
+            allergenes:   lireAllergenes('modif-allergenes-grid'),
+            allergies:    document.getElementById('modif-allergies').value.trim() || null,
+            non_gouts:    document.getElementById('modif-non-gouts').value.trim() || null,
+            notes:        document.getElementById('modif-notes').value.trim() || null
+        };
+
+        if (!fiche.prenom || !fiche.nom) {
+            message.innerHTML =
+                '<div class="erreur-msg">Merci de remplir au moins le prénom et le nom.</div>';
+            return;
+        }
+
+        const { error } = await supaClient
+            .from('personnes_appartement')
+            .update(fiche)
+            .eq('id', id);
+
+        if (error) {
+            console.error('Erreur modification :', error);
+            message.innerHTML =
+                '<div class="erreur-msg">Erreur : les modifications n\'ont pas pu être enregistrées.</div>';
+            return;
+        }
+
+        fermerModale();
+        await chargerPersonnes();
+    }
+
+    // ----- Archivage / réactivation -----
+    async function archiverPersonne(id) {
+        const ok = confirm('Archiver cette fiche ?\n\n'
+                         + 'La personne sortira de la liste active, '
+                         + 'mais sa fiche restera consultable dans "Fiches archivées".');
+        if (!ok) return;
+
+        const { error } = await supaClient
+            .from('personnes_appartement')
+            .update({ actif: false })
+            .eq('id', id);
+
+        if (error) {
+            console.error('Erreur archivage :', error);
+            alert('Erreur : la fiche n\'a pas pu être archivée.');
+            return;
+        }
+
+        await chargerPersonnes();
+    }
+
+    async function reactiverPersonne(id) {
+        const ok = confirm('Réactiver cette fiche ?\n\n'
+                         + 'La personne réapparaîtra dans la liste des fiches actives.');
+        if (!ok) return;
+
+        const { error } = await supaClient
+            .from('personnes_appartement')
+            .update({ actif: true })
+            .eq('id', id);
+
+        if (error) {
+            console.error('Erreur réactivation :', error);
+            alert('Erreur : la fiche n\'a pas pu être réactivée.');
+            return;
+        }
+
+        await chargerPersonnes();
+    }
+
+    // ----- Échappement HTML -----
+    function echapper(texte) {
+        if (texte === null || texte === undefined) return '';
+        return String(texte)
+            .replace(/&/g, '&amp;')
+            .replace(/</g, '&lt;')
+            .replace(/>/g, '&gt;');
+    }
+    </script>
+
+</body>
+</html>

@@ -263,6 +263,7 @@ function genererMenuOnglets(pageActive, role) {
         { id: 'production',             titre: '📋 Production J-1',        url: 'production.html' },
         { id: 'service',                titre: '🍽️ Service du jour',       url: 'service.html' },
         { id: 'commande-ejc',           titre: '📝 Commandes externes',    url: 'commande-ejc.html' },
+        { id: 'personnes-appartement',  titre: '🏨 Personnes appartement', url: 'personnes-appartement.html' },
         { id: 'repas-domicile',         titre: '🏠 Repas à domicile',      url: 'repas-domicile.html' },
         { id: 'presences-domicile',     titre: '🗓️ Présences domicile',    url: 'presences-domicile.html' },
         { id: 'recap-clients',          titre: '📊 Récap clients',         url: 'recap-clients.html' },
