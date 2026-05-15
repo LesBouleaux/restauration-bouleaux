@@ -1,0 +1,498 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Catalogue produits appartement - Restauration Les Bouleaux</title>
+    <link rel="stylesheet" href="shared.css">
+    <style>
+        .bandeau-info {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            padding: 12px 16px;
+            border-radius: 8px;
+            margin: 10px 0 20px 0;
+            font-weight: 500;
+            background: #e3f2fd;
+            color: #0d47a1;
+            border-left: 5px solid #1976d2;
+        }
+        .bandeau-info .emoji-grand { font-size: 28px; }
+
+        .categorie-titre {
+            margin-top: 30px;
+            padding: 8px 14px;
+            background: #f0f8f0;
+            border-left: 4px solid #2c5530;
+            border-radius: 6px;
+            color: #2c5530;
+            font-size: 18px;
+            font-weight: bold;
+        }
+
+        .produit-card {
+            background: white;
+            padding: 14px 16px;
+            margin: 8px 0;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.06);
+            display: flex;
+            align-items: center;
+            gap: 14px;
+            flex-wrap: wrap;
+        }
+        .produit-info {
+            flex: 1;
+            min-width: 200px;
+        }
+        .produit-nom {
+            font-weight: bold;
+            font-size: 16px;
+            color: #333;
+        }
+        .produit-desc {
+            color: #888;
+            font-size: 13px;
+            margin-top: 3px;
+        }
+        .produit-prix {
+            font-weight: bold;
+            font-size: 18px;
+            color: #2c5530;
+            min-width: 90px;
+            text-align: right;
+        }
+        .produit-actions {
+            display: flex;
+            gap: 6px;
+        }
+
+        /* Datalist pour proposer les catégories existantes */
+        input[list] {
+            font-family: inherit;
+        }
+    </style>
+</head>
+<body>
+    <div id="app-header"></div>
+    <h1>🍽️ Restauration Les Bouleaux</h1>
+    <div id="menu"></div>
+
+    <h2>🏷️ Catalogue produits — Appartement Corgémont</h2>
+
+    <div class="bandeau-info">
+        <span class="emoji-grand">🛒</span>
+        <div>
+            <strong>Catalogue des produits vendus en complément</strong><br>
+            <small>Ces produits seront livrés depuis la cuisine et chargés à la vente sur les séjours des personnes.</small>
+        </div>
+    </div>
+
+    <h2>➕ Nouveau produit</h2>
+
+    <div class="resident">
+        <form id="form-produit">
+            <div class="form-group">
+                <label for="nom">Nom du produit *</label>
+                <input type="text" id="nom" required placeholder="Ex : Coca 33cl">
+            </div>
+
+            <div class="form-group">
+                <label for="categorie">Catégorie *</label>
+                <input type="text" id="categorie" list="categories-existantes" required
+                       placeholder="Ex : Boissons, Snacks, Pâtisseries...">
+                <datalist id="categories-existantes"></datalist>
+                <small style="color:#666;">Tu peux choisir une catégorie existante ou en créer une nouvelle.</small>
+            </div>
+
+            <div class="form-group">
+                <label for="prix">Prix de vente (CHF) *</label>
+                <input type="number" id="prix" step="0.05" min="0" required placeholder="Ex : 2.50">
+            </div>
+
+            <div class="form-group">
+                <label for="description">Description (optionnel)</label>
+                <textarea id="description" placeholder="Précisions sur le produit..."></textarea>
+            </div>
+
+            <div class="form-actions">
+                <button type="submit" class="btn btn-primary">Enregistrer le produit</button>
+            </div>
+
+            <div id="form-message"></div>
+        </form>
+    </div>
+
+    <h2>📋 Catalogue</h2>
+
+    <div class="toolbar">
+        <button type="button" id="btn-vue-actifs" class="btn btn-primary">Produits actifs</button>
+        <button type="button" id="btn-vue-archives" class="btn btn-secondary">Produits archivés</button>
+        <input type="text" id="recherche" placeholder="🔍 Rechercher par nom ou catégorie...">
+    </div>
+
+    <div id="liste-produits">
+        <div class="loading">Chargement…</div>
+    </div>
+
+    <!-- ===== Modal modification ===== -->
+    <div id="modal-modif" class="modal-overlay">
+        <div class="modal">
+            <h2 id="modal-titre">Modifier le produit</h2>
+
+            <form id="form-modif">
+                <input type="hidden" id="modif-id">
+
+                <div class="form-group">
+                    <label for="modif-nom">Nom du produit *</label>
+                    <input type="text" id="modif-nom" required>
+                </div>
+
+                <div class="form-group">
+                    <label for="modif-categorie">Catégorie *</label>
+                    <input type="text" id="modif-categorie" list="modif-categories-existantes" required>
+                    <datalist id="modif-categories-existantes"></datalist>
+                </div>
+
+                <div class="form-group">
+                    <label for="modif-prix">Prix de vente (CHF) *</label>
+                    <input type="number" id="modif-prix" step="0.05" min="0" required>
+                </div>
+
+                <div class="form-group">
+                    <label for="modif-description">Description (optionnel)</label>
+                    <textarea id="modif-description"></textarea>
+                </div>
+
+                <div id="modif-message"></div>
+
+                <div class="form-actions">
+                    <button type="button" class="btn btn-secondary" id="btn-annuler-modif">Annuler</button>
+                    <button type="submit" class="btn btn-primary">Enregistrer les modifications</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="shared.js"></script>
+    <script>
+    // ================================================
+    // PAGE CATALOGUE PRODUITS APPARTEMENT
+    // ================================================
+
+    let vueCourante = 'actifs';
+    let tousProduitsCache = [];
+
+    document.addEventListener('DOMContentLoaded', async () => {
+        const auth = await verifierAuthEtRole(['admin']);
+        if (!auth) return;
+
+        afficherMenuComplet(
+            'catalogue-appartement',
+            auth.user.email,
+            auth.profil.role,
+            auth.profil.nom_affiche
+        );
+
+        await chargerProduits();
+
+        document.getElementById('form-produit')
+            .addEventListener('submit', enregistrerProduit);
+        document.getElementById('btn-vue-actifs')
+            .addEventListener('click', () => changerVue('actifs'));
+        document.getElementById('btn-vue-archives')
+            .addEventListener('click', () => changerVue('archives'));
+        document.getElementById('form-modif')
+            .addEventListener('submit', enregistrerModification);
+        document.getElementById('btn-annuler-modif')
+            .addEventListener('click', fermerModale);
+        document.getElementById('recherche')
+            .addEventListener('input', afficherListe);
+    });
+
+    // ----- Met à jour les datalist de catégories proposées -----
+    function majDatalistCategories() {
+        const categories = [...new Set(tousProduitsCache.map(p => p.categorie).filter(Boolean))].sort();
+
+        ['categories-existantes', 'modif-categories-existantes'].forEach(idDatalist => {
+            const datalist = document.getElementById(idDatalist);
+            datalist.innerHTML = '';
+            categories.forEach(c => {
+                const opt = document.createElement('option');
+                opt.value = c;
+                datalist.appendChild(opt);
+            });
+        });
+    }
+
+    // ----- Enregistrer un nouveau produit -----
+    async function enregistrerProduit(event) {
+        event.preventDefault();
+
+        const message = document.getElementById('form-message');
+        message.innerHTML = '';
+
+        const produit = {
+            nom:         document.getElementById('nom').value.trim(),
+            categorie:   document.getElementById('categorie').value.trim(),
+            prix:        parseFloat(document.getElementById('prix').value),
+            description: document.getElementById('description').value.trim() || null
+        };
+
+        if (!produit.nom || !produit.categorie || isNaN(produit.prix) || produit.prix < 0) {
+            message.innerHTML =
+                '<div class="erreur-msg">Merci de remplir le nom, la catégorie et un prix valide.</div>';
+            return;
+        }
+
+        const { error } = await supaClient
+            .from('catalogue_produits_appartement')
+            .insert([produit]);
+
+        if (error) {
+            console.error('Erreur enregistrement :', error);
+            message.innerHTML =
+                '<div class="erreur-msg">Erreur : ' + error.message + '</div>';
+            return;
+        }
+
+        message.innerHTML = '<div class="success">Produit enregistré ✔</div>';
+        document.getElementById('form-produit').reset();
+
+        vueCourante = 'actifs';
+        majBoutonsVue();
+        await chargerProduits();
+    }
+
+    // ----- Changer de vue -----
+    function changerVue(vue) {
+        vueCourante = vue;
+        majBoutonsVue();
+        chargerProduits();
+    }
+
+    function majBoutonsVue() {
+        const btnActifs   = document.getElementById('btn-vue-actifs');
+        const btnArchives = document.getElementById('btn-vue-archives');
+        if (vueCourante === 'actifs') {
+            btnActifs.className   = 'btn btn-primary';
+            btnArchives.className = 'btn btn-secondary';
+        } else {
+            btnActifs.className   = 'btn btn-secondary';
+            btnArchives.className = 'btn btn-primary';
+        }
+    }
+
+    // ----- Charger les produits depuis la base -----
+    async function chargerProduits() {
+        const conteneur = document.getElementById('liste-produits');
+        conteneur.innerHTML = '<div class="loading">Chargement…</div>';
+
+        const veutActifs = (vueCourante === 'actifs');
+
+        const { data, error } = await supaClient
+            .from('catalogue_produits_appartement')
+            .select('*')
+            .eq('actif', veutActifs)
+            .order('categorie', { ascending: true })
+            .order('nom', { ascending: true });
+
+        if (error) {
+            console.error('Erreur chargement produits :', error);
+            conteneur.innerHTML =
+                '<div class="erreur-msg">Erreur : impossible de charger les produits.</div>';
+            return;
+        }
+
+        tousProduitsCache = data || [];
+        majDatalistCategories();
+        afficherListe();
+    }
+
+    // ----- Afficher la liste filtrée + groupée par catégorie -----
+    function afficherListe() {
+        const conteneur = document.getElementById('liste-produits');
+        const recherche = document.getElementById('recherche').value.trim().toLowerCase();
+
+        let produits = tousProduitsCache;
+        if (recherche) {
+            produits = produits.filter(p => {
+                const nom = (p.nom || '').toLowerCase();
+                const cat = (p.categorie || '').toLowerCase();
+                return nom.includes(recherche) || cat.includes(recherche);
+            });
+        }
+
+        if (produits.length === 0) {
+            const texte = (vueCourante === 'actifs')
+                ? (recherche ? 'Aucun produit actif ne correspond à la recherche.' : 'Aucun produit dans le catalogue pour le moment.')
+                : (recherche ? 'Aucun produit archivé ne correspond à la recherche.' : 'Aucun produit archivé.');
+            conteneur.innerHTML = '<div class="info-msg">' + texte + '</div>';
+            return;
+        }
+
+        // Regroupement par catégorie
+        const parCategorie = {};
+        produits.forEach(p => {
+            const cat = p.categorie || 'Sans catégorie';
+            if (!parCategorie[cat]) parCategorie[cat] = [];
+            parCategorie[cat].push(p);
+        });
+
+        const categoriesTriees = Object.keys(parCategorie).sort();
+        const veutActifs = (vueCourante === 'actifs');
+
+        let html = '';
+        categoriesTriees.forEach(cat => {
+            html += '<div class="categorie-titre">' + echapper(cat) + ' — ' + parCategorie[cat].length + ' produit(s)</div>';
+
+            parCategorie[cat].forEach(p => {
+                const prixFormate = (parseFloat(p.prix) || 0).toFixed(2);
+
+                let actions = '';
+                if (veutActifs) {
+                    actions = '<button type="button" class="btn-edit btn-small" '
+                            + 'onclick="ouvrirModale(' + p.id + ')">Modifier</button> '
+                            + '<button type="button" class="btn-secondary btn-small" '
+                            + 'onclick="archiverProduit(' + p.id + ')">Archiver</button>';
+                } else {
+                    actions = '<button type="button" class="btn-primary btn-small" '
+                            + 'onclick="reactiverProduit(' + p.id + ')">Réactiver</button>';
+                }
+
+                html += '<div class="produit-card">'
+                      + '<div class="produit-info">'
+                      +   '<div class="produit-nom">' + echapper(p.nom) + '</div>';
+                if (p.description) {
+                    html += '<div class="produit-desc">' + echapper(p.description) + '</div>';
+                }
+                html +=   '</div>'
+                      + '<div class="produit-prix">' + prixFormate + ' CHF</div>'
+                      + '<div class="produit-actions">' + actions + '</div>'
+                      + '</div>';
+            });
+        });
+
+        conteneur.innerHTML = html;
+    }
+
+    // ----- Modale modification -----
+    async function ouvrirModale(id) {
+        const message = document.getElementById('modif-message');
+        message.innerHTML = '';
+
+        const { data, error } = await supaClient
+            .from('catalogue_produits_appartement')
+            .select('*')
+            .eq('id', id)
+            .maybeSingle();
+
+        if (error || !data) {
+            console.error('Erreur chargement produit :', error);
+            alert('Impossible de charger ce produit.');
+            return;
+        }
+
+        document.getElementById('modif-id').value          = data.id;
+        document.getElementById('modif-nom').value         = data.nom || '';
+        document.getElementById('modif-categorie').value   = data.categorie || '';
+        document.getElementById('modif-prix').value        = data.prix || 0;
+        document.getElementById('modif-description').value = data.description || '';
+
+        document.getElementById('modal-titre').textContent =
+            'Modifier — ' + (data.nom || '');
+
+        document.getElementById('modal-modif').classList.add('active');
+    }
+
+    function fermerModale() {
+        document.getElementById('modal-modif').classList.remove('active');
+        document.getElementById('modif-message').innerHTML = '';
+    }
+
+    async function enregistrerModification(event) {
+        event.preventDefault();
+
+        const message = document.getElementById('modif-message');
+        message.innerHTML = '';
+
+        const id = document.getElementById('modif-id').value;
+
+        const produit = {
+            nom:         document.getElementById('modif-nom').value.trim(),
+            categorie:   document.getElementById('modif-categorie').value.trim(),
+            prix:        parseFloat(document.getElementById('modif-prix').value),
+            description: document.getElementById('modif-description').value.trim() || null
+        };
+
+        if (!produit.nom || !produit.categorie || isNaN(produit.prix) || produit.prix < 0) {
+            message.innerHTML =
+                '<div class="erreur-msg">Merci de remplir le nom, la catégorie et un prix valide.</div>';
+            return;
+        }
+
+        const { error } = await supaClient
+            .from('catalogue_produits_appartement')
+            .update(produit)
+            .eq('id', id);
+
+        if (error) {
+            console.error('Erreur modification :', error);
+            message.innerHTML =
+                '<div class="erreur-msg">Erreur : ' + error.message + '</div>';
+            return;
+        }
+
+        fermerModale();
+        await chargerProduits();
+    }
+
+    // ----- Archivage / réactivation -----
+    async function archiverProduit(id) {
+        const ok = confirm('Archiver ce produit ?\n\n'
+                         + 'Il ne sera plus proposé à la vente, mais restera dans l\'historique.');
+        if (!ok) return;
+
+        const { error } = await supaClient
+            .from('catalogue_produits_appartement')
+            .update({ actif: false })
+            .eq('id', id);
+
+        if (error) {
+            alert('Erreur : ' + error.message);
+            return;
+        }
+        await chargerProduits();
+    }
+
+    async function reactiverProduit(id) {
+        const ok = confirm('Réactiver ce produit ?\n\n'
+                         + 'Il sera de nouveau proposé à la vente.');
+        if (!ok) return;
+
+        const { error } = await supaClient
+            .from('catalogue_produits_appartement')
+            .update({ actif: true })
+            .eq('id', id);
+
+        if (error) {
+            alert('Erreur : ' + error.message);
+            return;
+        }
+        await chargerProduits();
+    }
+
+    function echapper(texte) {
+        if (texte === null || texte === undefined) return '';
+        return String(texte)
+            .replace(/&/g, '&amp;')
+            .replace(/</g, '&lt;')
+            .replace(/>/g, '&gt;')
+            .replace(/"/g, '&quot;');
+    }
+    </script>
+
+</body>
+</html>

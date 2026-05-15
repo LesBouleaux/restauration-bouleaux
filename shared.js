@@ -266,6 +266,7 @@ function genererMenuOnglets(pageActive, role) {
         { id: 'personnes-appartement',  titre: '🏨 Personnes appartement', url: 'personnes-appartement.html' },
         { id: 'sejours-appartement',    titre: '📅 Séjours appartement',   url: 'sejours-appartement.html' },
         { id: 'presences-appartement',  titre: '✅ Présences appartement', url: 'presences-appartement.html' },
+        { id: 'catalogue-appartement',  titre: '🏷️ Catalogue appartement', url: 'catalogue-appartement.html' },
         { id: 'repas-domicile',         titre: '🏠 Repas à domicile',      url: 'repas-domicile.html' },
         { id: 'presences-domicile',     titre: '🗓️ Présences domicile',    url: 'presences-domicile.html' },
         { id: 'recap-clients',          titre: '📊 Récap clients',         url: 'recap-clients.html' },
