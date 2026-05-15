@@ -269,6 +269,7 @@ function genererMenuOnglets(pageActive, role) {
         { id: 'catalogue-appartement',  titre: '🏷️ Catalogue appartement', url: 'catalogue-appartement.html' },
         { id: 'commandes-appartement',  titre: '🛒 Commandes appartement', url: 'commandes-appartement.html' },
         { id: 'livraisons-cuisine',     titre: '📦 Livraisons cuisine',    url: 'livraisons-cuisine.html' },
+        { id: 'caisse-appartement',     titre: '💰 Caisse appartement',    url: 'caisse-appartement.html' },
         { id: 'repas-domicile',         titre: '🏠 Repas à domicile',      url: 'repas-domicile.html' },
         { id: 'presences-domicile',     titre: '🗓️ Présences domicile',    url: 'presences-domicile.html' },
         { id: 'recap-clients',          titre: '📊 Récap clients',         url: 'recap-clients.html' },

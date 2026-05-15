@@ -1,0 +1,888 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Caisse appartement - Restauration Les Bouleaux</title>
+    <link rel="stylesheet" href="shared.css">
+    <style>
+        .bandeau-info {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            padding: 12px 16px;
+            border-radius: 8px;
+            margin: 10px 0 20px 0;
+            font-weight: 500;
+            background: #e8f4e8;
+            color: #2c5530;
+            border-left: 5px solid #2c5530;
+        }
+        .bandeau-info .emoji-grand { font-size: 28px; }
+
+        .vue-tabs {
+            display: flex;
+            gap: 5px;
+            margin: 15px 0 0;
+            border-bottom: 2px solid #2c5530;
+            flex-wrap: wrap;
+        }
+        .vue-tab {
+            padding: 10px 18px;
+            background: #e8e8e8;
+            color: #333;
+            border: none;
+            border-radius: 8px 8px 0 0;
+            font-weight: bold;
+            font-size: 15px;
+            cursor: pointer;
+            font-family: inherit;
+        }
+        .vue-tab:hover { background: #d4d4d4; }
+        .vue-tab.active { background: #2c5530; color: white; }
+        .vue-contenu { padding-top: 20px; }
+        .vue-contenu.hidden { display: none; }
+
+        .caisse-grid {
+            display: grid;
+            grid-template-columns: 1fr 380px;
+            gap: 20px;
+        }
+        @media (max-width: 900px) {
+            .caisse-grid { grid-template-columns: 1fr; }
+        }
+
+        .zone-produits {
+            background: white;
+            padding: 16px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.06);
+        }
+        .zone-panier {
+            background: white;
+            padding: 16px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.06);
+            position: sticky;
+            top: 20px;
+            align-self: start;
+        }
+
+        .selection-personne {
+            background: #f0f8f0;
+            padding: 12px 14px;
+            border-radius: 6px;
+            border-left: 4px solid #2c5530;
+            margin-bottom: 16px;
+        }
+        .selection-personne select {
+            width: 100%;
+            padding: 10px;
+            border: 1px solid #ccc;
+            border-radius: 6px;
+            font-size: 15px;
+            font-family: inherit;
+            margin-top: 6px;
+        }
+
+        .categorie-titre {
+            margin-top: 15px;
+            padding: 6px 12px;
+            background: #f0f8f0;
+            border-left: 4px solid #2c5530;
+            border-radius: 4px;
+            color: #2c5530;
+            font-size: 14px;
+            font-weight: bold;
+        }
+        .categorie-titre:first-of-type { margin-top: 0; }
+
+        .grille-produits {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+            gap: 8px;
+            margin: 8px 0;
+        }
+        .produit-btn {
+            background: white;
+            border: 1px solid #e0e0e0;
+            border-radius: 8px;
+            padding: 10px;
+            text-align: left;
+            cursor: pointer;
+            font-family: inherit;
+            transition: all 0.15s;
+            position: relative;
+        }
+        .produit-btn:hover {
+            border-color: #2c5530;
+            background: #f0f8f0;
+            box-shadow: 0 2px 6px rgba(44, 85, 48, 0.15);
+        }
+        .produit-btn .nom {
+            font-weight: bold;
+            font-size: 13px;
+            color: #333;
+            line-height: 1.2;
+        }
+        .produit-btn .prix {
+            color: #2c5530;
+            font-weight: bold;
+            font-size: 14px;
+            margin-top: 4px;
+        }
+        .produit-btn .stock {
+            position: absolute;
+            top: 4px;
+            right: 6px;
+            font-size: 10px;
+            padding: 1px 6px;
+            border-radius: 8px;
+            font-weight: bold;
+        }
+        .stock.ok   { background: #e8f4e8; color: #2c5530; }
+        .stock.bas  { background: #fff3e0; color: #b35900; }
+        .stock.zero { background: #fce4e4; color: #c0392b; }
+
+        .panier-vide {
+            color: #aaa;
+            text-align: center;
+            padding: 30px 10px;
+            font-style: italic;
+        }
+        table.panier {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 13px;
+        }
+        table.panier td {
+            padding: 6px 4px;
+            border-bottom: 1px solid #f0f0f0;
+            vertical-align: middle;
+        }
+        table.panier td.col-qte {
+            text-align: center;
+            white-space: nowrap;
+        }
+        table.panier td.col-qte input {
+            width: 50px;
+            padding: 4px 6px;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+            text-align: center;
+            font-size: 13px;
+        }
+        table.panier td.col-total {
+            text-align: right;
+            font-weight: bold;
+            color: #2c5530;
+            white-space: nowrap;
+        }
+        table.panier td.col-x {
+            text-align: center;
+            color: #c0392b;
+            cursor: pointer;
+            font-weight: bold;
+            font-size: 16px;
+            width: 24px;
+        }
+        table.panier td.col-x:hover { background: #fee; }
+
+        .total-panier {
+            margin-top: 16px;
+            padding: 12px 14px;
+            background: #2c5530;
+            color: white;
+            border-radius: 6px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .total-panier .montant {
+            font-size: 22px;
+            font-weight: bold;
+        }
+
+        .avertissement-stock {
+            background: #fff3e0;
+            color: #b35900;
+            padding: 10px 12px;
+            border-radius: 6px;
+            border-left: 4px solid #b35900;
+            font-size: 13px;
+            margin: 10px 0;
+        }
+
+        .badge-annulee {
+            display: inline-block;
+            padding: 2px 10px;
+            border-radius: 10px;
+            background: #fce4e4;
+            color: #922b21;
+            font-size: 11px;
+            font-weight: bold;
+            text-transform: uppercase;
+        }
+    </style>
+</head>
+<body>
+    <div id="app-header"></div>
+    <h1>🍽️ Restauration Les Bouleaux</h1>
+    <div id="menu"></div>
+
+    <h2>💰 Caisse — Appartement Corgémont</h2>
+
+    <div class="bandeau-info">
+        <span class="emoji-grand">🛍️</span>
+        <div>
+            <strong>Ventes complémentaires</strong><br>
+            <small>Charge les produits consommés sur le séjour de la personne. Le total sera ajouté à la facture finale.</small>
+        </div>
+    </div>
+
+    <div class="vue-tabs">
+        <button type="button" class="vue-tab active" id="tab-caisse" onclick="changerVue('caisse')">🛒 Nouvelle vente</button>
+        <button type="button" class="vue-tab" id="tab-historique" onclick="changerVue('historique')">📋 Historique des ventes</button>
+    </div>
+
+    <!-- ============ VUE CAISSE ============ -->
+    <div class="vue-contenu" id="vue-caisse">
+        <div class="caisse-grid">
+            <!-- Zone gauche : sélection produits -->
+            <div class="zone-produits">
+                <div class="selection-personne">
+                    <label for="select-sejour"><strong>👤 Charger sur le séjour de :</strong></label>
+                    <select id="select-sejour" onchange="majInfoSejour()">
+                        <option value="">— Choisir un séjour en cours —</option>
+                    </select>
+                    <div id="info-sejour" style="font-size:13px;color:#666;margin-top:6px;"></div>
+                </div>
+
+                <h3 style="margin-top:0;">Catalogue</h3>
+                <div id="liste-produits"><div class="loading">Chargement…</div></div>
+            </div>
+
+            <!-- Zone droite : panier -->
+            <div class="zone-panier">
+                <h3 style="margin-top:0;">🛒 Panier en cours</h3>
+                <div id="contenu-panier"><div class="panier-vide">Aucun produit ajouté</div></div>
+
+                <div id="zone-total" style="display:none;">
+                    <div class="total-panier">
+                        <span>Total à charger</span>
+                        <span class="montant" id="montant-total">0.00 CHF</span>
+                    </div>
+
+                    <div id="zone-avertissement-stock"></div>
+
+                    <div class="form-group" style="margin-top:14px;">
+                        <label for="vente-notes">Notes (optionnel)</label>
+                        <textarea id="vente-notes" placeholder="Précisions sur cette vente..."></textarea>
+                    </div>
+
+                    <div class="form-actions" style="margin-top:14px;">
+                        <button type="button" class="btn-secondary" onclick="viderPanier()">Vider</button>
+                        <button type="button" class="btn-primary" onclick="validerVente()" id="btn-valider">💾 Valider la vente</button>
+                    </div>
+                </div>
+
+                <div id="message-vente" style="margin-top:14px;"></div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ============ VUE HISTORIQUE ============ -->
+    <div class="vue-contenu hidden" id="vue-historique">
+        <h3>Historique des ventes</h3>
+        <div class="toolbar">
+            <label for="hist-filtre"><strong>Filtrer par séjour :</strong></label>
+            <select id="hist-filtre" onchange="afficherHistorique()">
+                <option value="">— Tous les séjours —</option>
+            </select>
+            <label style="display:flex;align-items:center;gap:6px;">
+                <input type="checkbox" id="hist-inclure-annulees" onchange="afficherHistorique()">
+                Inclure les ventes annulées
+            </label>
+        </div>
+        <div id="liste-historique"><div class="loading">Chargement…</div></div>
+    </div>
+
+    <!-- ===== Modal détail / annulation ===== -->
+    <div id="modal-detail" class="modal-overlay">
+        <div class="modal">
+            <h2 id="modal-detail-titre">Détail de la vente</h2>
+            <div id="modal-detail-contenu"></div>
+
+            <div id="zone-annulation" style="margin-top:14px;display:none;">
+                <hr>
+                <h3 style="color:#c0392b;">❌ Annuler cette vente</h3>
+                <div class="form-group">
+                    <label for="motif-annulation">Motif de l'annulation *</label>
+                    <textarea id="motif-annulation" placeholder="Ex : erreur de saisie, produit retourné, mauvaise personne..."></textarea>
+                </div>
+                <div class="form-actions">
+                    <button type="button" class="btn-secondary" onclick="masquerZoneAnnulation()">Retour</button>
+                    <button type="button" class="btn-danger" onclick="confirmerAnnulation()">❌ Confirmer l'annulation</button>
+                </div>
+            </div>
+
+            <div class="form-actions modal-actions" id="actions-detail" style="margin-top:14px;">
+                <button type="button" class="btn-secondary" onclick="fermerModalDetail()">Fermer</button>
+                <button type="button" class="btn-danger" id="btn-annuler-vente" onclick="afficherZoneAnnulation()">❌ Annuler cette vente</button>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="shared.js"></script>
+    <script>
+    // ================================================
+    // PAGE CAISSE APPARTEMENT
+    // ================================================
+
+    let userAuth = null;
+    let produitsCache = [];
+    let sejoursEnCours = [];
+    let personnesParId = {};
+    let ventesCache = [];
+    let stockParProduit = {};   // calculé à partir des livraisons - ventes
+    let panier = [];            // [{ produit_id, quantite, prix_unitaire }]
+    let venteCouranteDetail = null;
+
+    document.addEventListener('DOMContentLoaded', async () => {
+        const auth = await verifierAuthEtRole(['admin']);
+        if (!auth) return;
+        userAuth = auth;
+
+        afficherMenuComplet(
+            'caisse-appartement',
+            auth.user.email,
+            auth.profil.role,
+            auth.profil.nom_affiche
+        );
+
+        await chargerTout();
+    });
+
+    async function chargerTout() {
+        await chargerProduits();
+        await chargerSejoursEnCours();
+        await chargerVentes();
+        await chargerLivraisonsEtCalculerStock();
+        afficherProduits();
+        majSelectsSejours();
+    }
+
+    async function chargerProduits() {
+        const { data, error } = await supaClient
+            .from('catalogue_produits_appartement')
+            .select('*')
+            .eq('actif', true)
+            .order('categorie', { ascending: true })
+            .order('nom', { ascending: true });
+        if (error) { console.error(error); return; }
+        produitsCache = data || [];
+    }
+
+    async function chargerSejoursEnCours() {
+        const { data: sejours, error } = await supaClient
+            .from('sejours_appartement')
+            .select('*')
+            .eq('statut', 'en_cours')
+            .order('numero_chambre', { ascending: true });
+        if (error) { console.error(error); return; }
+        sejoursEnCours = sejours || [];
+
+        const ids = [...new Set(sejoursEnCours.map(s => s.personne_id))];
+        if (ids.length === 0) return;
+
+        const { data: personnes, error: errP } = await supaClient
+            .from('personnes_appartement')
+            .select('id, prenom, nom')
+            .in('id', ids);
+        if (errP) { console.error(errP); return; }
+        personnesParId = {};
+        (personnes || []).forEach(p => { personnesParId[p.id] = p; });
+    }
+
+    async function chargerVentes() {
+        const { data, error } = await supaClient
+            .from('ventes_appartement')
+            .select('*, lignes:lignes_vente_appartement(*)')
+            .order('cree_le', { ascending: false });
+        if (error) { console.error(error); return; }
+        ventesCache = data || [];
+    }
+
+    async function chargerLivraisonsEtCalculerStock() {
+        // Total livré par produit (depuis les commandes livrées)
+        const { data: commandes, error } = await supaClient
+            .from('commandes_appartement')
+            .select('statut, lignes:lignes_commande_appartement(produit_id, qte_livree)')
+            .eq('statut', 'livree');
+        if (error) { console.error(error); return; }
+
+        stockParProduit = {};
+        produitsCache.forEach(p => { stockParProduit[p.id] = 0; });
+
+        (commandes || []).forEach(c => {
+            (c.lignes || []).forEach(l => {
+                if (stockParProduit[l.produit_id] !== undefined) {
+                    stockParProduit[l.produit_id] += (l.qte_livree || 0);
+                }
+            });
+        });
+
+        // Soustrait les ventes non annulées
+        ventesCache.forEach(v => {
+            if (v.annulee) return;
+            (v.lignes || []).forEach(l => {
+                if (stockParProduit[l.produit_id] !== undefined) {
+                    stockParProduit[l.produit_id] -= (l.quantite || 0);
+                }
+            });
+        });
+    }
+
+    // ================================================
+    // NAVIGATION
+    // ================================================
+    function changerVue(vue) {
+        document.getElementById('tab-caisse').classList.toggle('active', vue === 'caisse');
+        document.getElementById('tab-historique').classList.toggle('active', vue === 'historique');
+        document.getElementById('vue-caisse').classList.toggle('hidden', vue !== 'caisse');
+        document.getElementById('vue-historique').classList.toggle('hidden', vue !== 'historique');
+        if (vue === 'historique') afficherHistorique();
+    }
+
+    // ================================================
+    // VUE CAISSE
+    // ================================================
+    function majSelectsSejours() {
+        // Select principal de la caisse
+        const sel = document.getElementById('select-sejour');
+        sel.innerHTML = '<option value="">— Choisir un séjour en cours —</option>';
+        sejoursEnCours.forEach(s => {
+            const p = personnesParId[s.personne_id];
+            if (!p) return;
+            const txt = (p.nom + ' ' + p.prenom) + ' — Chambre ' + s.numero_chambre;
+            const opt = document.createElement('option');
+            opt.value = s.id;
+            opt.textContent = txt;
+            sel.appendChild(opt);
+        });
+
+        // Select de filtre historique (tous les séjours qui ont au moins une vente)
+        const selH = document.getElementById('hist-filtre');
+        selH.innerHTML = '<option value="">— Tous les séjours —</option>';
+        const idsAvecVentes = [...new Set(ventesCache.map(v => v.sejour_id))];
+        idsAvecVentes.forEach(idSejour => {
+            const s = sejoursEnCours.find(x => x.id === idSejour);
+            if (s) {
+                const p = personnesParId[s.personne_id];
+                if (p) {
+                    const opt = document.createElement('option');
+                    opt.value = s.id;
+                    opt.textContent = p.nom + ' ' + p.prenom + ' — Chambre ' + s.numero_chambre;
+                    selH.appendChild(opt);
+                }
+            } else {
+                // Séjour pas dans "en_cours" → on essaie de le charger pour le filtre
+                const opt = document.createElement('option');
+                opt.value = idSejour;
+                opt.textContent = 'Séjour #' + idSejour;
+                selH.appendChild(opt);
+            }
+        });
+    }
+
+    function majInfoSejour() {
+        const sejourId = parseInt(document.getElementById('select-sejour').value, 10);
+        const info = document.getElementById('info-sejour');
+        if (!sejourId) {
+            info.innerHTML = '';
+            return;
+        }
+        const s = sejoursEnCours.find(x => x.id === sejourId);
+        if (!s) { info.innerHTML = ''; return; }
+        const p = personnesParId[s.personne_id];
+        info.innerHTML = '📅 Séjour du ' + dateFr(s.date_arrivee) + ' au ' + dateFr(s.date_depart);
+    }
+
+    function afficherProduits() {
+        const conteneur = document.getElementById('liste-produits');
+
+        if (produitsCache.length === 0) {
+            conteneur.innerHTML = '<div class="info-msg">Aucun produit actif dans le catalogue.</div>';
+            return;
+        }
+
+        const parCat = {};
+        produitsCache.forEach(p => {
+            const cat = p.categorie || 'Sans catégorie';
+            if (!parCat[cat]) parCat[cat] = [];
+            parCat[cat].push(p);
+        });
+
+        let html = '';
+        Object.keys(parCat).sort().forEach(cat => {
+            html += '<div class="categorie-titre">' + echapper(cat) + '</div>';
+            html += '<div class="grille-produits">';
+            parCat[cat].forEach(p => {
+                const stock = stockParProduit[p.id] || 0;
+                let clsStock = 'zero';
+                if (stock > 5) clsStock = 'ok';
+                else if (stock > 0) clsStock = 'bas';
+
+                const prix = (parseFloat(p.prix) || 0).toFixed(2);
+                html += '<button type="button" class="produit-btn" onclick="ajouterAuPanier(' + p.id + ')">'
+                      +   '<div class="stock ' + clsStock + '">' + stock + '</div>'
+                      +   '<div class="nom">' + echapper(p.nom) + '</div>'
+                      +   '<div class="prix">' + prix + ' CHF</div>'
+                      + '</button>';
+            });
+            html += '</div>';
+        });
+
+        conteneur.innerHTML = html;
+    }
+
+    // ================================================
+    // PANIER
+    // ================================================
+    function ajouterAuPanier(produitId) {
+        const produit = produitsCache.find(p => p.id === produitId);
+        if (!produit) return;
+
+        const ligne = panier.find(l => l.produit_id === produitId);
+        if (ligne) {
+            ligne.quantite += 1;
+        } else {
+            panier.push({
+                produit_id: produitId,
+                quantite: 1,
+                prix_unitaire: parseFloat(produit.prix) || 0
+            });
+        }
+        afficherPanier();
+    }
+
+    function changerQuantite(produitId, nouvelleQte) {
+        const q = parseInt(nouvelleQte, 10);
+        const ligne = panier.find(l => l.produit_id === produitId);
+        if (!ligne) return;
+        if (isNaN(q) || q <= 0) {
+            retirerDuPanier(produitId);
+            return;
+        }
+        ligne.quantite = q;
+        afficherPanier();
+    }
+
+    function retirerDuPanier(produitId) {
+        panier = panier.filter(l => l.produit_id !== produitId);
+        afficherPanier();
+    }
+
+    function afficherPanier() {
+        const conteneur = document.getElementById('contenu-panier');
+        const zoneTotal = document.getElementById('zone-total');
+
+        if (panier.length === 0) {
+            conteneur.innerHTML = '<div class="panier-vide">Aucun produit ajouté</div>';
+            zoneTotal.style.display = 'none';
+            return;
+        }
+
+        let html = '<table class="panier"><tbody>';
+        let total = 0;
+        const avertissements = [];
+
+        panier.forEach(l => {
+            const p = produitsCache.find(x => x.id === l.produit_id);
+            if (!p) return;
+            const sousTotal = l.quantite * l.prix_unitaire;
+            total += sousTotal;
+
+            const stockDispo = stockParProduit[l.produit_id] || 0;
+            if (l.quantite > stockDispo) {
+                avertissements.push(p.nom + ' : ' + l.quantite + ' demandé(s), stock = ' + stockDispo);
+            }
+
+            html += '<tr>'
+                  + '<td><strong>' + echapper(p.nom) + '</strong><br>'
+                  +   '<small style="color:#888;">' + l.prix_unitaire.toFixed(2) + ' CHF / pièce</small></td>'
+                  + '<td class="col-qte">'
+                  +   '<input type="number" min="1" step="1" value="' + l.quantite + '" '
+                  +     'onchange="changerQuantite(' + l.produit_id + ', this.value)">'
+                  + '</td>'
+                  + '<td class="col-total">' + sousTotal.toFixed(2) + ' CHF</td>'
+                  + '<td class="col-x" onclick="retirerDuPanier(' + l.produit_id + ')" title="Retirer">✕</td>'
+                  + '</tr>';
+        });
+        html += '</tbody></table>';
+
+        conteneur.innerHTML = html;
+        document.getElementById('montant-total').textContent = total.toFixed(2) + ' CHF';
+
+        // Avertissements stock
+        const zoneAv = document.getElementById('zone-avertissement-stock');
+        if (avertissements.length > 0) {
+            let txt = '⚠️ Stock insuffisant :<ul style="margin:5px 0 0 20px;">';
+            avertissements.forEach(a => txt += '<li>' + echapper(a) + '</li>');
+            txt += '</ul>La vente reste possible (stock négatif accepté).';
+            zoneAv.innerHTML = '<div class="avertissement-stock">' + txt + '</div>';
+        } else {
+            zoneAv.innerHTML = '';
+        }
+
+        zoneTotal.style.display = 'block';
+    }
+
+    function viderPanier() {
+        panier = [];
+        document.getElementById('vente-notes').value = '';
+        document.getElementById('message-vente').innerHTML = '';
+        afficherPanier();
+    }
+
+    async function validerVente() {
+        const msg = document.getElementById('message-vente');
+        msg.innerHTML = '';
+
+        const sejourId = parseInt(document.getElementById('select-sejour').value, 10);
+        if (!sejourId) {
+            msg.innerHTML = '<div class="erreur-msg">Choisis d\'abord un séjour.</div>';
+            return;
+        }
+        if (panier.length === 0) {
+            msg.innerHTML = '<div class="erreur-msg">Le panier est vide.</div>';
+            return;
+        }
+
+        const total = panier.reduce((s, l) => s + (l.quantite * l.prix_unitaire), 0);
+
+        if (!confirm('Valider cette vente ?\n\nTotal : ' + total.toFixed(2) + ' CHF')) return;
+
+        // 1) Crée l'en-tête de vente
+        const notes = document.getElementById('vente-notes').value.trim() || null;
+        const { data: vente, error: errV } = await supaClient
+            .from('ventes_appartement')
+            .insert({
+                sejour_id: sejourId,
+                total: total,
+                notes: notes,
+                cree_par: userAuth.user.id
+            })
+            .select()
+            .single();
+
+        if (errV) {
+            msg.innerHTML = '<div class="erreur-msg">Erreur : ' + errV.message + '</div>';
+            return;
+        }
+
+        // 2) Crée les lignes
+        const lignes = panier.map(l => ({
+            vente_id: vente.id,
+            produit_id: l.produit_id,
+            quantite: l.quantite,
+            prix_unitaire: l.prix_unitaire,
+            sous_total: l.quantite * l.prix_unitaire
+        }));
+
+        const { error: errL } = await supaClient
+            .from('lignes_vente_appartement')
+            .insert(lignes);
+
+        if (errL) {
+            // Rollback de l'en-tête
+            await supaClient.from('ventes_appartement').delete().eq('id', vente.id);
+            msg.innerHTML = '<div class="erreur-msg">Erreur lignes : ' + errL.message + '</div>';
+            return;
+        }
+
+        msg.innerHTML = '<div class="success">✓ Vente #' + vente.id + ' enregistrée (' + total.toFixed(2) + ' CHF).</div>';
+        setTimeout(() => msg.innerHTML = '', 3000);
+
+        viderPanier();
+        await chargerTout();
+    }
+
+    // ================================================
+    // HISTORIQUE
+    // ================================================
+    function afficherHistorique() {
+        const conteneur = document.getElementById('liste-historique');
+        const filtre = parseInt(document.getElementById('hist-filtre').value, 10);
+        const inclureAnnulees = document.getElementById('hist-inclure-annulees').checked;
+
+        let liste = ventesCache;
+        if (filtre) liste = liste.filter(v => v.sejour_id === filtre);
+        if (!inclureAnnulees) liste = liste.filter(v => !v.annulee);
+
+        if (liste.length === 0) {
+            conteneur.innerHTML = '<div class="info-msg">Aucune vente.</div>';
+            return;
+        }
+
+        let html = '<table class="presences"><thead><tr>'
+                 + '<th>N°</th><th>Date</th><th>Personne</th><th>Chambre</th>'
+                 + '<th>Articles</th><th>Total</th><th>État</th><th>Actions</th>'
+                 + '</tr></thead><tbody>';
+
+        liste.forEach(v => {
+            const s = sejoursEnCours.find(x => x.id === v.sejour_id);
+            let nomPersonne = 'Personne #' + v.sejour_id;
+            let chambre = '—';
+            if (s) {
+                const p = personnesParId[s.personne_id];
+                if (p) nomPersonne = p.nom + ' ' + p.prenom;
+                chambre = 'Chambre ' + s.numero_chambre;
+            }
+
+            const nbArt = (v.lignes || []).reduce((s, l) => s + (l.quantite || 0), 0);
+            const total = parseFloat(v.total).toFixed(2);
+
+            const etatHtml = v.annulee
+                ? '<span class="badge-annulee">Annulée</span>'
+                : '<span style="color:#2c5530;font-weight:bold;">✓ Active</span>';
+
+            html += '<tr style="' + (v.annulee ? 'opacity:0.6;' : '') + '">'
+                  + '<td><strong>#' + v.id + '</strong></td>'
+                  + '<td>' + dateFr(v.date_vente) + '</td>'
+                  + '<td>' + echapper(nomPersonne) + '</td>'
+                  + '<td>' + chambre + '</td>'
+                  + '<td style="text-align:center;">' + nbArt + '</td>'
+                  + '<td style="text-align:right;font-weight:bold;color:#2c5530;">' + total + ' CHF</td>'
+                  + '<td>' + etatHtml + '</td>'
+                  + '<td><button type="button" class="btn-edit btn-small" onclick="ouvrirModalDetail(' + v.id + ')">Détail</button></td>'
+                  + '</tr>';
+        });
+
+        html += '</tbody></table>';
+        conteneur.innerHTML = html;
+    }
+
+    function ouvrirModalDetail(venteId) {
+        const v = ventesCache.find(x => x.id === venteId);
+        if (!v) return;
+        venteCouranteDetail = v;
+
+        const s = sejoursEnCours.find(x => x.id === v.sejour_id);
+        let nomPersonne = 'Personne #' + v.sejour_id;
+        if (s) {
+            const p = personnesParId[s.personne_id];
+            if (p) nomPersonne = p.nom + ' ' + p.prenom;
+        }
+
+        document.getElementById('modal-detail-titre').textContent = 'Vente #' + v.id + ' — ' + nomPersonne;
+
+        let html = '<p><strong>Date :</strong> ' + dateFr(v.date_vente) + '</p>';
+        if (v.annulee) {
+            html += '<div class="avertissement-stock" style="background:#fce4e4;color:#922b21;border-left-color:#922b21;">'
+                  + '<strong>❌ Vente annulée</strong><br>'
+                  + 'Le ' + (v.annulee_le ? new Date(v.annulee_le).toLocaleString('fr-CH') : '—') + '<br>'
+                  + 'Motif : ' + echapper(v.annulee_motif || '—')
+                  + '</div>';
+        }
+        if (v.notes) html += '<p><strong>Notes :</strong> ' + echapper(v.notes) + '</p>';
+
+        html += '<table class="presences" style="margin-top:10px;"><thead><tr>'
+              + '<th>Produit</th>'
+              + '<th style="text-align:center;">Qté</th>'
+              + '<th style="text-align:right;">Prix unit.</th>'
+              + '<th style="text-align:right;">Sous-total</th>'
+              + '</tr></thead><tbody>';
+
+        let totalCalc = 0;
+        (v.lignes || []).forEach(l => {
+            const p = produitsCache.find(x => x.id === l.produit_id);
+            const nomP = p ? p.nom : 'Produit #' + l.produit_id;
+            const st = parseFloat(l.sous_total) || 0;
+            totalCalc += st;
+            html += '<tr>'
+                  + '<td><strong>' + echapper(nomP) + '</strong></td>'
+                  + '<td style="text-align:center;">' + l.quantite + '</td>'
+                  + '<td style="text-align:right;">' + parseFloat(l.prix_unitaire).toFixed(2) + ' CHF</td>'
+                  + '<td style="text-align:right;font-weight:bold;color:#2c5530;">' + st.toFixed(2) + ' CHF</td>'
+                  + '</tr>';
+        });
+        html += '<tr style="background:#f0f8f0;font-weight:bold;">'
+              + '<td colspan="3" style="text-align:right;">TOTAL</td>'
+              + '<td style="text-align:right;color:#2c5530;font-size:16px;">' + parseFloat(v.total).toFixed(2) + ' CHF</td>'
+              + '</tr>';
+        html += '</tbody></table>';
+
+        document.getElementById('modal-detail-contenu').innerHTML = html;
+        document.getElementById('zone-annulation').style.display = 'none';
+        document.getElementById('motif-annulation').value = '';
+
+        // Cacher le bouton annuler si déjà annulée
+        const btnAnn = document.getElementById('btn-annuler-vente');
+        btnAnn.style.display = v.annulee ? 'none' : '';
+
+        document.getElementById('modal-detail').classList.add('active');
+    }
+
+    function fermerModalDetail() {
+        document.getElementById('modal-detail').classList.remove('active');
+        venteCouranteDetail = null;
+    }
+
+    function afficherZoneAnnulation() {
+        document.getElementById('zone-annulation').style.display = 'block';
+        document.getElementById('actions-detail').style.display = 'none';
+    }
+
+    function masquerZoneAnnulation() {
+        document.getElementById('zone-annulation').style.display = 'none';
+        document.getElementById('actions-detail').style.display = '';
+    }
+
+    async function confirmerAnnulation() {
+        if (!venteCouranteDetail) return;
+        const motif = document.getElementById('motif-annulation').value.trim();
+        if (!motif) {
+            alert('Merci d\'indiquer un motif d\'annulation.');
+            return;
+        }
+        if (!confirm('Confirmer l\'annulation de la vente #' + venteCouranteDetail.id + ' ?\n\nLe stock sera recrédité.')) return;
+
+        const { error } = await supaClient
+            .from('ventes_appartement')
+            .update({
+                annulee: true,
+                annulee_le: new Date().toISOString(),
+                annulee_par: userAuth.user.id,
+                annulee_motif: motif
+            })
+            .eq('id', venteCouranteDetail.id);
+
+        if (error) {
+            alert('Erreur : ' + error.message);
+            return;
+        }
+
+        fermerModalDetail();
+        await chargerTout();
+        changerVue('historique');
+    }
+
+    function dateFr(isoDate) {
+        if (!isoDate) return '';
+        const [a, m, j] = isoDate.split('-').map(Number);
+        return String(j).padStart(2,'0') + '.' + String(m).padStart(2,'0') + '.' + a;
+    }
+
+    function echapper(texte) {
+        if (texte === null || texte === undefined) return '';
+        return String(texte)
+            .replace(/&/g, '&amp;')
+            .replace(/</g, '&lt;')
+            .replace(/>/g, '&gt;')
+            .replace(/"/g, '&quot;');
+    }
+    </script>
+</body>
+</html>
