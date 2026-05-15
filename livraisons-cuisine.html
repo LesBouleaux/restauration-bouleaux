@@ -1,0 +1,498 @@
+ <!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Livraisons cuisine - Restauration Les Bouleaux</title>
+    <link rel="stylesheet" href="shared.css">
+    <style>
+        .bandeau-info {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            padding: 12px 16px;
+            border-radius: 8px;
+            margin: 10px 0 20px 0;
+            font-weight: 500;
+            background: #fff3e0;
+            color: #b35900;
+            border-left: 5px solid #b35900;
+        }
+        .bandeau-info .emoji-grand { font-size: 28px; }
+
+        .commande-card {
+            background: white;
+            padding: 16px 18px;
+            margin: 12px 0;
+            border-radius: 8px;
+            box-shadow: 0 2px 6px rgba(0,0,0,0.08);
+            border-left: 5px solid #b35900;
+        }
+        .commande-card.livree { border-left-color: #2c5530; }
+        .commande-entete {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 10px;
+            margin-bottom: 12px;
+        }
+        .commande-titre {
+            font-size: 18px;
+            font-weight: bold;
+            color: #b35900;
+        }
+        .commande-card.livree .commande-titre { color: #2c5530; }
+
+        table.lignes-livraison {
+            width: 100%;
+            border-collapse: collapse;
+        }
+        table.lignes-livraison th, table.lignes-livraison td {
+            padding: 8px 10px;
+            border-bottom: 1px solid #eee;
+            text-align: left;
+        }
+        table.lignes-livraison th {
+            background: #f5f5f5;
+            color: #555;
+            font-size: 12px;
+            text-transform: uppercase;
+        }
+        table.lignes-livraison input[type="number"] {
+            padding: 6px 8px;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+            font-size: 14px;
+            text-align: center;
+            width: 80px;
+        }
+        .col-center { text-align: center; }
+
+        .badge-statut {
+            display: inline-block;
+            padding: 3px 10px;
+            border-radius: 12px;
+            font-size: 12px;
+            font-weight: bold;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+        .badge-envoyee   { background: #fff3e0; color: #b35900; }
+        .badge-livree    { background: #e8f4e8; color: #2c5530; }
+        .badge-brouillon { background: #fce4e4; color: #922b21; }
+        .badge-annulee   { background: #e0e0e0; color: #555; }
+
+        .vue-tabs {
+            display: flex;
+            gap: 5px;
+            margin: 15px 0 0;
+            border-bottom: 2px solid #b35900;
+            flex-wrap: wrap;
+        }
+        .vue-tab {
+            padding: 10px 18px;
+            background: #e8e8e8;
+            color: #333;
+            border: none;
+            border-radius: 8px 8px 0 0;
+            font-weight: bold;
+            font-size: 15px;
+            cursor: pointer;
+            font-family: inherit;
+        }
+        .vue-tab:hover { background: #d4d4d4; }
+        .vue-tab.active { background: #b35900; color: white; }
+        .vue-contenu { padding-top: 20px; }
+        .vue-contenu.hidden { display: none; }
+    </style>
+</head>
+<body>
+    <div id="app-header"></div>
+    <h1>🍽️ Restauration Les Bouleaux</h1>
+    <div id="menu"></div>
+
+    <h2>📦 Livraisons cuisine — Appartement Corgémont</h2>
+
+    <div class="bandeau-info">
+        <span class="emoji-grand">👨‍🍳</span>
+        <div>
+            <strong>Côté cuisine</strong><br>
+            <small>Les commandes envoyées par les appartements à préparer et livrer. Indique les quantités réellement livrées, puis valide « Livrée ».</small>
+        </div>
+    </div>
+
+    <div class="vue-tabs">
+        <button type="button" class="vue-tab active" id="tab-a-livrer" onclick="changerVue('a-livrer')">📥 À livrer</button>
+        <button type="button" class="vue-tab" id="tab-livrees" onclick="changerVue('livrees')">✅ Livrées récemment</button>
+    </div>
+
+    <div class="vue-contenu" id="vue-a-livrer">
+        <div id="liste-a-livrer">
+            <div class="loading">Chargement…</div>
+        </div>
+    </div>
+
+    <div class="vue-contenu hidden" id="vue-livrees">
+        <div id="liste-livrees">
+            <div class="loading">Chargement…</div>
+        </div>
+    </div>
+
+    <div id="message"></div>
+
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="shared.js"></script>
+    <script>
+    // ================================================
+    // PAGE LIVRAISONS CUISINE
+    // ================================================
+
+    const RESIDENCE_NOM = 'Résidence Les Bouleaux';
+    const RESIDENCE_ADRESSE = 'Sur le Crêt 12 — 2606 Corgémont';
+    const RESIDENCE_LOGO = 'images/logo.png';
+
+    let produitsCache = [];
+    let commandesCache = [];
+    let vueActive = 'a-livrer';
+
+    document.addEventListener('DOMContentLoaded', async () => {
+        const auth = await verifierAuthEtRole(['admin']);
+        if (!auth) return;
+
+        afficherMenuComplet(
+            'livraisons-cuisine',
+            auth.user.email,
+            auth.profil.role,
+            auth.profil.nom_affiche
+        );
+
+        await chargerProduits();
+        await chargerCommandes();
+        afficherVueALivrer();
+    });
+
+    async function chargerProduits() {
+        const { data, error } = await supaClient
+            .from('catalogue_produits_appartement')
+            .select('*');
+        if (error) { console.error(error); return; }
+        produitsCache = data || [];
+    }
+
+    async function chargerCommandes() {
+        const { data, error } = await supaClient
+            .from('commandes_appartement')
+            .select('*, lignes:lignes_commande_appartement(*)')
+            .in('statut', ['envoyee', 'livree'])
+            .order('cree_le', { ascending: false });
+        if (error) { console.error(error); return; }
+        commandesCache = data || [];
+    }
+
+    function changerVue(vue) {
+        vueActive = vue;
+        document.getElementById('tab-a-livrer').classList.toggle('active', vue === 'a-livrer');
+        document.getElementById('tab-livrees').classList.toggle('active', vue === 'livrees');
+        document.getElementById('vue-a-livrer').classList.toggle('hidden', vue !== 'a-livrer');
+        document.getElementById('vue-livrees').classList.toggle('hidden', vue !== 'livrees');
+        if (vue === 'a-livrer') afficherVueALivrer();
+        else afficherVueLivrees();
+    }
+
+    function dateFr(isoDate) {
+        if (!isoDate) return '';
+        const [a, m, j] = isoDate.split('-').map(Number);
+        return String(j).padStart(2,'0') + '.' + String(m).padStart(2,'0') + '.' + a;
+    }
+
+    function nomProduit(id) {
+        const p = produitsCache.find(x => x.id === id);
+        return p ? p.nom : 'Produit #' + id;
+    }
+
+    function categorieProduit(id) {
+        const p = produitsCache.find(x => x.id === id);
+        return p ? (p.categorie || '—') : '—';
+    }
+
+    // ================================================
+    // VUE À LIVRER
+    // ================================================
+    function afficherVueALivrer() {
+        const conteneur = document.getElementById('liste-a-livrer');
+        const commandes = commandesCache.filter(c => c.statut === 'envoyee');
+
+        if (commandes.length === 0) {
+            conteneur.innerHTML = '<div class="info-msg">Aucune commande en attente. ✨</div>';
+            return;
+        }
+
+        let html = '';
+        commandes.forEach(c => {
+            html += '<div class="commande-card">'
+                  +   '<div class="commande-entete">'
+                  +     '<div class="commande-titre">Commande #' + c.id + ' — ' + dateFr(c.date_commande) + '</div>'
+                  +     '<span class="badge-statut badge-envoyee">Envoyée</span>'
+                  +   '</div>';
+
+            if (c.notes) {
+                html += '<p><strong>📝 Notes :</strong> ' + echapper(c.notes) + '</p>';
+            }
+
+            html += '<table class="lignes-livraison"><thead><tr>'
+                  + '<th>Produit</th><th>Catégorie</th>'
+                  + '<th class="col-center">Commandé</th>'
+                  + '<th class="col-center">Livré</th>'
+                  + '</tr></thead><tbody>';
+
+            (c.lignes || []).forEach(l => {
+                const valDefaut = (l.qte_livree !== null && l.qte_livree !== undefined) ? l.qte_livree : l.qte_commandee;
+                html += '<tr>'
+                      + '<td><strong>' + echapper(nomProduit(l.produit_id)) + '</strong></td>'
+                      + '<td>' + echapper(categorieProduit(l.produit_id)) + '</td>'
+                      + '<td class="col-center">' + l.qte_commandee + '</td>'
+                      + '<td class="col-center"><input type="number" min="0" step="1" '
+                      +   'data-ligne-id="' + l.id + '" '
+                      +   'value="' + valDefaut + '"></td>'
+                      + '</tr>';
+            });
+
+            html += '</tbody></table>';
+
+            html += '<div class="form-actions" style="margin-top:14px;">'
+                  +   '<button type="button" class="btn-print" onclick="imprimerCommande(' + c.id + ')">🖨️ Imprimer</button>'
+                  +   '<button type="button" class="btn-secondary" onclick="reinitialiserLignes(' + c.id + ')">Tout remettre à la quantité commandée</button>'
+                  +   '<button type="button" class="btn-primary" onclick="validerLivraison(' + c.id + ')">✅ Valider la livraison</button>'
+                  + '</div>';
+
+            html += '</div>';
+        });
+
+        conteneur.innerHTML = html;
+    }
+
+    function reinitialiserLignes(commandeId) {
+        const c = commandesCache.find(x => x.id === commandeId);
+        if (!c) return;
+        (c.lignes || []).forEach(l => {
+            const inp = document.querySelector('input[data-ligne-id="' + l.id + '"]');
+            if (inp) inp.value = l.qte_commandee;
+        });
+    }
+
+    async function validerLivraison(commandeId) {
+        const c = commandesCache.find(x => x.id === commandeId);
+        if (!c) return;
+
+        const updates = [];
+        let total = 0;
+        (c.lignes || []).forEach(l => {
+            const inp = document.querySelector('input[data-ligne-id="' + l.id + '"]');
+            if (!inp) return;
+            const q = parseInt(inp.value, 10);
+            const valeur = (isNaN(q) || q < 0) ? 0 : q;
+            updates.push({ id: l.id, qte_livree: valeur });
+            total += valeur;
+        });
+
+        if (!confirm('Valider la livraison de la commande #' + commandeId + ' ?\n\nTotal livré : ' + total + ' unité(s).')) return;
+
+        for (const u of updates) {
+            const { error } = await supaClient
+                .from('lignes_commande_appartement')
+                .update({ qte_livree: u.qte_livree })
+                .eq('id', u.id);
+            if (error) {
+                alert('Erreur sur une ligne : ' + error.message);
+                return;
+            }
+        }
+
+        const { error: errC } = await supaClient
+            .from('commandes_appartement')
+            .update({
+                statut: 'livree',
+                livree_le: new Date().toISOString(),
+                date_livraison: aujourdhui()
+            })
+            .eq('id', commandeId);
+
+        if (errC) {
+            alert('Erreur : ' + errC.message);
+            return;
+        }
+
+        document.getElementById('message').innerHTML = '<div class="success">✓ Commande #' + commandeId + ' livrée.</div>';
+        setTimeout(() => document.getElementById('message').innerHTML = '', 2500);
+
+        await chargerCommandes();
+        afficherVueALivrer();
+    }
+
+    // ================================================
+    // IMPRESSION D'UNE COMMANDE
+    // ================================================
+    function imprimerCommande(commandeId) {
+        const c = commandesCache.find(x => x.id === commandeId);
+        if (!c) return;
+
+        // Construit le HTML imprimable dans une nouvelle fenêtre
+        const lignesTriees = [...(c.lignes || [])].sort((a, b) => {
+            const ca = categorieProduit(a.produit_id);
+            const cb = categorieProduit(b.produit_id);
+            if (ca !== cb) return ca.localeCompare(cb);
+            return nomProduit(a.produit_id).localeCompare(nomProduit(b.produit_id));
+        });
+
+        let corpsHtml = '';
+        let categorieCourante = '';
+        lignesTriees.forEach(l => {
+            const cat = categorieProduit(l.produit_id);
+            if (cat !== categorieCourante) {
+                if (categorieCourante !== '') corpsHtml += '</tbody></table>';
+                corpsHtml += '<div class="cat-titre">' + echapper(cat) + '</div>';
+                corpsHtml += '<table class="t-articles"><thead><tr>'
+                          + '<th class="col-produit">Produit</th>'
+                          + '<th class="col-qte">À préparer</th>'
+                          + '<th class="col-coche">✓</th>'
+                          + '</tr></thead><tbody>';
+                categorieCourante = cat;
+            }
+            corpsHtml += '<tr>'
+                      + '<td>' + echapper(nomProduit(l.produit_id)) + '</td>'
+                      + '<td class="col-qte"><strong>' + l.qte_commandee + '</strong></td>'
+                      + '<td class="col-coche">☐</td>'
+                      + '</tr>';
+        });
+        if (categorieCourante !== '') corpsHtml += '</tbody></table>';
+
+        const totalArticles = (c.lignes || []).reduce((s, l) => s + (l.qte_commandee || 0), 0);
+
+        const css = ''
+            + '@page { size: A4 portrait; margin: 15mm; }'
+            + 'body { font-family: Arial, Helvetica, sans-serif; color: #222; margin: 0; padding: 0; }'
+            + '.entete { display: flex; justify-content: space-between; align-items: flex-start; border-bottom: 3px solid #b35900; padding-bottom: 14px; margin-bottom: 20px; }'
+            + '.entete-gauche { display: flex; align-items: center; gap: 12px; }'
+            + '.logo { width: 56px; height: 56px; object-fit: contain; }'
+            + '.nom-residence { font-size: 16px; font-weight: bold; color: #b35900; }'
+            + '.adresse-residence { font-size: 11px; color: #888; margin-top: 2px; }'
+            + '.entete-droite { text-align: right; }'
+            + '.type-doc { font-size: 11px; color: #888; text-transform: uppercase; letter-spacing: 0.5px; }'
+            + '.num-cmd { font-size: 22px; font-weight: bold; color: #b35900; margin-top: 4px; }'
+            + '.date-cmd { font-size: 13px; color: #555; margin-top: 2px; }'
+            + '.bandeau-resume { display: flex; gap: 12px; margin: 18px 0; }'
+            + '.resume-bloc { flex: 1; padding: 12px 16px; text-align: center; border: 1px solid #e0e0e0; border-radius: 4px; }'
+            + '.resume-valeur { font-size: 24px; font-weight: bold; color: #b35900; }'
+            + '.resume-label { font-size: 10px; color: #888; text-transform: uppercase; letter-spacing: 0.5px; margin-top: 4px; }'
+            + '.notes-bloc { background: #fff8e1; border-left: 4px solid #b35900; padding: 10px 14px; margin: 15px 0; border-radius: 4px; font-size: 13px; }'
+            + '.cat-titre { margin-top: 18px; padding: 6px 12px; background: #fff3e0; border-left: 4px solid #b35900; font-weight: bold; color: #b35900; font-size: 14px; }'
+            + 'table.t-articles { width: 100%; border-collapse: collapse; font-size: 13px; }'
+            + 'table.t-articles th { padding: 8px 10px; background: #f5f5f5; color: #555; font-size: 11px; text-transform: uppercase; text-align: left; border-bottom: 1px solid #ddd; }'
+            + 'table.t-articles th.col-qte, table.t-articles th.col-coche { text-align: center; }'
+            + 'table.t-articles td { padding: 8px 10px; border-bottom: 1px solid #eee; }'
+            + 'table.t-articles td.col-qte { text-align: center; font-size: 16px; width: 110px; }'
+            + 'table.t-articles td.col-coche { text-align: center; font-size: 22px; color: #ccc; width: 50px; }'
+            + '.pied { margin-top: 24px; padding-top: 12px; border-top: 1px solid #e0e0e0; font-size: 10px; color: #999; text-align: center; }';
+
+        const corps = ''
+            + '<div class="entete">'
+            +   '<div class="entete-gauche">'
+            +     '<img src="' + RESIDENCE_LOGO + '" alt="Logo" class="logo" onerror="this.style.display=\'none\'">'
+            +     '<div>'
+            +       '<div class="nom-residence">' + echapper(RESIDENCE_NOM) + '</div>'
+            +       '<div class="adresse-residence">' + echapper(RESIDENCE_ADRESSE) + '</div>'
+            +     '</div>'
+            +   '</div>'
+            +   '<div class="entete-droite">'
+            +     '<div class="type-doc">Bon de commande — Appartement Corgémont</div>'
+            +     '<div class="num-cmd">Commande #' + c.id + '</div>'
+            +     '<div class="date-cmd">' + dateFr(c.date_commande) + '</div>'
+            +   '</div>'
+            + '</div>'
+            + '<div class="bandeau-resume">'
+            +   '<div class="resume-bloc">'
+            +     '<div class="resume-valeur">' + (c.lignes || []).length + '</div>'
+            +     '<div class="resume-label">Référence(s)</div>'
+            +   '</div>'
+            +   '<div class="resume-bloc">'
+            +     '<div class="resume-valeur">' + totalArticles + '</div>'
+            +     '<div class="resume-label">Total à préparer</div>'
+            +   '</div>'
+            + '</div>'
+            + (c.notes ? '<div class="notes-bloc"><strong>📝 Notes :</strong> ' + echapper(c.notes) + '</div>' : '')
+            + corpsHtml
+            + '<div class="pied">Document imprimé le ' + dateFr(aujourdhui()) + ' — ' + echapper(RESIDENCE_NOM) + ', service restauration</div>';
+
+        ouvrirFenetreImpression('Commande #' + c.id, css, corps);
+    }
+
+    // ================================================
+    // OUVRE UNE FENÊTRE PROPRE ET Y MET LE HTML
+    // ================================================
+    function ouvrirFenetreImpression(titre, css, corpsHtml) {
+        const fenetre = window.open('', '_blank');
+        if (!fenetre) {
+            alert('Le navigateur a bloqué l\'ouverture de la fenêtre. Autorise les pop-ups pour ce site.');
+            return;
+        }
+
+        const doc = fenetre.document;
+        doc.title = titre;
+
+        const meta = doc.createElement('meta');
+        meta.setAttribute('charset', 'UTF-8');
+        doc.head.appendChild(meta);
+
+        const styleEl = doc.createElement('style');
+        styleEl.textContent = css;
+        doc.head.appendChild(styleEl);
+
+        doc.body.innerHTML = corpsHtml;
+
+        fenetre.setTimeout(function() {
+            fenetre.focus();
+            fenetre.print();
+        }, 400);
+    }
+
+    // ================================================
+    // VUE LIVRÉES RÉCEMMENT
+    // ================================================
+    function afficherVueLivrees() {
+        const conteneur = document.getElementById('liste-livrees');
+        const commandes = commandesCache.filter(c => c.statut === 'livree').slice(0, 30);
+
+        if (commandes.length === 0) {
+            conteneur.innerHTML = '<div class="info-msg">Aucune commande livrée pour l\'instant.</div>';
+            return;
+        }
+
+        let html = '';
+        commandes.forEach(c => {
+            const totalCmd = (c.lignes || []).reduce((s, l) => s + (l.qte_commandee || 0), 0);
+            const totalLivre = (c.lignes || []).reduce((s, l) => s + (l.qte_livree || 0), 0);
+
+            html += '<div class="commande-card livree">'
+                  +   '<div class="commande-entete">'
+                  +     '<div class="commande-titre">Commande #' + c.id + ' — ' + dateFr(c.date_commande) + '</div>'
+                  +     '<span class="badge-statut badge-livree">Livrée le ' + dateFr(c.date_livraison) + '</span>'
+                  +   '</div>'
+                  +   '<p>Commandé : <strong>' + totalCmd + '</strong> · Livré : <strong>' + totalLivre + '</strong></p>'
+                  + '</div>';
+        });
+
+        conteneur.innerHTML = html;
+    }
+
+    function echapper(texte) {
+        if (texte === null || texte === undefined) return '';
+        return String(texte)
+            .replace(/&/g, '&amp;')
+            .replace(/</g, '&lt;')
+            .replace(/>/g, '&gt;')
+            .replace(/"/g, '&quot;');
+    }
+    </script>
+</body>
+</html>

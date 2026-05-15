@@ -1,0 +1,579 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Commandes appartement - Restauration Les Bouleaux</title>
+    <link rel="stylesheet" href="shared.css">
+    <style>
+        .bandeau-info {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            padding: 12px 16px;
+            border-radius: 8px;
+            margin: 10px 0 20px 0;
+            font-weight: 500;
+            background: #e3f2fd;
+            color: #0d47a1;
+            border-left: 5px solid #1976d2;
+        }
+        .bandeau-info .emoji-grand { font-size: 28px; }
+
+        .stat-stock {
+            background: white;
+            padding: 14px 16px;
+            margin: 6px 0;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.06);
+            display: flex;
+            align-items: center;
+            gap: 14px;
+            flex-wrap: wrap;
+        }
+        .stat-stock .nom-prod {
+            flex: 1;
+            min-width: 200px;
+            font-weight: 500;
+        }
+        .stat-stock .stock-valeur {
+            font-size: 20px;
+            font-weight: bold;
+            min-width: 80px;
+            text-align: right;
+        }
+        .stock-valeur.ok { color: #2c5530; }
+        .stock-valeur.bas { color: #b35900; }
+        .stock-valeur.zero { color: #c0392b; }
+
+        .categorie-titre {
+            margin-top: 25px;
+            padding: 8px 14px;
+            background: #f0f8f0;
+            border-left: 4px solid #2c5530;
+            border-radius: 6px;
+            color: #2c5530;
+            font-size: 16px;
+            font-weight: bold;
+        }
+
+        .ligne-commande {
+            display: grid;
+            grid-template-columns: 1fr 120px 60px;
+            gap: 10px;
+            align-items: center;
+            padding: 8px 12px;
+            border-bottom: 1px solid #eee;
+        }
+        .ligne-commande:hover { background: #fafafa; }
+        .ligne-commande input[type="number"] {
+            padding: 6px 8px;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+            font-size: 14px;
+            text-align: center;
+            width: 100%;
+        }
+
+        .badge-statut {
+            display: inline-block;
+            padding: 3px 10px;
+            border-radius: 12px;
+            font-size: 12px;
+            font-weight: bold;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+        .badge-brouillon { background: #fce4e4; color: #922b21; }
+        .badge-envoyee   { background: #fff3e0; color: #b35900; }
+        .badge-livree    { background: #e8f4e8; color: #2c5530; }
+        .badge-annulee   { background: #e0e0e0; color: #555; }
+
+        .vue-tabs {
+            display: flex;
+            gap: 5px;
+            margin: 15px 0 0;
+            border-bottom: 2px solid #1976d2;
+            flex-wrap: wrap;
+        }
+        .vue-tab {
+            padding: 10px 18px;
+            background: #e8e8e8;
+            color: #333;
+            border: none;
+            border-radius: 8px 8px 0 0;
+            font-weight: bold;
+            font-size: 15px;
+            cursor: pointer;
+            font-family: inherit;
+        }
+        .vue-tab:hover { background: #d4d4d4; }
+        .vue-tab.active { background: #1976d2; color: white; }
+        .vue-contenu { padding-top: 20px; }
+        .vue-contenu.hidden { display: none; }
+
+        .recap-mini {
+            background: #f0f8f0;
+            padding: 10px 14px;
+            border-radius: 6px;
+            border-left: 4px solid #2c5530;
+            margin-top: 12px;
+        }
+
+        @media print {
+            .no-print, .menu-onglets, #app-header, h1, .vue-tabs,
+            .toolbar, button { display: none !important; }
+            body { background: white; padding: 0; }
+        }
+    </style>
+</head>
+<body>
+    <div id="app-header"></div>
+    <h1>🍽️ Restauration Les Bouleaux</h1>
+    <div id="menu"></div>
+
+    <h2>🛒 Commandes appartement</h2>
+
+    <div class="bandeau-info">
+        <span class="emoji-grand">🏨</span>
+        <div>
+            <strong>Bons de commande à la cuisine</strong><br>
+            <small>Coche les produits et quantités souhaités, envoie le bon, la cuisine livre.</small>
+        </div>
+    </div>
+
+    <div class="vue-tabs">
+        <button type="button" class="vue-tab active" id="tab-stock" onclick="changerVue('stock')">📊 Stock courant</button>
+        <button type="button" class="vue-tab" id="tab-nouvelle" onclick="changerVue('nouvelle')">➕ Nouvelle commande</button>
+        <button type="button" class="vue-tab" id="tab-historique" onclick="changerVue('historique')">📋 Historique</button>
+    </div>
+
+    <!-- ============ VUE STOCK ============ -->
+    <div class="vue-contenu" id="vue-stock">
+        <h3>Stock disponible sur place</h3>
+        <p style="color:#666;font-size:14px;">Stock = total livré − total vendu. Mis à jour automatiquement.</p>
+        <div id="liste-stock">
+            <div class="loading">Chargement…</div>
+        </div>
+    </div>
+
+    <!-- ============ VUE NOUVELLE COMMANDE ============ -->
+    <div class="vue-contenu hidden" id="vue-nouvelle">
+        <h3>Saisir une nouvelle commande</h3>
+        <p style="color:#666;font-size:14px;">Indique pour chaque produit la quantité voulue. Laisse vide ou 0 pour ne pas commander ce produit.</p>
+
+        <div id="liste-saisie">
+            <div class="loading">Chargement…</div>
+        </div>
+
+        <div class="form-group" style="margin-top:20px;">
+            <label for="nouvelle-notes">Notes (optionnel)</label>
+            <textarea id="nouvelle-notes" placeholder="Ex : à livrer avant 10h, demande de gros conditionnement..."></textarea>
+        </div>
+
+        <div id="nouvelle-recap" class="recap-mini" style="display:none;"></div>
+
+        <div class="form-actions" style="margin-top:20px;">
+            <button type="button" class="btn-secondary" onclick="viderNouvelleCommande()">Vider</button>
+            <button type="button" class="btn-primary" onclick="envoyerCommande()">📨 Envoyer à la cuisine</button>
+        </div>
+
+        <div id="nouvelle-message"></div>
+    </div>
+
+    <!-- ============ VUE HISTORIQUE ============ -->
+    <div class="vue-contenu hidden" id="vue-historique">
+        <h3>Historique des commandes</h3>
+        <div id="liste-historique">
+            <div class="loading">Chargement…</div>
+        </div>
+    </div>
+
+    <!-- ===== Modal détail d'une commande ===== -->
+    <div id="modal-detail" class="modal-overlay">
+        <div class="modal">
+            <h2 id="modal-detail-titre">Détail de la commande</h2>
+            <div id="modal-detail-contenu"></div>
+            <div class="form-actions modal-actions">
+                <button type="button" class="btn-secondary" onclick="fermerModal()">Fermer</button>
+                <button type="button" class="btn-print" onclick="window.print()">🖨️ Imprimer</button>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="shared.js"></script>
+    <script>
+    // ================================================
+    // PAGE COMMANDES APPARTEMENT
+    // ================================================
+
+    let produitsCache = [];
+    let commandesCache = [];
+    let stockParProduit = {};   // produit_id -> stock courant
+    let userAuth = null;
+    let vueActive = 'stock';
+
+    document.addEventListener('DOMContentLoaded', async () => {
+        const auth = await verifierAuthEtRole(['admin']);
+        if (!auth) return;
+        userAuth = auth;
+
+        afficherMenuComplet(
+            'commandes-appartement',
+            auth.user.email,
+            auth.profil.role,
+            auth.profil.nom_affiche
+        );
+
+        await chargerProduits();
+        await chargerCommandes();
+        await calculerStock();
+
+        afficherVueStock();
+    });
+
+    // ================================================
+    // CHARGEMENT
+    // ================================================
+    async function chargerProduits() {
+        const { data, error } = await supaClient
+            .from('catalogue_produits_appartement')
+            .select('*')
+            .eq('actif', true)
+            .order('categorie', { ascending: true })
+            .order('nom', { ascending: true });
+        if (error) { console.error(error); return; }
+        produitsCache = data || [];
+    }
+
+    async function chargerCommandes() {
+        const { data, error } = await supaClient
+            .from('commandes_appartement')
+            .select('*, lignes:lignes_commande_appartement(*)')
+            .order('cree_le', { ascending: false });
+        if (error) { console.error(error); return; }
+        commandesCache = data || [];
+    }
+
+    // Stock = somme des qte_livree (commandes livrées) - somme des ventes (table à venir)
+    async function calculerStock() {
+        stockParProduit = {};
+        produitsCache.forEach(p => { stockParProduit[p.id] = 0; });
+
+        // On somme les livraisons
+        commandesCache.forEach(c => {
+            if (c.statut !== 'livree') return;
+            (c.lignes || []).forEach(l => {
+                if (stockParProduit[l.produit_id] !== undefined) {
+                    stockParProduit[l.produit_id] += (l.qte_livree || 0);
+                }
+            });
+        });
+
+        // Les ventes (palier 5) viendront décrémenter ici plus tard.
+        // Pour l'instant on n'a que des entrées.
+    }
+
+    // ================================================
+    // NAVIGATION ENTRE VUES
+    // ================================================
+    function changerVue(vue) {
+        vueActive = vue;
+        ['stock', 'nouvelle', 'historique'].forEach(v => {
+            document.getElementById('tab-' + v).classList.toggle('active', v === vue);
+            document.getElementById('vue-' + v).classList.toggle('hidden', v !== vue);
+        });
+        if (vue === 'stock') afficherVueStock();
+        else if (vue === 'nouvelle') afficherVueNouvelle();
+        else if (vue === 'historique') afficherVueHistorique();
+    }
+
+    // ================================================
+    // VUE STOCK
+    // ================================================
+    function afficherVueStock() {
+        const conteneur = document.getElementById('liste-stock');
+
+        if (produitsCache.length === 0) {
+            conteneur.innerHTML = '<div class="info-msg">Aucun produit dans le catalogue. Va dans « 🏷️ Catalogue appartement » pour en créer.</div>';
+            return;
+        }
+
+        // Regroupement par catégorie
+        const parCat = {};
+        produitsCache.forEach(p => {
+            const cat = p.categorie || 'Sans catégorie';
+            if (!parCat[cat]) parCat[cat] = [];
+            parCat[cat].push(p);
+        });
+
+        let html = '';
+        Object.keys(parCat).sort().forEach(cat => {
+            html += '<div class="categorie-titre">' + echapper(cat) + '</div>';
+            parCat[cat].forEach(p => {
+                const stock = stockParProduit[p.id] || 0;
+                let cls = 'zero';
+                if (stock > 5) cls = 'ok';
+                else if (stock > 0) cls = 'bas';
+
+                html += '<div class="stat-stock">'
+                      +   '<div class="nom-prod">' + echapper(p.nom) + '</div>'
+                      +   '<div class="stock-valeur ' + cls + '">' + stock + '</div>'
+                      + '</div>';
+            });
+        });
+
+        conteneur.innerHTML = html;
+    }
+
+    // ================================================
+    // VUE NOUVELLE COMMANDE
+    // ================================================
+    function afficherVueNouvelle() {
+        const conteneur = document.getElementById('liste-saisie');
+
+        if (produitsCache.length === 0) {
+            conteneur.innerHTML = '<div class="info-msg">Aucun produit actif dans le catalogue.</div>';
+            return;
+        }
+
+        const parCat = {};
+        produitsCache.forEach(p => {
+            const cat = p.categorie || 'Sans catégorie';
+            if (!parCat[cat]) parCat[cat] = [];
+            parCat[cat].push(p);
+        });
+
+        let html = '';
+        Object.keys(parCat).sort().forEach(cat => {
+            html += '<div class="categorie-titre">' + echapper(cat) + '</div>';
+            parCat[cat].forEach(p => {
+                const stockActuel = stockParProduit[p.id] || 0;
+                html += '<div class="ligne-commande">'
+                      +   '<div><strong>' + echapper(p.nom) + '</strong>'
+                      +     '<div style="color:#888;font-size:12px;">Stock actuel : ' + stockActuel + '</div></div>'
+                      +   '<input type="number" min="0" step="1" '
+                      +     'data-produit-id="' + p.id + '" '
+                      +     'placeholder="0" '
+                      +     'oninput="majRecapNouvelle()">'
+                      +   '<div style="color:#888;text-align:center;">unité(s)</div>'
+                      + '</div>';
+            });
+        });
+
+        conteneur.innerHTML = html;
+        majRecapNouvelle();
+    }
+
+    function majRecapNouvelle() {
+        const inputs = document.querySelectorAll('#liste-saisie input[type="number"]');
+        let nbLignes = 0;
+        let nbUnites = 0;
+        inputs.forEach(inp => {
+            const q = parseInt(inp.value, 10);
+            if (!isNaN(q) && q > 0) {
+                nbLignes++;
+                nbUnites += q;
+            }
+        });
+
+        const recap = document.getElementById('nouvelle-recap');
+        if (nbLignes === 0) {
+            recap.style.display = 'none';
+        } else {
+            recap.style.display = 'block';
+            recap.innerHTML = '📝 <strong>' + nbLignes + ' produit(s)</strong> pour un total de <strong>' + nbUnites + ' unité(s)</strong> à commander.';
+        }
+    }
+
+    function viderNouvelleCommande() {
+        document.querySelectorAll('#liste-saisie input[type="number"]').forEach(inp => inp.value = '');
+        document.getElementById('nouvelle-notes').value = '';
+        document.getElementById('nouvelle-message').innerHTML = '';
+        majRecapNouvelle();
+    }
+
+    async function envoyerCommande() {
+        const msg = document.getElementById('nouvelle-message');
+        msg.innerHTML = '';
+
+        // Récupère les lignes saisies
+        const lignes = [];
+        document.querySelectorAll('#liste-saisie input[type="number"]').forEach(inp => {
+            const q = parseInt(inp.value, 10);
+            if (!isNaN(q) && q > 0) {
+                lignes.push({
+                    produit_id: parseInt(inp.dataset.produitId, 10),
+                    qte_commandee: q
+                });
+            }
+        });
+
+        if (lignes.length === 0) {
+            msg.innerHTML = '<div class="erreur-msg">Indique au moins un produit avec une quantité supérieure à 0.</div>';
+            return;
+        }
+
+        if (!confirm('Envoyer cette commande (' + lignes.length + ' produit(s)) à la cuisine ?')) return;
+
+        // 1) Crée l'en-tête de commande
+        const notes = document.getElementById('nouvelle-notes').value.trim() || null;
+        const { data: commande, error: errC } = await supaClient
+            .from('commandes_appartement')
+            .insert({
+                statut: 'envoyee',
+                notes: notes,
+                cree_par: userAuth.user.id
+            })
+            .select()
+            .single();
+
+        if (errC) {
+            msg.innerHTML = '<div class="erreur-msg">Erreur : ' + errC.message + '</div>';
+            return;
+        }
+
+        // 2) Crée les lignes
+        const lignesAvecCmdId = lignes.map(l => ({
+            commande_id: commande.id,
+            produit_id: l.produit_id,
+            qte_commandee: l.qte_commandee
+        }));
+
+        const { error: errL } = await supaClient
+            .from('lignes_commande_appartement')
+            .insert(lignesAvecCmdId);
+
+        if (errL) {
+            msg.innerHTML = '<div class="erreur-msg">Erreur lignes : ' + errL.message + '</div>';
+            // On supprime l'en-tête créé pour éviter une commande orpheline
+            await supaClient.from('commandes_appartement').delete().eq('id', commande.id);
+            return;
+        }
+
+        msg.innerHTML = '<div class="success">✓ Commande #' + commande.id + ' envoyée à la cuisine.</div>';
+        viderNouvelleCommande();
+        await chargerCommandes();
+        await calculerStock();
+
+        setTimeout(() => { changerVue('historique'); }, 1500);
+    }
+
+    // ================================================
+    // VUE HISTORIQUE
+    // ================================================
+    function libelleStatut(statut) {
+        const map = {
+            brouillon: 'Brouillon',
+            envoyee: 'Envoyée',
+            livree: 'Livrée',
+            annulee: 'Annulée'
+        };
+        return map[statut] || statut;
+    }
+
+    function dateFr(isoDate) {
+        if (!isoDate) return '';
+        const [a, m, j] = isoDate.split('-').map(Number);
+        return String(j).padStart(2,'0') + '.' + String(m).padStart(2,'0') + '.' + a;
+    }
+
+    function afficherVueHistorique() {
+        const conteneur = document.getElementById('liste-historique');
+
+        if (commandesCache.length === 0) {
+            conteneur.innerHTML = '<div class="info-msg">Aucune commande pour le moment.</div>';
+            return;
+        }
+
+        let html = '<table class="presences"><thead><tr>'
+                 + '<th>N°</th><th>Date</th><th>Produits</th><th>Total cmd.</th>'
+                 + '<th>Total livré</th><th>Statut</th><th>Notes</th><th>Actions</th>'
+                 + '</tr></thead><tbody>';
+
+        commandesCache.forEach(c => {
+            const nbLignes = (c.lignes || []).length;
+            const totalCmd = (c.lignes || []).reduce((s, l) => s + (l.qte_commandee || 0), 0);
+            const totalLivre = (c.lignes || []).reduce((s, l) => s + (l.qte_livree || 0), 0);
+
+            html += '<tr>'
+                  + '<td><strong>#' + c.id + '</strong></td>'
+                  + '<td>' + dateFr(c.date_commande) + '</td>'
+                  + '<td>' + nbLignes + ' produit(s)</td>'
+                  + '<td style="text-align:center;">' + totalCmd + '</td>'
+                  + '<td style="text-align:center;">' + (c.statut === 'livree' ? totalLivre : '—') + '</td>'
+                  + '<td><span class="badge-statut badge-' + c.statut + '">' + libelleStatut(c.statut) + '</span></td>'
+                  + '<td>' + echapper(c.notes || '—') + '</td>'
+                  + '<td><button type="button" class="btn-edit btn-small" onclick="ouvrirDetail(' + c.id + ')">Détail</button>';
+            if (c.statut === 'envoyee') {
+                html += ' <button type="button" class="btn-danger btn-small" onclick="annulerCommande(' + c.id + ')">Annuler</button>';
+            }
+            html += '</td></tr>';
+        });
+
+        html += '</tbody></table>';
+        conteneur.innerHTML = html;
+    }
+
+    async function annulerCommande(id) {
+        if (!confirm('Annuler cette commande ? La cuisine ne la verra plus.')) return;
+        const { error } = await supaClient
+            .from('commandes_appartement')
+            .update({ statut: 'annulee' })
+            .eq('id', id);
+        if (error) { alert('Erreur : ' + error.message); return; }
+        await chargerCommandes();
+        await calculerStock();
+        afficherVueHistorique();
+    }
+
+    function ouvrirDetail(id) {
+        const c = commandesCache.find(x => x.id === id);
+        if (!c) return;
+
+        document.getElementById('modal-detail-titre').textContent = 'Commande #' + c.id + ' — ' + dateFr(c.date_commande);
+
+        let html = '<p>Statut : <span class="badge-statut badge-' + c.statut + '">' + libelleStatut(c.statut) + '</span></p>';
+        if (c.notes) html += '<p><strong>Notes :</strong> ' + echapper(c.notes) + '</p>';
+
+        html += '<table class="presences" style="margin-top:10px;"><thead><tr>'
+              + '<th>Produit</th><th>Catégorie</th>'
+              + '<th style="text-align:center;">Commandé</th>'
+              + '<th style="text-align:center;">Livré</th>'
+              + '</tr></thead><tbody>';
+
+        (c.lignes || []).forEach(l => {
+            const p = produitsCache.find(x => x.id === l.produit_id);
+            const nomProd = p ? p.nom : 'Produit #' + l.produit_id;
+            const cat = p ? p.categorie : '—';
+            const livre = (l.qte_livree === null || l.qte_livree === undefined) ? '—' : l.qte_livree;
+
+            html += '<tr>'
+                  + '<td>' + echapper(nomProd) + '</td>'
+                  + '<td>' + echapper(cat) + '</td>'
+                  + '<td style="text-align:center;font-weight:bold;">' + l.qte_commandee + '</td>'
+                  + '<td style="text-align:center;font-weight:bold;color:#2c5530;">' + livre + '</td>'
+                  + '</tr>';
+        });
+        html += '</tbody></table>';
+
+        document.getElementById('modal-detail-contenu').innerHTML = html;
+        document.getElementById('modal-detail').classList.add('active');
+    }
+
+    function fermerModal() {
+        document.getElementById('modal-detail').classList.remove('active');
+    }
+
+    function echapper(texte) {
+        if (texte === null || texte === undefined) return '';
+        return String(texte)
+            .replace(/&/g, '&amp;')
+            .replace(/</g, '&lt;')
+            .replace(/>/g, '&gt;')
+            .replace(/"/g, '&quot;');
+    }
+    </script>
+</body>
+</html>
