@@ -1,0 +1,823 @@
+ <!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Séjours appartement - Restauration Les Bouleaux</title>
+    <link rel="stylesheet" href="shared.css">
+    <style>
+        .bandeau-info {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            padding: 12px 16px;
+            border-radius: 8px;
+            margin: 10px 0 20px 0;
+            font-weight: 500;
+            background: #e3f2fd;
+            color: #0d47a1;
+            border-left: 5px solid #1976d2;
+        }
+        .bandeau-info .emoji-grand { font-size: 28px; }
+
+        /* Onglets internes (Liste / Calendrier) */
+        .vue-tabs {
+            display: flex;
+            gap: 5px;
+            margin: 15px 0 0;
+            border-bottom: 2px solid #1976d2;
+            flex-wrap: wrap;
+        }
+        .vue-tab {
+            padding: 10px 18px;
+            background: #e8e8e8;
+            color: #333;
+            text-decoration: none;
+            border: none;
+            border-radius: 8px 8px 0 0;
+            font-weight: bold;
+            font-size: 15px;
+            cursor: pointer;
+            font-family: inherit;
+        }
+        .vue-tab:hover { background: #d4d4d4; }
+        .vue-tab.active { background: #1976d2; color: white; }
+
+        .vue-contenu { padding-top: 20px; }
+        .vue-contenu.hidden { display: none; }
+
+        /* Filtres de statut (vue liste) */
+        .filtres-statut {
+            display: flex;
+            gap: 8px;
+            margin: 15px 0;
+            flex-wrap: wrap;
+        }
+        .btn-statut {
+            padding: 8px 14px;
+            background: #e8e8e8;
+            color: #333;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            font-weight: bold;
+            font-family: inherit;
+            font-size: 14px;
+        }
+        .btn-statut:hover { background: #d4d4d4; }
+        .btn-statut.active { background: #1976d2; color: white; }
+
+        /* Badges de statut dans la liste */
+        .badge-statut {
+            display: inline-block;
+            padding: 3px 10px;
+            border-radius: 12px;
+            font-size: 12px;
+            font-weight: bold;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+        .badge-prevu    { background: #fff3e0; color: #b35900; }
+        .badge-en_cours { background: #e8f4e8; color: #2c5530; }
+        .badge-termine  { background: #e3f2fd; color: #0d47a1; }
+        .badge-annule   { background: #fce4e4; color: #922b21; }
+
+        .actions-sejour {
+            display: flex;
+            gap: 6px;
+            flex-wrap: wrap;
+            justify-content: flex-end;
+        }
+
+        /* Calendrier */
+        .toolbar-calendrier {
+            display: flex;
+            gap: 10px;
+            margin: 15px 0;
+            align-items: center;
+            flex-wrap: wrap;
+        }
+        .toolbar-calendrier input[type="month"] {
+            padding: 8px 12px;
+            border: 1px solid #ccc;
+            border-radius: 6px;
+            font-size: 15px;
+        }
+        table.calendrier {
+            width: 100%;
+            border-collapse: collapse;
+            background: white;
+            font-size: 12px;
+            border-radius: 8px;
+            overflow: hidden;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        table.calendrier th, table.calendrier td {
+            border: 1px solid #e0e0e0;
+            padding: 0;
+            text-align: center;
+            vertical-align: middle;
+        }
+        table.calendrier th.cal-chambre {
+            background: #1976d2;
+            color: white;
+            min-width: 80px;
+            text-align: left;
+            padding: 8px 10px;
+        }
+        table.calendrier th.cal-jour {
+            background: #f5f5f5;
+            color: #555;
+            font-size: 11px;
+            min-width: 28px;
+            padding: 4px 2px;
+        }
+        table.calendrier th.cal-jour.weekend { background: #ffe5b4; color: #a05000; }
+        table.calendrier td.cal-num {
+            background: #1976d2;
+            color: white;
+            font-weight: bold;
+            text-align: left;
+            padding: 8px 10px;
+        }
+        table.calendrier td.cal-cellule {
+            background: white;
+            height: 36px;
+            padding: 0;
+        }
+        table.calendrier td.cal-cellule.weekend { background: #fffaf0; }
+
+        /* Une cellule peut contenir 1 ou plusieurs "tranches" (1 par séjour qui couvre ce jour) */
+        .tranches {
+            display: flex;
+            flex-direction: column;
+            height: 100%;
+            width: 100%;
+        }
+        .tranche {
+            flex: 1;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 10px;
+            font-weight: bold;
+            cursor: pointer;
+            line-height: 1.1;
+            overflow: hidden;
+            white-space: nowrap;
+            color: white;
+            min-height: 16px;
+        }
+        .tranche.statut-prevu    { background: #b35900; }
+        .tranche.statut-en_cours { background: #2c5530; }
+        .tranche.statut-termine  { background: #6c757d; }
+        .tranche.statut-annule {
+            background: #fce4e4;
+            color: #922b21;
+            text-decoration: line-through;
+        }
+        /* Bordure de séparation entre 2 tranches superposées */
+        .tranche + .tranche { border-top: 1px solid white; }
+
+        /* Indicateur de surbooking quand 3+ séjours se chevauchent */
+        .tranche.surbooking {
+            background: #c0392b;
+            color: white;
+            font-size: 11px;
+        }
+
+        .legende {
+            display: flex;
+            gap: 14px;
+            flex-wrap: wrap;
+            margin: 15px 0 5px 0;
+            font-size: 13px;
+            color: #555;
+        }
+        .legende-item {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+        }
+        .legende-puce {
+            display: inline-block;
+            width: 18px;
+            height: 14px;
+            border-radius: 3px;
+        }
+
+        .avertissement {
+            background: #fff3e0;
+            color: #b35900;
+            padding: 10px 14px;
+            border-radius: 6px;
+            border-left: 4px solid #b35900;
+            margin: 10px 0;
+        }
+    </style>
+</head>
+<body>
+    <div id="app-header"></div>
+    <h1>🍽️ Restauration Les Bouleaux</h1>
+    <div id="menu"></div>
+
+    <h2>📅 Séjours appartement</h2>
+
+    <div class="bandeau-info">
+        <span class="emoji-grand">🏨</span>
+        <div>
+            <strong>Gestion des séjours — Appartement Corgémont</strong><br>
+            <small>10 chambres numérotées de 1 à 10. Chaque séjour est l'unité de facturation.</small>
+        </div>
+    </div>
+
+    <div class="toolbar">
+        <button type="button" class="btn-primary" onclick="ouvrirModaleCreation()">➕ Nouveau séjour</button>
+    </div>
+
+    <!-- Onglets internes : Liste / Calendrier -->
+    <div class="vue-tabs">
+        <button type="button" class="vue-tab active" id="tab-liste" onclick="changerVue('liste')">📋 Liste</button>
+        <button type="button" class="vue-tab" id="tab-calendrier" onclick="changerVue('calendrier')">📅 Calendrier</button>
+    </div>
+
+    <!-- ============ VUE LISTE ============ -->
+    <div class="vue-contenu" id="vue-liste">
+        <div class="filtres-statut">
+            <button type="button" class="btn-statut active" data-statut="en_cours" onclick="changerFiltreStatut('en_cours')">🟢 En cours</button>
+            <button type="button" class="btn-statut" data-statut="prevu" onclick="changerFiltreStatut('prevu')">🟠 Prévus</button>
+            <button type="button" class="btn-statut" data-statut="termine" onclick="changerFiltreStatut('termine')">🔵 Terminés</button>
+            <button type="button" class="btn-statut" data-statut="annule" onclick="changerFiltreStatut('annule')">🔴 Annulés</button>
+            <button type="button" class="btn-statut" data-statut="tous" onclick="changerFiltreStatut('tous')">📋 Tous</button>
+        </div>
+
+        <div id="liste-sejours">
+            <div class="loading">Chargement…</div>
+        </div>
+    </div>
+
+    <!-- ============ VUE CALENDRIER ============ -->
+    <div class="vue-contenu hidden" id="vue-calendrier">
+        <div class="toolbar-calendrier">
+            <label for="mois-calendrier"><strong>Mois affiché :</strong></label>
+            <input type="month" id="mois-calendrier" onchange="afficherCalendrier()">
+            <button type="button" class="btn-secondary" onclick="moisCalendrier(-1)">◀ Mois précédent</button>
+            <button type="button" class="btn-secondary" onclick="moisCalendrier(1)">Mois suivant ▶</button>
+        </div>
+
+        <div class="legende">
+            <div class="legende-item"><span class="legende-puce" style="background:#b35900;"></span>Prévu</div>
+            <div class="legende-item"><span class="legende-puce" style="background:#2c5530;"></span>En cours</div>
+            <div class="legende-item"><span class="legende-puce" style="background:#6c757d;"></span>Terminé</div>
+            <div class="legende-item"><span class="legende-puce" style="background:#fce4e4;border:1px solid #922b21;"></span>Annulé</div>
+            <div class="legende-item"><span class="legende-puce" style="background:#c0392b;"></span>Surbooking (3+)</div>
+        </div>
+
+        <div id="calendrier-conteneur">
+            <div class="loading">Chargement…</div>
+        </div>
+    </div>
+
+    <!-- ===== Modal création / modification ===== -->
+    <div id="modal-sejour" class="modal-overlay">
+        <div class="modal">
+            <h2 id="modal-titre">Nouveau séjour</h2>
+
+            <form id="form-sejour">
+                <input type="hidden" id="sejour-id">
+
+                <div class="form-group">
+                    <label for="sejour-personne">Personne *</label>
+                    <select id="sejour-personne" required>
+                        <option value="">— Choisir une personne du carnet —</option>
+                    </select>
+                    <small style="color:#666;">Pour ajouter une nouvelle personne, va dans l'onglet « 🏨 Personnes appartement ».</small>
+                </div>
+
+                <div class="form-group">
+                    <label for="sejour-chambre">N° de chambre *</label>
+                    <select id="sejour-chambre" required>
+                        <option value="">— Choisir une chambre —</option>
+                    </select>
+                </div>
+
+                <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;">
+                    <div class="form-group">
+                        <label for="sejour-arrivee">Date d'arrivée *</label>
+                        <input type="date" id="sejour-arrivee" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="sejour-depart">Date de départ *</label>
+                        <input type="date" id="sejour-depart" required>
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label for="sejour-statut">Statut *</label>
+                    <select id="sejour-statut" required>
+                        <option value="prevu">🟠 Prévu</option>
+                        <option value="en_cours">🟢 En cours</option>
+                        <option value="termine">🔵 Terminé</option>
+                        <option value="annule">🔴 Annulé</option>
+                    </select>
+                </div>
+
+                <div class="form-group">
+                    <label for="sejour-notes">Notes du séjour</label>
+                    <textarea id="sejour-notes" placeholder="Ex : venue pendant les vacances de la fille..."></textarea>
+                </div>
+
+                <div id="sejour-avertissement"></div>
+                <div id="sejour-message"></div>
+
+                <div class="form-actions">
+                    <button type="button" class="btn-secondary" onclick="fermerModale()">Annuler</button>
+                    <button type="submit" class="btn-primary">💾 Enregistrer</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="shared.js"></script>
+    <script>
+    // ================================================
+    // PAGE SÉJOURS APPARTEMENT
+    // ================================================
+
+    const NB_CHAMBRES = 10;
+    const NOMS_MOIS_S = ['janvier','février','mars','avril','mai','juin',
+                         'juillet','août','septembre','octobre','novembre','décembre'];
+    const NOMS_JOURS_COURT = ['D','L','M','M','J','V','S']; // dimanche..samedi
+
+    let personnesCache = [];
+    let sejoursCache = [];
+    let filtreStatut = 'en_cours';
+    let vueActive = 'liste';
+
+    document.addEventListener('DOMContentLoaded', async () => {
+        const auth = await verifierAuthEtRole(['admin']);
+        if (!auth) return;
+
+        afficherMenuComplet(
+            'sejours-appartement',
+            auth.user.email,
+            auth.profil.role,
+            auth.profil.nom_affiche
+        );
+
+        const selectChambre = document.getElementById('sejour-chambre');
+        for (let i = 1; i <= NB_CHAMBRES; i++) {
+            const opt = document.createElement('option');
+            opt.value = i;
+            opt.textContent = 'Chambre ' + i;
+            selectChambre.appendChild(opt);
+        }
+
+        const now = new Date();
+        document.getElementById('mois-calendrier').value =
+            `${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}`;
+
+        await chargerPersonnes();
+        await chargerSejours();
+
+        document.getElementById('form-sejour')
+            .addEventListener('submit', enregistrerSejour);
+
+        ['sejour-chambre', 'sejour-arrivee', 'sejour-depart'].forEach(id => {
+            document.getElementById(id).addEventListener('change', verifierChevauchement);
+        });
+    });
+
+    // ================================================
+    // CHARGEMENT DES DONNÉES
+    // ================================================
+    async function chargerPersonnes() {
+        const { data, error } = await supaClient
+            .from('personnes_appartement')
+            .select('id, prenom, nom')
+            .eq('actif', true)
+            .order('nom', { ascending: true })
+            .order('prenom', { ascending: true });
+
+        if (error) {
+            console.error('Erreur chargement personnes :', error);
+            return;
+        }
+        personnesCache = data || [];
+
+        const select = document.getElementById('sejour-personne');
+        select.innerHTML = '<option value="">— Choisir une personne du carnet —</option>';
+        personnesCache.forEach(p => {
+            const opt = document.createElement('option');
+            opt.value = p.id;
+            opt.textContent = p.nom + ' ' + p.prenom;
+            select.appendChild(opt);
+        });
+    }
+
+    async function chargerSejours() {
+        const { data, error } = await supaClient
+            .from('sejours_appartement')
+            .select('*')
+            .order('date_arrivee', { ascending: false });
+
+        if (error) {
+            console.error('Erreur chargement séjours :', error);
+            document.getElementById('liste-sejours').innerHTML =
+                '<div class="erreur-msg">Erreur : impossible de charger les séjours.</div>';
+            return;
+        }
+        sejoursCache = data || [];
+
+        afficherListe();
+        if (vueActive === 'calendrier') afficherCalendrier();
+    }
+
+    function nomPersonne(id) {
+        const p = personnesCache.find(x => x.id === id);
+        if (p) return p.nom + ' ' + p.prenom;
+        return 'Personne #' + id;
+    }
+
+    // ================================================
+    // VUES : liste / calendrier
+    // ================================================
+    function changerVue(vue) {
+        vueActive = vue;
+        document.getElementById('tab-liste').classList.toggle('active', vue === 'liste');
+        document.getElementById('tab-calendrier').classList.toggle('active', vue === 'calendrier');
+        document.getElementById('vue-liste').classList.toggle('hidden', vue !== 'liste');
+        document.getElementById('vue-calendrier').classList.toggle('hidden', vue !== 'calendrier');
+        if (vue === 'calendrier') afficherCalendrier();
+    }
+
+    // ================================================
+    // VUE LISTE
+    // ================================================
+    function changerFiltreStatut(statut) {
+        filtreStatut = statut;
+        document.querySelectorAll('.btn-statut').forEach(btn => {
+            btn.classList.toggle('active', btn.dataset.statut === statut);
+        });
+        afficherListe();
+    }
+
+    function libelleStatut(statut) {
+        const map = {
+            prevu:    '🟠 Prévu',
+            en_cours: '🟢 En cours',
+            termine:  '🔵 Terminé',
+            annule:   '🔴 Annulé'
+        };
+        return map[statut] || statut;
+    }
+
+    function dateFr(isoDate) {
+        if (!isoDate) return '';
+        const [a, m, j] = isoDate.split('-').map(Number);
+        return String(j).padStart(2,'0') + '.' + String(m).padStart(2,'0') + '.' + a;
+    }
+
+    function nbNuits(arrivee, depart) {
+        const a = new Date(arrivee + 'T00:00:00');
+        const d = new Date(depart + 'T00:00:00');
+        const diff = Math.round((d - a) / (1000 * 60 * 60 * 24));
+        return diff;
+    }
+
+    function afficherListe() {
+        const conteneur = document.getElementById('liste-sejours');
+
+        let liste = sejoursCache;
+        if (filtreStatut !== 'tous') {
+            liste = liste.filter(s => s.statut === filtreStatut);
+        }
+
+        if (liste.length === 0) {
+            const map = {
+                en_cours: 'Aucun séjour en cours.',
+                prevu:    'Aucun séjour prévu.',
+                termine:  'Aucun séjour terminé.',
+                annule:   'Aucun séjour annulé.',
+                tous:     'Aucun séjour enregistré.'
+            };
+            conteneur.innerHTML = '<div class="info-msg">' + map[filtreStatut] + '</div>';
+            return;
+        }
+
+        let html = '<table class="presences"><thead><tr>'
+                 + '<th>Personne</th><th>Chambre</th><th>Arrivée</th><th>Départ</th>'
+                 + '<th>Nuits</th><th>Statut</th><th>Notes</th><th>Actions</th>'
+                 + '</tr></thead><tbody>';
+
+        liste.forEach(s => {
+            const actionsHtml = construireActions(s);
+            html += '<tr>'
+                  + '<td><strong>' + echapper(nomPersonne(s.personne_id)) + '</strong></td>'
+                  + '<td>Chambre ' + s.numero_chambre + '</td>'
+                  + '<td>' + dateFr(s.date_arrivee) + '</td>'
+                  + '<td>' + dateFr(s.date_depart) + '</td>'
+                  + '<td style="text-align:center;">' + nbNuits(s.date_arrivee, s.date_depart) + '</td>'
+                  + '<td><span class="badge-statut badge-' + s.statut + '">' + libelleStatut(s.statut) + '</span></td>'
+                  + '<td>' + echapper(s.notes_sejour || '—') + '</td>'
+                  + '<td><div class="actions-sejour">' + actionsHtml + '</div></td>'
+                  + '</tr>';
+        });
+
+        html += '</tbody></table>';
+        conteneur.innerHTML = html;
+    }
+
+    function construireActions(s) {
+        let html = '<button type="button" class="btn-edit btn-small" onclick="ouvrirModaleModification(' + s.id + ')">Modifier</button>';
+
+        if (s.statut === 'prevu') {
+            html += ' <button type="button" class="btn-primary btn-small" onclick="changerStatutRapide(' + s.id + ', \'en_cours\')">▶ Démarrer</button>';
+            html += ' <button type="button" class="btn-danger btn-small" onclick="changerStatutRapide(' + s.id + ', \'annule\')">Annuler</button>';
+        } else if (s.statut === 'en_cours') {
+            html += ' <button type="button" class="btn-primary btn-small" onclick="changerStatutRapide(' + s.id + ', \'termine\')">✓ Terminer</button>';
+        } else if (s.statut === 'termine') {
+            html += ' <button type="button" class="btn-secondary btn-small" onclick="changerStatutRapide(' + s.id + ', \'en_cours\')">↩ Rouvrir</button>';
+        } else if (s.statut === 'annule') {
+            html += ' <button type="button" class="btn-secondary btn-small" onclick="changerStatutRapide(' + s.id + ', \'prevu\')">↩ Restaurer</button>';
+        }
+
+        return html;
+    }
+
+    async function changerStatutRapide(id, nouveauStatut) {
+        const map = {
+            en_cours: 'démarrer (passer à En cours)',
+            termine:  'terminer ce séjour',
+            annule:   'annuler ce séjour',
+            prevu:    'restaurer ce séjour en Prévu'
+        };
+        if (!confirm('Confirmer : ' + map[nouveauStatut] + ' ?')) return;
+
+        const { error } = await supaClient
+            .from('sejours_appartement')
+            .update({ statut: nouveauStatut })
+            .eq('id', id);
+
+        if (error) {
+            alert('Erreur : ' + error.message);
+            return;
+        }
+        await chargerSejours();
+    }
+
+    // ================================================
+    // VUE CALENDRIER
+    // ================================================
+    function moisCalendrier(delta) {
+        const input = document.getElementById('mois-calendrier');
+        const [a, m] = input.value.split('-').map(Number);
+        const d = new Date(a, m - 1, 1);
+        d.setMonth(d.getMonth() + delta);
+        input.value = `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}`;
+        afficherCalendrier();
+    }
+
+    function afficherCalendrier() {
+        const conteneur = document.getElementById('calendrier-conteneur');
+        const val = document.getElementById('mois-calendrier').value;
+        if (!val) {
+            conteneur.innerHTML = '<div class="info-msg">Choisis un mois.</div>';
+            return;
+        }
+        const [annee, moisNum] = val.split('-').map(Number);
+        const nbJours = new Date(annee, moisNum, 0).getDate();
+        const libelleMois = NOMS_MOIS_S[moisNum - 1] + ' ' + annee;
+
+        let html = '<h3 style="margin-top:0;">📅 ' + libelleMois + '</h3>';
+        html += '<div style="overflow-x:auto;"><table class="calendrier"><thead><tr>';
+        html += '<th class="cal-chambre">Chambre</th>';
+        for (let j = 1; j <= nbJours; j++) {
+            const d = new Date(annee, moisNum - 1, j);
+            const jourSemaine = d.getDay();
+            const cls = (jourSemaine === 0 || jourSemaine === 6) ? 'weekend' : '';
+            html += '<th class="cal-jour ' + cls + '">' + NOMS_JOURS_COURT[jourSemaine] + '<br>' + j + '</th>';
+        }
+        html += '</tr></thead><tbody>';
+
+        for (let c = 1; c <= NB_CHAMBRES; c++) {
+            html += '<tr><td class="cal-num">Chambre ' + c + '</td>';
+            for (let j = 1; j <= nbJours; j++) {
+                const dateStr = `${annee}-${String(moisNum).padStart(2,'0')}-${String(j).padStart(2,'0')}`;
+                const sejoursDuJour = trouverTousSejoursPourCelluleCalendrier(c, dateStr);
+                const d = new Date(annee, moisNum - 1, j);
+                const jourSemaine = d.getDay();
+                const clsWeekend = (jourSemaine === 0 || jourSemaine === 6) ? 'weekend' : '';
+
+                if (sejoursDuJour.length === 0) {
+                    html += '<td class="cal-cellule ' + clsWeekend + '"></td>';
+                } else {
+                    html += '<td class="cal-cellule ' + clsWeekend + '">';
+                    html += '<div class="tranches">';
+
+                    if (sejoursDuJour.length <= 2) {
+                        // 1 ou 2 séjours : on affiche chacun comme une tranche
+                        sejoursDuJour.forEach(sejour => {
+                            const nom = nomPersonne(sejour.personne_id);
+                            const initiales = construireInitiales(nom);
+                            const tooltip = nom + ' — du ' + dateFr(sejour.date_arrivee) +
+                                            ' au ' + dateFr(sejour.date_depart) +
+                                            ' — ' + libelleStatut(sejour.statut);
+                            html += '<div class="tranche statut-' + sejour.statut + '" ' +
+                                    'title="' + echapper(tooltip) + '" ' +
+                                    'onclick="ouvrirModaleModification(' + sejour.id + ')">' +
+                                    echapper(initiales) + '</div>';
+                        });
+                    } else {
+                        // 3+ séjours : on affiche le 1er en haut + un bandeau de surbooking en bas
+                        const sejourPrincipal = sejoursDuJour[0];
+                        const nom = nomPersonne(sejourPrincipal.personne_id);
+                        const initiales = construireInitiales(nom);
+                        const tooltipPrincipal = nom + ' — du ' + dateFr(sejourPrincipal.date_arrivee) +
+                                        ' au ' + dateFr(sejourPrincipal.date_depart) +
+                                        ' — ' + libelleStatut(sejourPrincipal.statut);
+                        html += '<div class="tranche statut-' + sejourPrincipal.statut + '" ' +
+                                'title="' + echapper(tooltipPrincipal) + '" ' +
+                                'onclick="ouvrirModaleModification(' + sejourPrincipal.id + ')">' +
+                                echapper(initiales) + '</div>';
+
+                        // Bandeau de surbooking listant les autres
+                        const autresNoms = sejoursDuJour.slice(1).map(s => nomPersonne(s.personne_id)).join(', ');
+                        const tooltipSurbooking = 'Surbooking : ' + autresNoms;
+                        html += '<div class="tranche surbooking" ' +
+                                'title="' + echapper(tooltipSurbooking) + '" ' +
+                                'onclick="changerVue(\'liste\'); changerFiltreStatut(\'tous\');">' +
+                                '⚠ +' + (sejoursDuJour.length - 1) + '</div>';
+                    }
+
+                    html += '</div></td>';
+                }
+            }
+            html += '</tr>';
+        }
+        html += '</tbody></table></div>';
+
+        conteneur.innerHTML = html;
+    }
+
+    function construireInitiales(nomComplet) {
+        const parts = nomComplet.trim().split(/\s+/);
+        if (parts.length === 1) return parts[0].substring(0, 2).toUpperCase();
+        return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase();
+    }
+
+    // Renvoie TOUS les séjours qui couvrent une chambre+date donnée (hors annulés)
+    function trouverTousSejoursPourCelluleCalendrier(chambre, dateIso) {
+        const liste = [];
+        for (const s of sejoursCache) {
+            if (s.numero_chambre !== chambre) continue;
+            if (s.statut === 'annule') continue;
+            if (dateIso >= s.date_arrivee && dateIso <= s.date_depart) {
+                liste.push(s);
+            }
+        }
+        return liste;
+    }
+
+    // ================================================
+    // MODALE CRÉATION / MODIFICATION
+    // ================================================
+    function ouvrirModaleCreation() {
+        document.getElementById('modal-titre').textContent = '➕ Nouveau séjour';
+        document.getElementById('sejour-id').value = '';
+        document.getElementById('form-sejour').reset();
+        document.getElementById('sejour-statut').value = 'prevu';
+        document.getElementById('sejour-avertissement').innerHTML = '';
+        document.getElementById('sejour-message').innerHTML = '';
+
+        const today = new Date();
+        const tomorrow = new Date(today);
+        tomorrow.setDate(today.getDate() + 1);
+        document.getElementById('sejour-arrivee').value = today.toISOString().split('T')[0];
+        document.getElementById('sejour-depart').value = tomorrow.toISOString().split('T')[0];
+
+        document.getElementById('modal-sejour').classList.add('active');
+    }
+
+    async function ouvrirModaleModification(id) {
+        const { data, error } = await supaClient
+            .from('sejours_appartement')
+            .select('*')
+            .eq('id', id)
+            .maybeSingle();
+
+        if (error || !data) {
+            alert('Impossible de charger ce séjour.');
+            return;
+        }
+
+        document.getElementById('modal-titre').textContent =
+            'Modifier le séjour — ' + nomPersonne(data.personne_id);
+        document.getElementById('sejour-id').value = data.id;
+        document.getElementById('sejour-personne').value = data.personne_id;
+        document.getElementById('sejour-chambre').value = data.numero_chambre;
+        document.getElementById('sejour-arrivee').value = data.date_arrivee;
+        document.getElementById('sejour-depart').value = data.date_depart;
+        document.getElementById('sejour-statut').value = data.statut;
+        document.getElementById('sejour-notes').value = data.notes_sejour || '';
+        document.getElementById('sejour-avertissement').innerHTML = '';
+        document.getElementById('sejour-message').innerHTML = '';
+
+        document.getElementById('modal-sejour').classList.add('active');
+        verifierChevauchement();
+    }
+
+    function fermerModale() {
+        document.getElementById('modal-sejour').classList.remove('active');
+    }
+
+    function verifierChevauchement() {
+        const zone = document.getElementById('sejour-avertissement');
+        zone.innerHTML = '';
+
+        const idActuel = document.getElementById('sejour-id').value;
+        const chambre = parseInt(document.getElementById('sejour-chambre').value, 10);
+        const arrivee = document.getElementById('sejour-arrivee').value;
+        const depart  = document.getElementById('sejour-depart').value;
+
+        if (!chambre || !arrivee || !depart) return;
+        if (depart < arrivee) return;
+
+        const conflits = sejoursCache.filter(s => {
+            if (idActuel && s.id === parseInt(idActuel, 10)) return false;
+            if (s.numero_chambre !== chambre) return false;
+            if (s.statut === 'annule') return false;
+            return arrivee <= s.date_depart && depart >= s.date_arrivee;
+        });
+
+        if (conflits.length > 0) {
+            let txt = '⚠️ Attention : chevauchement avec ' + conflits.length + ' autre(s) séjour(s) dans la chambre ' + chambre + ' :<ul style="margin:5px 0 0 20px;">';
+            conflits.forEach(c => {
+                txt += '<li>' + echapper(nomPersonne(c.personne_id)) +
+                       ' (du ' + dateFr(c.date_arrivee) + ' au ' + dateFr(c.date_depart) + ', ' + libelleStatut(c.statut) + ')</li>';
+            });
+            txt += '</ul>L\'enregistrement reste possible.';
+            zone.innerHTML = '<div class="avertissement">' + txt + '</div>';
+        }
+    }
+
+    async function enregistrerSejour(event) {
+        event.preventDefault();
+
+        const message = document.getElementById('sejour-message');
+        message.innerHTML = '';
+
+        const id = document.getElementById('sejour-id').value;
+        const sejour = {
+            personne_id:    parseInt(document.getElementById('sejour-personne').value, 10),
+            numero_chambre: parseInt(document.getElementById('sejour-chambre').value, 10),
+            date_arrivee:   document.getElementById('sejour-arrivee').value,
+            date_depart:    document.getElementById('sejour-depart').value,
+            statut:         document.getElementById('sejour-statut').value,
+            notes_sejour:   document.getElementById('sejour-notes').value.trim() || null
+        };
+
+        if (!sejour.personne_id || !sejour.numero_chambre || !sejour.date_arrivee || !sejour.date_depart) {
+            message.innerHTML = '<div class="erreur-msg">Merci de remplir tous les champs obligatoires.</div>';
+            return;
+        }
+        if (sejour.date_depart < sejour.date_arrivee) {
+            message.innerHTML = '<div class="erreur-msg">La date de départ doit être après la date d\'arrivée.</div>';
+            return;
+        }
+
+        let result;
+        if (id) {
+            result = await supaClient
+                .from('sejours_appartement')
+                .update(sejour)
+                .eq('id', id);
+        } else {
+            result = await supaClient
+                .from('sejours_appartement')
+                .insert([sejour]);
+        }
+
+        if (result.error) {
+            console.error(result.error);
+            message.innerHTML = '<div class="erreur-msg">Erreur : ' + result.error.message + '</div>';
+            return;
+        }
+
+        fermerModale();
+        await chargerSejours();
+    }
+
+    function echapper(texte) {
+        if (texte === null || texte === undefined) return '';
+        return String(texte)
+            .replace(/&/g, '&amp;')
+            .replace(/</g, '&lt;')
+            .replace(/>/g, '&gt;')
+            .replace(/"/g, '&quot;');
+    }
+    </script>
+
+</body>
+</html>
