@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+ <!DOCTYPE html>
 <html lang="fr">
 <head>
     <meta charset="UTF-8">
@@ -223,6 +223,30 @@
             font-weight: bold;
             text-transform: uppercase;
         }
+
+        /* Champ obligatoire collaborateur */
+        .zone-collaborateur {
+            background: #fff8e1;
+            border-left: 4px solid #b35900;
+            padding: 10px 12px;
+            border-radius: 6px;
+            margin: 14px 0 0 0;
+        }
+        .zone-collaborateur label {
+            display: block;
+            font-weight: bold;
+            color: #856404;
+            font-size: 13px;
+            margin-bottom: 4px;
+        }
+        .zone-collaborateur input {
+            width: 100%;
+            padding: 8px 10px;
+            border: 1px solid #b35900;
+            border-radius: 4px;
+            font-size: 14px;
+            font-family: inherit;
+        }
     </style>
 </head>
 <body>
@@ -274,6 +298,11 @@
                     </div>
 
                     <div id="zone-avertissement-stock"></div>
+
+                    <div class="zone-collaborateur">
+                        <label for="vente-collaborateur">👤 Nom du collaborateur qui passe la vente *</label>
+                        <input type="text" id="vente-collaborateur" placeholder="Ex : Sophie Müller" required>
+                    </div>
 
                     <div class="form-group" style="margin-top:14px;">
                         <label for="vente-notes">Notes (optionnel)</label>
@@ -345,8 +374,8 @@
     let sejoursEnCours = [];
     let personnesParId = {};
     let ventesCache = [];
-    let stockParProduit = {};   // calculé à partir des livraisons - ventes
-    let panier = [];            // [{ produit_id, quantite, prix_unitaire }]
+    let stockParProduit = {};
+    let panier = [];
     let venteCouranteDetail = null;
 
     document.addEventListener('DOMContentLoaded', async () => {
@@ -415,7 +444,6 @@
     }
 
     async function chargerLivraisonsEtCalculerStock() {
-        // Total livré par produit (depuis les commandes livrées)
         const { data: commandes, error } = await supaClient
             .from('commandes_appartement')
             .select('statut, lignes:lignes_commande_appartement(produit_id, qte_livree)')
@@ -433,7 +461,6 @@
             });
         });
 
-        // Soustrait les ventes non annulées
         ventesCache.forEach(v => {
             if (v.annulee) return;
             (v.lignes || []).forEach(l => {
@@ -459,7 +486,6 @@
     // VUE CAISSE
     // ================================================
     function majSelectsSejours() {
-        // Select principal de la caisse
         const sel = document.getElementById('select-sejour');
         sel.innerHTML = '<option value="">— Choisir un séjour en cours —</option>';
         sejoursEnCours.forEach(s => {
@@ -472,7 +498,6 @@
             sel.appendChild(opt);
         });
 
-        // Select de filtre historique (tous les séjours qui ont au moins une vente)
         const selH = document.getElementById('hist-filtre');
         selH.innerHTML = '<option value="">— Tous les séjours —</option>';
         const idsAvecVentes = [...new Set(ventesCache.map(v => v.sejour_id))];
@@ -487,7 +512,6 @@
                     selH.appendChild(opt);
                 }
             } else {
-                // Séjour pas dans "en_cours" → on essaie de le charger pour le filtre
                 const opt = document.createElement('option');
                 opt.value = idSejour;
                 opt.textContent = 'Séjour #' + idSejour;
@@ -505,7 +529,6 @@
         }
         const s = sejoursEnCours.find(x => x.id === sejourId);
         if (!s) { info.innerHTML = ''; return; }
-        const p = personnesParId[s.personne_id];
         info.innerHTML = '📅 Séjour du ' + dateFr(s.date_arrivee) + ' au ' + dateFr(s.date_depart);
     }
 
@@ -625,7 +648,6 @@
         conteneur.innerHTML = html;
         document.getElementById('montant-total').textContent = total.toFixed(2) + ' CHF';
 
-        // Avertissements stock
         const zoneAv = document.getElementById('zone-avertissement-stock');
         if (avertissements.length > 0) {
             let txt = '⚠️ Stock insuffisant :<ul style="margin:5px 0 0 20px;">';
@@ -642,6 +664,7 @@
     function viderPanier() {
         panier = [];
         document.getElementById('vente-notes').value = '';
+        document.getElementById('vente-collaborateur').value = '';
         document.getElementById('message-vente').innerHTML = '';
         afficherPanier();
     }
@@ -660,11 +683,17 @@
             return;
         }
 
+        const nomCollab = document.getElementById('vente-collaborateur').value.trim();
+        if (!nomCollab) {
+            msg.innerHTML = '<div class="erreur-msg">⚠️ Le nom du collaborateur est obligatoire pour valider une vente.</div>';
+            document.getElementById('vente-collaborateur').focus();
+            return;
+        }
+
         const total = panier.reduce((s, l) => s + (l.quantite * l.prix_unitaire), 0);
 
-        if (!confirm('Valider cette vente ?\n\nTotal : ' + total.toFixed(2) + ' CHF')) return;
+        if (!confirm('Valider cette vente ?\n\nCollaborateur : ' + nomCollab + '\nTotal : ' + total.toFixed(2) + ' CHF')) return;
 
-        // 1) Crée l'en-tête de vente
         const notes = document.getElementById('vente-notes').value.trim() || null;
         const { data: vente, error: errV } = await supaClient
             .from('ventes_appartement')
@@ -672,6 +701,7 @@
                 sejour_id: sejourId,
                 total: total,
                 notes: notes,
+                nom_collaborateur: nomCollab,
                 cree_par: userAuth.user.id
             })
             .select()
@@ -682,7 +712,6 @@
             return;
         }
 
-        // 2) Crée les lignes
         const lignes = panier.map(l => ({
             vente_id: vente.id,
             produit_id: l.produit_id,
@@ -696,13 +725,12 @@
             .insert(lignes);
 
         if (errL) {
-            // Rollback de l'en-tête
             await supaClient.from('ventes_appartement').delete().eq('id', vente.id);
             msg.innerHTML = '<div class="erreur-msg">Erreur lignes : ' + errL.message + '</div>';
             return;
         }
 
-        msg.innerHTML = '<div class="success">✓ Vente #' + vente.id + ' enregistrée (' + total.toFixed(2) + ' CHF).</div>';
+        msg.innerHTML = '<div class="success">✓ Vente #' + vente.id + ' enregistrée (' + total.toFixed(2) + ' CHF) par ' + echapper(nomCollab) + '.</div>';
         setTimeout(() => msg.innerHTML = '', 3000);
 
         viderPanier();
@@ -712,6 +740,17 @@
     // ================================================
     // HISTORIQUE
     // ================================================
+    function formatDateHeure(isoTimestamp) {
+        if (!isoTimestamp) return '';
+        const d = new Date(isoTimestamp);
+        const j = String(d.getDate()).padStart(2, '0');
+        const m = String(d.getMonth() + 1).padStart(2, '0');
+        const a = d.getFullYear();
+        const h = String(d.getHours()).padStart(2, '0');
+        const mi = String(d.getMinutes()).padStart(2, '0');
+        return j + '.' + m + '.' + a + ' ' + h + ':' + mi;
+    }
+
     function afficherHistorique() {
         const conteneur = document.getElementById('liste-historique');
         const filtre = parseInt(document.getElementById('hist-filtre').value, 10);
@@ -727,8 +766,8 @@
         }
 
         let html = '<table class="presences"><thead><tr>'
-                 + '<th>N°</th><th>Date</th><th>Personne</th><th>Chambre</th>'
-                 + '<th>Articles</th><th>Total</th><th>État</th><th>Actions</th>'
+                 + '<th>N°</th><th>Date / heure</th><th>Personne</th><th>Chambre</th>'
+                 + '<th>Articles</th><th>Total</th><th>Collaborateur</th><th>État</th><th>Actions</th>'
                  + '</tr></thead><tbody>';
 
         liste.forEach(v => {
@@ -743,6 +782,7 @@
 
             const nbArt = (v.lignes || []).reduce((s, l) => s + (l.quantite || 0), 0);
             const total = parseFloat(v.total).toFixed(2);
+            const collab = v.nom_collaborateur || '—';
 
             const etatHtml = v.annulee
                 ? '<span class="badge-annulee">Annulée</span>'
@@ -750,11 +790,12 @@
 
             html += '<tr style="' + (v.annulee ? 'opacity:0.6;' : '') + '">'
                   + '<td><strong>#' + v.id + '</strong></td>'
-                  + '<td>' + dateFr(v.date_vente) + '</td>'
+                  + '<td>' + formatDateHeure(v.cree_le) + '</td>'
                   + '<td>' + echapper(nomPersonne) + '</td>'
                   + '<td>' + chambre + '</td>'
                   + '<td style="text-align:center;">' + nbArt + '</td>'
                   + '<td style="text-align:right;font-weight:bold;color:#2c5530;">' + total + ' CHF</td>'
+                  + '<td>' + echapper(collab) + '</td>'
                   + '<td>' + etatHtml + '</td>'
                   + '<td><button type="button" class="btn-edit btn-small" onclick="ouvrirModalDetail(' + v.id + ')">Détail</button></td>'
                   + '</tr>';
@@ -778,7 +819,8 @@
 
         document.getElementById('modal-detail-titre').textContent = 'Vente #' + v.id + ' — ' + nomPersonne;
 
-        let html = '<p><strong>Date :</strong> ' + dateFr(v.date_vente) + '</p>';
+        let html = '<p><strong>Date / heure :</strong> ' + formatDateHeure(v.cree_le) + '</p>';
+        html += '<p><strong>👤 Collaborateur :</strong> ' + echapper(v.nom_collaborateur || '—') + '</p>';
         if (v.annulee) {
             html += '<div class="avertissement-stock" style="background:#fce4e4;color:#922b21;border-left-color:#922b21;">'
                   + '<strong>❌ Vente annulée</strong><br>'
@@ -795,12 +837,10 @@
               + '<th style="text-align:right;">Sous-total</th>'
               + '</tr></thead><tbody>';
 
-        let totalCalc = 0;
         (v.lignes || []).forEach(l => {
             const p = produitsCache.find(x => x.id === l.produit_id);
             const nomP = p ? p.nom : 'Produit #' + l.produit_id;
             const st = parseFloat(l.sous_total) || 0;
-            totalCalc += st;
             html += '<tr>'
                   + '<td><strong>' + echapper(nomP) + '</strong></td>'
                   + '<td style="text-align:center;">' + l.quantite + '</td>'
@@ -818,7 +858,6 @@
         document.getElementById('zone-annulation').style.display = 'none';
         document.getElementById('motif-annulation').value = '';
 
-        // Cacher le bouton annuler si déjà annulée
         const btnAnn = document.getElementById('btn-annuler-vente');
         btnAnn.style.display = v.annulee ? 'none' : '';
 
