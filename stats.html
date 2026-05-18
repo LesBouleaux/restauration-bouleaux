@@ -6,237 +6,394 @@
     <title>Statistiques - Restauration Les Bouleaux</title>
     <link rel="stylesheet" href="shared.css">
     <style>
-        /* Bandeau admin sélecteur de client */
-        .bandeau-client-admin {
-            background: #fff3cd;
-            border: 1px solid #ffd966;
-            border-radius: 8px;
-            padding: 12px 15px;
-            margin-bottom: 20px;
-            display: flex;
-            align-items: center;
-            gap: 12px;
-            flex-wrap: wrap;
-        }
-        .bandeau-client-admin label {
-            font-weight: bold;
-            color: #856404;
-            margin: 0;
-        }
-        .bandeau-client-admin select {
-            padding: 6px 10px;
-            border: 1px solid #ccc;
-            border-radius: 6px;
-            font-size: 14px;
-            background: white;
-        }
-        .bandeau-client-admin .info {
-            color: #856404;
-            font-size: 13px;
-        }
-
+        /* ===== TOOLBAR ===== */
         .stats-toolbar {
-            display: flex;
-            gap: 15px;
-            flex-wrap: wrap;
-            align-items: center;
             background: white;
-            padding: 15px;
+            padding: 14px 18px;
             border-radius: 8px;
-            box-shadow: 0 1px 3px rgba(0,0,0,0.08);
-            margin-bottom: 20px;
-        }
-        .stats-toolbar label { font-weight: bold; margin-right: 4px; }
-        .stats-toolbar input, .stats-toolbar select {
-            padding: 6px 10px;
-            border: 1px solid #ccc;
-            border-radius: 6px;
-            font-size: 14px;
-        }
-        .periode-rapide {
-            display: inline-flex;
-            gap: 4px;
-            flex-wrap: wrap;
-        }
-        .periode-rapide button {
-            background: white;
-            border: 1px solid #2c5530;
-            color: #2c5530;
-            padding: 4px 10px;
-            border-radius: 4px;
-            cursor: pointer;
+            border: 0.5px solid #ddd;
+            margin-bottom: 14px;
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
             font-size: 13px;
         }
-        .periode-rapide button:hover { background: #f0f8f0; }
-
-        .stats-cards {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
-            gap: 15px;
-            margin-bottom: 25px;
+        .toolbar-ligne {
+            display: flex;
+            gap: 14px;
+            align-items: center;
+            flex-wrap: wrap;
         }
-        .stat-card {
+        .toolbar-label {
+            font-weight: 600;
+            color: #2c5530;
+            min-width: 100px;
+        }
+        .periode-presets {
+            display: inline-flex;
+            border: 1px solid #2c5530;
+            border-radius: 6px;
+            overflow: hidden;
+            flex-wrap: wrap;
+        }
+        .preset-btn {
             background: white;
-            padding: 18px;
-            border-radius: 8px;
-            text-align: center;
-            box-shadow: 0 2px 4px rgba(0,0,0,0.06);
+            color: #2c5530;
+            border: none;
+            border-right: 1px solid #2c5530;
+            padding: 6px 14px;
+            cursor: pointer;
+            font-size: 12px;
+            font-weight: 500;
+            white-space: nowrap;
+        }
+        .preset-btn:last-child { border-right: none; }
+        .preset-btn:hover { background: #f0f8f0; }
+        .preset-btn.active {
+            background: #2c5530;
+            color: white;
+            font-weight: 600;
+        }
+        .periode-dates {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+        }
+        .periode-dates input[type="date"] {
+            padding: 5px 10px;
+            border: 1px solid #2c5530;
+            border-radius: 6px;
+            font-size: 13px;
+            color: #2c5530;
+            font-weight: 600;
+        }
+        .toolbar-actions {
+            display: flex;
+            gap: 10px;
+            justify-content: flex-end;
+            padding-top: 4px;
+            border-top: 1px solid #eee;
+            margin-top: 4px;
+        }
+        .btn-imprimer-rapport {
+            background: #2c5530;
+            color: white;
+            border: none;
+            padding: 8px 18px;
+            border-radius: 6px;
+            font-size: 13px;
+            font-weight: 600;
+            cursor: pointer;
+        }
+        .btn-imprimer-rapport:hover { background: #1f3a22; }
+
+        /* ===== ONGLETS INTERNES ===== */
+        .onglets-stats {
+            display: flex;
+            gap: 4px;
+            margin: 18px 0 0;
+            border-bottom: 3px solid #2c5530;
+            flex-wrap: wrap;
+        }
+        .onglet-stats {
+            padding: 10px 18px;
+            background: #e8e8e8;
+            color: #333;
+            border: none;
+            border-radius: 8px 8px 0 0;
+            font-weight: bold;
+            font-size: 14px;
+            cursor: pointer;
+            font-family: inherit;
+        }
+        .onglet-stats:hover { background: #d4d4d4; }
+        .onglet-stats.active {
+            background: #2c5530;
+            color: white;
+        }
+        .onglet-contenu {
+            background: white;
+            padding: 20px;
+            border-radius: 0 8px 8px 8px;
+            border: 1px solid #ddd;
+            border-top: none;
+            margin-bottom: 18px;
+        }
+        .onglet-contenu.hidden { display: none; }
+
+        /* ===== CARTES KPI ===== */
+        .kpi-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+            gap: 14px;
+            margin-bottom: 20px;
+        }
+        .kpi-card {
+            background: white;
+            padding: 18px 20px;
+            border-radius: 10px;
+            border: 1px solid #ddd;
             border-top: 4px solid #2c5530;
         }
-        .stat-card.client-card {
-            border-top-color: #d4825a;
-        }
-        .stat-card .label {
-            color: #666;
-            font-size: 13px;
+        .kpi-card.bouleaux  { border-top-color: #2c5530; }
+        .kpi-card.passerelle { border-top-color: #1976d2; }
+        .kpi-card.appart    { border-top-color: #6a1b9a; }
+        .kpi-card.domicile  { border-top-color: #00838f; }
+        .kpi-card.ejc       { border-top-color: #b35900; }
+        .kpi-card.global    { border-top-color: #2c5530; }
+        .kpi-label {
+            color: #888;
+            font-size: 11px;
             text-transform: uppercase;
             letter-spacing: 0.5px;
+            margin-bottom: 6px;
         }
-        .stat-card .valeur {
+        .kpi-valeur {
             font-size: 32px;
             font-weight: bold;
             color: #2c5530;
-            margin: 8px 0 0 0;
+            line-height: 1;
         }
-        .stat-card.client-card .valeur {
-            color: #d4825a;
-        }
-        .stat-card .sub {
+        .kpi-sub {
             color: #888;
             font-size: 12px;
-            margin-top: 4px;
+            margin-top: 6px;
         }
-
-        .section-stats {
-            background: white;
-            padding: 20px;
-            border-radius: 8px;
-            margin-bottom: 20px;
-            box-shadow: 0 1px 3px rgba(0,0,0,0.06);
-        }
-        .section-stats h3 {
-            color: #2c5530;
-            border-bottom: 2px solid #e0e8e0;
-            padding-bottom: 10px;
-            margin-top: 0;
-        }
-        .section-stats.section-clients h3 {
-            color: #b35a2a;
-            border-bottom-color: #f0d8c0;
-        }
-
-        .barre-container {
-            background: #f0f0f0;
-            border-radius: 6px;
-            height: 28px;
-            overflow: hidden;
-            display: flex;
-            margin: 6px 0;
-        }
-        .barre-segment {
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            color: white;
-            font-weight: bold;
+        .kpi-evolution {
+            display: inline-block;
+            margin-left: 8px;
             font-size: 12px;
-            transition: width 0.3s;
+            font-weight: bold;
+            padding: 2px 8px;
+            border-radius: 10px;
+            vertical-align: middle;
         }
-        .barre-restaurant { background: #2c5530; }
-        .barre-chambre { background: #d4825a; }
-        .barre-aucun { background: #999; }
-        .barre-present { background: #2c5530; }
-        .barre-absent { background: #c44; }
+        .kpi-evolution.hausse { background: #e8f4e8; color: #2c5530; }
+        .kpi-evolution.baisse { background: #fce4e4; color: #c0392b; }
+        .kpi-evolution.neutre { background: #f0f0f0; color: #666; }
 
-        table.stats {
+        /* ===== TITRES SECTIONS ===== */
+        .section-titre {
+            font-size: 17px;
+            font-weight: bold;
+            color: #2c5530;
+            margin: 24px 0 12px;
+            padding-bottom: 6px;
+            border-bottom: 1px solid #ddd;
+        }
+        .section-titre:first-of-type { margin-top: 6px; }
+        .section-sous-titre {
+            color: #888;
+            font-size: 13px;
+            margin-bottom: 12px;
+            font-style: italic;
+        }
+
+        /* ===== ZONE GRAPHIQUES ===== */
+        .graph-zone {
+            background: #fafafa;
+            padding: 14px;
+            border-radius: 8px;
+            margin-bottom: 18px;
+            border: 1px solid #eee;
+        }
+        .graph-canvas-wrap {
+            position: relative;
+            height: 380px;
+        }
+        .graph-canvas-wrap.petit { height: 280px; }
+        .graph-canvas-wrap.mini { height: 220px; }
+        .graph-2cols {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 14px;
+        }
+        @media (max-width: 850px) {
+            .graph-2cols { grid-template-columns: 1fr; }
+        }
+
+        /* ===== TABLEAUX ===== */
+        .table-stats {
             width: 100%;
             border-collapse: collapse;
-            margin-top: 10px;
-        }
-        table.stats th {
-            background: #2c5530;
-            color: white;
-            padding: 10px;
-            text-align: left;
-        }
-        table.stats.table-clients th {
-            background: #b35a2a;
-        }
-        table.stats td {
-            padding: 8px 10px;
-            border-bottom: 1px solid #eee;
-        }
-        table.stats tr:hover { background: #f9faf9; }
-        .pourcent {
-            font-weight: bold;
-            color: #2c5530;
-        }
-        .pourcent-client {
-            font-weight: bold;
-            color: #b35a2a;
-        }
-
-        .legende {
-            display: flex;
-            gap: 15px;
-            flex-wrap: wrap;
-            font-size: 13px;
-            margin-top: 10px;
-            color: #555;
-        }
-        .legende-item {
-            display: inline-flex;
-            align-items: center;
-            gap: 5px;
-        }
-        .legende-puce {
-            display: inline-block;
-            width: 14px;
-            height: 14px;
-            border-radius: 3px;
-        }
-
-        /* Cartes par client (vue agrégée) */
-        .cartes-par-client {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
-            gap: 15px;
-            margin-top: 15px;
-        }
-        .carte-client {
-            background: linear-gradient(135deg, #fff8f0 0%, #fff 100%);
-            border-left: 4px solid #d4825a;
-            padding: 15px;
-            border-radius: 8px;
-            box-shadow: 0 1px 3px rgba(0,0,0,0.06);
-        }
-        .carte-client h4 {
-            margin: 0 0 10px 0;
-            color: #b35a2a;
-            font-size: 16px;
-        }
-        .carte-client .ligne {
-            display: flex;
-            justify-content: space-between;
-            padding: 4px 0;
             font-size: 14px;
-            border-bottom: 1px dashed #f0e0d0;
+            background: white;
+            border: 1px solid #ddd;
+            border-radius: 8px;
+            overflow: hidden;
+            margin-bottom: 18px;
         }
-        .carte-client .ligne:last-child { border-bottom: none; }
-        .carte-client .label-petit { color: #888; }
-        .carte-client .valeur-petit { font-weight: bold; color: #b35a2a; }
-        .carte-client .net {
-            margin-top: 10px;
-            padding-top: 10px;
-            border-top: 2px solid #d4825a;
-            display: flex;
-            justify-content: space-between;
-            font-size: 16px;
+        .table-stats th {
+            background: #f5f5f5;
+            color: #555;
+            padding: 10px 12px;
+            text-align: left;
+            font-size: 12px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            border-bottom: 1px solid #ddd;
         }
-        .carte-client .net-valeur {
+        .table-stats th.col-num { text-align: right; }
+        .table-stats td {
+            padding: 10px 12px;
+            border-bottom: 1px solid #f0f0f0;
+        }
+        .table-stats td.col-num {
+            text-align: right;
+            font-weight: 600;
+        }
+        .table-stats tr:last-child td { border-bottom: none; }
+        .table-stats tfoot td {
+            background: #f5f8f5;
             font-weight: bold;
             color: #2c5530;
-            font-size: 22px;
+            border-top: 2px solid #2c5530;
+        }
+        .source-pastille {
+            display: inline-block;
+            width: 12px;
+            height: 12px;
+            border-radius: 3px;
+            margin-right: 8px;
+            vertical-align: middle;
+        }
+
+        /* ===== AUCUNE DONNÉE ===== */
+        .aucune-donnee {
+            color: #888;
+            font-style: italic;
+            font-size: 13px;
+            padding: 14px;
+            background: #f9f9f9;
+            border-left: 3px solid #ddd;
+            border-radius: 4px;
+            margin: 10px 0;
+        }
+
+        /* ===== DRILL-DOWN ===== */
+        .drilldown-zone {
+            background: #f5f8f5;
+            border: 1px solid #c8d8c8;
+            padding: 14px 16px;
+            border-radius: 8px;
+            margin-bottom: 18px;
+            display: flex;
+            gap: 12px;
+            align-items: center;
+            flex-wrap: wrap;
+        }
+        .drilldown-zone label {
+            font-weight: bold;
+            color: #2c5530;
+        }
+        .drilldown-zone select {
+            padding: 7px 12px;
+            border: 1px solid #2c5530;
+            border-radius: 6px;
+            font-size: 14px;
+            color: #2c5530;
+            font-weight: 600;
+            background: white;
+            min-width: 250px;
+        }
+
+        .badge-info {
+            display: inline-block;
+            background: #f0f8f0;
+            color: #2c5530;
+            padding: 3px 9px;
+            border-radius: 10px;
+            font-size: 12px;
+            font-weight: bold;
+            margin-right: 5px;
+            margin-bottom: 4px;
+        }
+        .badge-info.warning { background: #fff3e0; color: #b35900; }
+        .badge-info.danger  { background: #fce4e4; color: #c0392b; }
+
+        .detail-individu {
+            background: white;
+            border: 1px solid #ddd;
+            padding: 16px 20px;
+            border-radius: 8px;
+            margin-bottom: 18px;
+        }
+        .detail-individu h4 {
+            margin: 0 0 10px;
+            color: #2c5530;
+        }
+
+        /* ===== ENTÊTE DU RAPPORT IMPRIMÉ (cachée à l'écran) ===== */
+        .rapport-entete {
+            display: none;
+            border-bottom: 3px solid #2c5530;
+            padding-bottom: 14px;
+            margin-bottom: 20px;
+            align-items: flex-start;
+            justify-content: space-between;
+        }
+        .rapport-entete-gauche {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+        .rapport-entete .logo-impr {
+            width: 56px;
+            height: 56px;
+            object-fit: contain;
+        }
+        .rapport-entete-nom { font-size: 16px; font-weight: bold; color: #2c5530; }
+        .rapport-entete-adresse { font-size: 11px; color: #888; margin-top: 2px; }
+        .rapport-entete-type { font-size: 11px; color: #888; text-transform: uppercase; letter-spacing: 0.5px; }
+        .rapport-entete-periode { font-size: 13px; font-weight: bold; color: #2c5530; margin-top: 2px; }
+        .rapport-pied {
+            display: none;
+            margin-top: 24px;
+            padding-top: 12px;
+            border-top: 1px solid #ddd;
+            font-size: 10px;
+            color: #999;
+            text-align: center;
+        }
+
+        /* ===== IMPRESSION ===== */
+        @media print {
+            @page {
+                size: A4 portrait;
+                margin: 12mm;
+            }
+            body {
+                background: white !important;
+                padding: 0 !important;
+                margin: 0 !important;
+            }
+            #app-header, #menu, h1, h2.page-title,
+            .stats-toolbar, .onglets-stats, .drilldown-zone,
+            .no-print {
+                display: none !important;
+            }
+            .rapport-entete,
+            .rapport-pied {
+                display: flex !important;
+            }
+            .rapport-pied {
+                display: block !important;
+            }
+            .onglet-contenu {
+                background: white !important;
+                border: none !important;
+                padding: 0 !important;
+                border-radius: 0 !important;
+                margin: 0 !important;
+            }
+            .onglet-contenu.hidden { display: none !important; }
+            .kpi-card, .graph-zone, .table-stats {
+                page-break-inside: avoid;
+            }
+            .section-titre { page-break-after: avoid; }
+            .graph-canvas-wrap { height: 260px !important; }
+            .graph-canvas-wrap.petit { height: 220px !important; }
+            .graph-canvas-wrap.mini { height: 180px !important; }
         }
     </style>
 </head>
@@ -245,710 +402,1635 @@
     <h1>🍽️ Restauration Les Bouleaux</h1>
     <div id="menu"></div>
 
-    <h2>📊 Statistiques</h2>
+    <h2 class="page-title">📊 Statistiques — Tableau de bord direction</h2>
+    <p class="no-print" style="color:#888; margin-top:-8px;">
+        Outil de pilotage commun direction + admin. Tous les chiffres viennent en temps réel de la base.
+    </p>
 
-    <!-- Bandeau ADMIN sélecteur de client (visible uniquement pour admin) -->
-    <div id="bandeau-client" class="bandeau-client-admin" style="display:none;">
-        <label>👤 Vue clients externes :</label>
-        <select id="select-client" onchange="changerClient()">
-            <option value="">🌍 Tous les clients (agrégé)</option>
-        </select>
-        <span class="info" id="info-client"></span>
-    </div>
-
+    <!-- ===== TOOLBAR ===== -->
     <div class="stats-toolbar">
-        <div>
-            <label>Vue résidents :</label>
-            <select id="vue-mode" onchange="changerVue()">
-                <option value="ensemble">Tous les résidents</option>
-                <option value="resident">Un résident en particulier</option>
-            </select>
+        <div class="toolbar-ligne">
+            <span class="toolbar-label">📅 Période :</span>
+            <div class="periode-presets" id="presets">
+                <button class="preset-btn" data-preset="mois-courant" onclick="setPreset('mois-courant')">Mois en cours</button>
+                <button class="preset-btn active" data-preset="mois-dernier" onclick="setPreset('mois-dernier')">Mois dernier</button>
+                <button class="preset-btn" data-preset="3-mois" onclick="setPreset('3-mois')">3 derniers mois</button>
+                <button class="preset-btn" data-preset="annee" onclick="setPreset('annee')">Année en cours</button>
+                <button class="preset-btn" data-preset="perso" onclick="setPreset('perso')">Personnalisé</button>
+            </div>
         </div>
-        <div id="select-resident-zone" style="display:none;">
-            <label>Résident :</label>
-            <select id="select-resident" onchange="genererStats()">
-                <option value="">— Choisir —</option>
-            </select>
+
+        <div class="toolbar-ligne">
+            <span class="toolbar-label">Du :</span>
+            <div class="periode-dates">
+                <input type="date" id="date-debut" onchange="onDateChange()">
+                <span style="margin:0 4px;">au</span>
+                <input type="date" id="date-fin" onchange="onDateChange()">
+            </div>
+            <span id="resume-periode" style="color:#888; font-size:12px; margin-left:14px;"></span>
         </div>
-        <div>
-            <label>Du :</label>
-            <input type="date" id="date-debut" onchange="genererStats()">
+
+        <div class="toolbar-actions">
+            <button class="btn-imprimer-rapport" onclick="imprimerRapport()">🖨️ Imprimer le rapport direction</button>
         </div>
-        <div>
-            <label>Au :</label>
-            <input type="date" id="date-fin" onchange="genererStats()">
-        </div>
-        <div class="periode-rapide">
-            <button onclick="periodePredefinie('7j')">7 jours</button>
-            <button onclick="periodePredefinie('30j')">30 jours</button>
-            <button onclick="periodePredefinie('mois')">Ce mois</button>
-            <button onclick="periodePredefinie('mois-prec')">Mois précédent</button>
-        </div>
-        <button class="btn-primary" onclick="genererStats()">🔄 Actualiser</button>
-        <button class="btn-print" onclick="window.print()">🖨️ Imprimer</button>
     </div>
 
-    <div id="contenu">
-        <p class="info-msg">Choisis une période et clique sur "Actualiser".</p>
+    <!-- ===== ENTÊTE DU RAPPORT IMPRIMÉ (caché à l'écran, visible à l'impression) ===== -->
+    <div class="rapport-entete">
+        <div class="rapport-entete-gauche">
+            <img src="images/logo.png" alt="Logo" class="logo-impr" onerror="this.style.display='none'">
+            <div>
+                <div class="rapport-entete-nom">Résidence Les Bouleaux</div>
+                <div class="rapport-entete-adresse">Sur le Crêt 12 — 2606 Corgémont</div>
+            </div>
+        </div>
+        <div style="text-align:right;">
+            <div class="rapport-entete-type">Rapport statistiques — Direction</div>
+            <div class="rapport-entete-periode" id="rapport-periode-impr"></div>
+        </div>
     </div>
+
+    <!-- ===== ONGLETS INTERNES ===== -->
+    <div class="onglets-stats">
+        <button class="onglet-stats active" data-onglet="vue-ensemble" onclick="changerOnglet('vue-ensemble')">📊 Vue d'ensemble</button>
+        <button class="onglet-stats" data-onglet="residents" onclick="changerOnglet('residents')">👥 Résidents</button>
+        <button class="onglet-stats" data-onglet="ejc" onclick="changerOnglet('ejc')">🍴 Clients externes</button>
+        <button class="onglet-stats" data-onglet="domicile" onclick="changerOnglet('domicile')">🏠 Domicile</button>
+        <button class="onglet-stats" data-onglet="appartement" onclick="changerOnglet('appartement')">🏨 Appartement</button>
+    </div>
+
+    <div class="onglet-contenu" id="onglet-vue-ensemble">
+        <div id="contenu-vue-ensemble"><p class="info-msg">Choisis une période ci-dessus.</p></div>
+    </div>
+    <div class="onglet-contenu hidden" id="onglet-residents">
+        <div id="contenu-residents"><p class="info-msg">Calcul en cours…</p></div>
+    </div>
+    <div class="onglet-contenu hidden" id="onglet-ejc">
+        <div id="contenu-ejc"><p class="info-msg">Calcul en cours…</p></div>
+    </div>
+    <div class="onglet-contenu hidden" id="onglet-domicile">
+        <div id="contenu-domicile"><p class="info-msg">Calcul en cours…</p></div>
+    </div>
+    <div class="onglet-contenu hidden" id="onglet-appartement">
+        <div id="contenu-appartement"><p class="info-msg">Calcul en cours…</p></div>
+    </div>
+
+    <!-- Pied de rapport (visible uniquement à l'impression) -->
+    <div class="rapport-pied" id="rapport-pied-impr"></div>
 
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
     <script src="shared.js"></script>
     <script>
-        let lieuxDisponibles = [];
-        let tousResidents = [];
-        let tousClients = [];
-        let clientCourantId = null;
-        let categoriesParClient = {};
+    // ============================================================
+    // PAGE STATISTIQUES — PALIER 3 final : tout + saisonnalité + impression
+    // ============================================================
 
-        async function chargerInitial() {
-            const { data: lieux } = await supaClient
-                .from('lieux_repas')
-                .select('*')
-                .order('ordre', { ascending: true });
-            lieuxDisponibles = lieux || [];
+    const COULEURS = {
+        bouleaux:     '#2c5530',
+        passerelle:   '#1976d2',
+        ejc_corgemont:'#b35900',
+        ejc_pery:     '#d4762b',
+        ecureuils:    '#e6a23c',
+        domicile:     '#00838f',
+        appartement:  '#6a1b9a'
+    };
 
-            tousResidents = await chargerResidentsActifs();
+    const CLIENT_EJC_CORGEMONT = '6ac8f763-2b64-4b8e-b802-90841acb9265';
+    const CLIENT_EJC_PERY      = 'bd1d95b5-41e2-49c4-8b40-b76837e7d9c1';
+    const CLIENT_ECUREUILS     = 'fc3e05ca-8ef5-41c9-a499-9360c4bfe376';
 
-            const sel = document.getElementById('select-resident');
-            sel.innerHTML = '<option value="">— Choisir —</option>';
-            for (const r of tousResidents) {
-                sel.innerHTML += `<option value="${r.id}">${r.prenom} ${r.nom}</option>`;
-            }
+    const NOMS_CLIENTS = {
+        [CLIENT_EJC_CORGEMONT]: 'EJC Corgémont',
+        [CLIENT_EJC_PERY]:      'EJC Péry',
+        [CLIENT_ECUREUILS]:     'Maison de l\'enfance Les Écureuils'
+    };
+    const COULEURS_CLIENTS = {
+        [CLIENT_EJC_CORGEMONT]: COULEURS.ejc_corgemont,
+        [CLIENT_EJC_PERY]:      COULEURS.ejc_pery,
+        [CLIENT_ECUREUILS]:     COULEURS.ecureuils
+    };
 
-            tousClients = await chargerTousLesClients();
-            const selClient = document.getElementById('select-client');
-            for (const c of tousClients) {
-                selClient.innerHTML += `<option value="${c.id}">${c.nom}</option>`;
-            }
-            if (tousClients.length > 0) {
-                document.getElementById('bandeau-client').style.display = 'flex';
-            }
+    const REPAS_LISTE = ['petit_dej', 'dejeuner', 'diner'];
+    const NOMS_JOURS = ['Dimanche', 'Lundi', 'Mardi', 'Mercredi', 'Jeudi', 'Vendredi', 'Samedi'];
+    const NOMS_MOIS = ['Janv', 'Févr', 'Mars', 'Avr', 'Mai', 'Juin', 'Juil', 'Août', 'Sept', 'Oct', 'Nov', 'Déc'];
 
-            for (const c of tousClients) {
-                const { data: cats } = await supaClient
-                    .from(TABLE_CATEGORIES_EJC)
-                    .select('*')
-                    .eq('client_id', c.id)
-                    .order('ordre', { ascending: true });
-                categoriesParClient[c.id] = cats || [];
-            }
+    // État global
+    let periodeDebut = null;
+    let periodeFin = null;
+    let presetActif = 'mois-dernier';
+    let donneesPeriode = null;
+    let donneesPeriodePrec = null;
+    let donneesAnneeGlissante = null; // pour la saisonnalité 12 mois
+    let ongletActif = 'vue-ensemble';
+    const charts = {};
 
-            periodePredefinie('mois');
-        }
+    let residentSelectionneId = null;
+    let clientSelectionneId = null;
+    let beneficiaireDomicileId = null;
+    let occupantAppartId = null;
 
-        function changerClient() {
-            const v = document.getElementById('select-client').value;
-            clientCourantId = v ? parseInt(v) : null;
-            const info = document.getElementById('info-client');
-            if (clientCourantId) {
-                const c = tousClients.find(x => x.id === clientCourantId);
-                info.textContent = c ? `Affichage des stats pour ${c.nom}` : '';
-            } else {
-                info.textContent = `Vue agrégée des ${tousClients.length} clients`;
-            }
-            genererStats();
-        }
+    document.addEventListener('DOMContentLoaded', async () => {
+        const auth = await verifierAuthEtRole(['admin']);
+        if (!auth) return;
+        afficherMenuComplet('statistiques', auth.user.email, auth.profil.role, auth.profil.nom_affiche);
+        appliquerPreset('mois-dernier');
+        await rafraichirToutesDonnees();
+    });
 
-        function changerVue() {
-            const vue = document.getElementById('vue-mode').value;
-            document.getElementById('select-resident-zone').style.display =
-                vue === 'resident' ? 'block' : 'none';
-            genererStats();
-        }
+    // ============================================================
+    // GESTION DE LA PÉRIODE
+    // ============================================================
 
-        function periodePredefinie(type) {
-            const today = new Date();
-            let debut, fin;
-            if (type === '7j') {
-                fin = today;
-                debut = new Date(today);
-                debut.setDate(debut.getDate() - 6);
-            } else if (type === '30j') {
-                fin = today;
-                debut = new Date(today);
-                debut.setDate(debut.getDate() - 29);
-            } else if (type === 'mois') {
+    function setPreset(preset) {
+        appliquerPreset(preset);
+        rafraichirToutesDonnees();
+    }
+
+    function appliquerPreset(preset) {
+        presetActif = preset;
+        document.querySelectorAll('.preset-btn').forEach(b => b.classList.remove('active'));
+        const btn = document.querySelector(`.preset-btn[data-preset="${preset}"]`);
+        if (btn) btn.classList.add('active');
+
+        const today = new Date();
+        let debut, fin;
+
+        switch (preset) {
+            case 'mois-courant':
                 debut = new Date(today.getFullYear(), today.getMonth(), 1);
                 fin = today;
-            } else if (type === 'mois-prec') {
+                break;
+            case 'mois-dernier':
                 debut = new Date(today.getFullYear(), today.getMonth() - 1, 1);
                 fin = new Date(today.getFullYear(), today.getMonth(), 0);
-            }
-            document.getElementById('date-debut').value = isoDate(debut);
-            document.getElementById('date-fin').value = isoDate(fin);
-            genererStats();
+                break;
+            case '3-mois':
+                debut = new Date(today.getFullYear(), today.getMonth() - 3, today.getDate());
+                fin = today;
+                break;
+            case 'annee':
+                debut = new Date(today.getFullYear(), 0, 1);
+                fin = today;
+                break;
+            case 'perso':
+                return;
         }
 
-        function isoDate(d) {
-            const yyyy = d.getFullYear();
-            const mm = String(d.getMonth() + 1).padStart(2, '0');
-            const dd = String(d.getDate()).padStart(2, '0');
-            return `${yyyy}-${mm}-${dd}`;
+        document.getElementById('date-debut').value = toIso(debut);
+        document.getElementById('date-fin').value = toIso(fin);
+        periodeDebut = toIso(debut);
+        periodeFin = toIso(fin);
+        majResumePeriode();
+    }
+
+    function onDateChange() {
+        periodeDebut = document.getElementById('date-debut').value;
+        periodeFin = document.getElementById('date-fin').value;
+        document.querySelectorAll('.preset-btn').forEach(b => b.classList.remove('active'));
+        const btn = document.querySelector('.preset-btn[data-preset="perso"]');
+        if (btn) btn.classList.add('active');
+        presetActif = 'perso';
+        if (periodeDebut && periodeFin && periodeDebut <= periodeFin) {
+            majResumePeriode();
+            rafraichirToutesDonnees();
         }
+    }
 
-        function lieuDefautPourRepas(resident, repas) {
-            if (repas === 'petit_dej') return resident.lieu_defaut_petit_dej_id || null;
-            if (repas === 'dejeuner') return resident.lieu_defaut_dejeuner_id || null;
-            if (repas === 'diner') return resident.lieu_defaut_diner_id || null;
-            return null;
+    function majResumePeriode() {
+        if (!periodeDebut || !periodeFin) return;
+        const j = nbJoursEntre(periodeDebut, periodeFin);
+        document.getElementById('resume-periode').textContent =
+            `${j} jour(s) au total (du ${dateFr(periodeDebut)} au ${dateFr(periodeFin)})`;
+        // Maj entête rapport imprimé
+        document.getElementById('rapport-periode-impr').textContent =
+            `Période : ${dateFr(periodeDebut)} → ${dateFr(periodeFin)}`;
+    }
+
+    function toIso(d) {
+        const yyyy = d.getFullYear();
+        const mm = String(d.getMonth() + 1).padStart(2, '0');
+        const dd = String(d.getDate()).padStart(2, '0');
+        return `${yyyy}-${mm}-${dd}`;
+    }
+
+    function nbJoursEntre(d1, d2) {
+        const a = new Date(d1 + 'T00:00:00');
+        const b = new Date(d2 + 'T00:00:00');
+        return Math.round((b - a) / (1000 * 60 * 60 * 24)) + 1;
+    }
+
+    function calculerPeriodePrecedente(debut, fin) {
+        const nbJours = nbJoursEntre(debut, fin);
+        const debutD = new Date(debut + 'T00:00:00');
+        const finPrec = new Date(debutD);
+        finPrec.setDate(finPrec.getDate() - 1);
+        const debutPrec = new Date(finPrec);
+        debutPrec.setDate(debutPrec.getDate() - nbJours + 1);
+        return { debut: toIso(debutPrec), fin: toIso(finPrec) };
+    }
+
+    function calculerAnneeGlissante() {
+        const today = new Date();
+        const fin = today;
+        const debut = new Date(today.getFullYear() - 1, today.getMonth() + 1, 1);
+        return { debut: toIso(debut), fin: toIso(fin) };
+    }
+
+    // ============================================================
+    // ONGLETS
+    // ============================================================
+
+    function changerOnglet(onglet) {
+        ongletActif = onglet;
+        document.querySelectorAll('.onglet-stats').forEach(b => b.classList.remove('active'));
+        document.querySelector(`.onglet-stats[data-onglet="${onglet}"]`).classList.add('active');
+        document.querySelectorAll('.onglet-contenu').forEach(c => c.classList.add('hidden'));
+        document.getElementById('onglet-' + onglet).classList.remove('hidden');
+
+        if (donneesPeriode) {
+            switch (onglet) {
+                case 'vue-ensemble': afficherVueEnsemble(); break;
+                case 'residents':    afficherOngletResidents(); break;
+                case 'ejc':          afficherOngletEjc(); break;
+                case 'domicile':     afficherOngletDomicile(); break;
+                case 'appartement':  afficherOngletAppartement(); break;
+            }
         }
+    }
 
-        function nomLieu(id) {
-            if (!id) return '— Non défini —';
-            const l = lieuxDisponibles.find(x => x.id === id);
-            return l ? l.nom : '— Inconnu —';
+    // ============================================================
+    // RAFRAÎCHIR
+    // ============================================================
+
+    async function rafraichirToutesDonnees() {
+        if (!periodeDebut || !periodeFin) return;
+
+        try {
+            donneesPeriode = await chargerDonneesPeriode(periodeDebut, periodeFin);
+            const periodePrec = calculerPeriodePrecedente(periodeDebut, periodeFin);
+            donneesPeriodePrec = await chargerDonneesPeriode(periodePrec.debut, periodePrec.fin);
+
+            // Année glissante pour la saisonnalité (chargée 1 fois)
+            if (!donneesAnneeGlissante) {
+                const annee = calculerAnneeGlissante();
+                donneesAnneeGlissante = await chargerDonneesPeriode(annee.debut, annee.fin);
+            }
+
+            changerOnglet(ongletActif);
+        } catch (e) {
+            console.error('Erreur chargement stats :', e);
+            document.getElementById('contenu-vue-ensemble').innerHTML =
+                `<div class="erreur-msg">Erreur : ${e.message}</div>`;
         }
+    }
 
-        async function genererStats() {
-            const dateDebut = document.getElementById('date-debut').value;
-            const dateFin = document.getElementById('date-fin').value;
-            const vue = document.getElementById('vue-mode').value;
-            const residentId = document.getElementById('select-resident').value;
+    // ============================================================
+    // CHARGEMENT DONNÉES
+    // ============================================================
 
-            if (!dateDebut || !dateFin) {
-                document.getElementById('contenu').innerHTML =
-                    '<p class="info-msg">Choisis une période valide.</p>';
-                return;
+    async function chargerDonneesPeriode(debut, fin) {
+        const { data: residents } = await supaClient
+            .from(TABLE_RESIDENTS).select('*').eq('actif', true);
+        const { data: presences } = await supaClient
+            .from(TABLE_PRESENCES).select('*').gte('date', debut).lte('date', fin);
+        const absences = await chargerAbsencesPeriode(debut, fin);
+        const { data: commandes } = await supaClient
+            .from(TABLE_COMMANDES_EJC).select('*').gte('date', debut).lte('date', fin);
+        const { data: annulations } = await supaClient
+            .from(TABLE_ANNULATIONS_EJC).select('*').gte('date', debut).lte('date', fin);
+        const { data: categoriesEjc } = await supaClient
+            .from(TABLE_CATEGORIES_EJC).select('*');
+        const { data: personnesDomicile } = await supaClient
+            .from('personnes_domicile').select('*').eq('actif', true);
+        const { data: exceptionsDomicile } = await supaClient
+            .from('livraisons_exceptions').select('*').gte('date_repas', debut).lte('date_repas', fin);
+        const { data: sejoursAppart } = await supaClient
+            .from('sejours_appartement')
+            .select('*, personne:personnes_appartement(*)')
+            .eq('statut', 'en_cours')
+            .lte('date_arrivee', fin)
+            .gte('date_depart', debut);
+        const { data: presencesAppart } = await supaClient
+            .from('presences_appartement').select('*').gte('date', debut).lte('date', fin);
+        const { data: ventesAppart } = await supaClient
+            .from('ventes_appartement').select('*').gte('date_vente', debut).lte('date_vente', fin);
+        const { data: lignesVentes } = await supaClient
+            .from('lignes_vente_appartement').select('*');
+        const { data: catalogueAppart } = await supaClient
+            .from('catalogue_produits_appartement').select('*');
+
+        return {
+            debut, fin,
+            residents: residents || [],
+            presences: presences || [],
+            absences: absences || [],
+            commandes: commandes || [],
+            annulations: annulations || [],
+            categoriesEjc: categoriesEjc || [],
+            personnesDomicile: personnesDomicile || [],
+            exceptionsDomicile: exceptionsDomicile || [],
+            sejoursAppart: sejoursAppart || [],
+            presencesAppart: presencesAppart || [],
+            ventesAppart: ventesAppart || [],
+            lignesVentes: lignesVentes || [],
+            catalogueAppart: catalogueAppart || []
+        };
+    }
+
+    // ============================================================
+    // CALCUL DES STATS (identique au palier 2)
+    // ============================================================
+
+    function calculerStatsResidents(donnees, unite, residentIdFiltre) {
+        let residentsFiltres = donnees.residents.filter(r => r.unite === unite);
+        if (residentIdFiltre) residentsFiltres = residentsFiltres.filter(r => r.id === residentIdFiltre);
+        const idsCible = new Set(residentsFiltres.map(r => r.id));
+        const mapPres = {};
+        for (const p of donnees.presences) {
+            if (!idsCible.has(p.resident_id)) continue;
+            mapPres[`${p.resident_id}::${p.date}::${p.repas}`] = p;
+        }
+        let brut = 0, net = 0, nbAbsences = 0;
+        const detailParJour = {};
+        const detailParRepas = { petit_dej: 0, dejeuner: 0, diner: 0 };
+
+        const dates = listerDates(donnees.debut, donnees.fin);
+        for (const date of dates) {
+            for (const repas of REPAS_LISTE) {
+                for (const r of residentsFiltres) {
+                    const abs = estEnAbsenceProlongee(donnees.absences, r.id, date, repas);
+                    if (abs) { nbAbsences++; continue; }
+                    brut++;
+                    if (!detailParJour[date]) detailParJour[date] = { petit_dej: 0, dejeuner: 0, diner: 0 };
+                    detailParJour[date][repas]++;
+                    const p = mapPres[`${r.id}::${date}::${repas}`];
+                    if (!(p && p.present === false)) {
+                        net++;
+                        detailParRepas[repas]++;
+                    }
+                }
             }
-            if (dateDebut > dateFin) {
-                document.getElementById('contenu').innerHTML =
-                    '<div class="error">La date de début doit être avant la date de fin.</div>';
-                return;
+        }
+        return { brut, net, nbAbsences, detailParJour, detailParRepas };
+    }
+
+    function calculerStatsEjc(donnees, clientId) {
+        const annulMap = {};
+        for (const a of donnees.annulations) {
+            if (a.client_id !== clientId) continue;
+            const k = `${a.client_id}::${a.date}::${a.categorie_id}`;
+            annulMap[k] = (annulMap[k] || 0) + (a.quantite || 0);
+        }
+        let total = 0, totalCommande = 0, totalAnnule = 0;
+        const detailParJour = {};
+        const detailParCategorie = {};
+        const detailParJourSemaine = [0,0,0,0,0,0,0];
+
+        for (const c of donnees.commandes) {
+            if (c.client_id !== clientId) continue;
+            totalCommande += (c.quantite || 0);
+            const k = `${c.client_id}::${c.date}::${c.categorie_id}`;
+            const annul = annulMap[k] || 0;
+            const net = Math.max(0, (c.quantite || 0) - annul);
+            if (net > 0) {
+                total += net;
+                if (!detailParJour[c.date]) detailParJour[c.date] = { petit_dej: 0, dejeuner: 0, diner: 0 };
+                detailParJour[c.date].dejeuner += net;
+                const cat = donnees.categoriesEjc.find(x => x.id === c.categorie_id);
+                const nomCat = cat ? cat.nom : `Catégorie #${c.categorie_id}`;
+                if (!detailParCategorie[c.categorie_id]) detailParCategorie[c.categorie_id] = { nom: nomCat, qte: 0 };
+                detailParCategorie[c.categorie_id].qte += net;
+                const d = new Date(c.date + 'T00:00:00');
+                detailParJourSemaine[d.getDay()] += net;
             }
+            totalAnnule += annul;
+        }
+        const tauxAnnulation = totalCommande > 0 ? Math.round(totalAnnule / totalCommande * 100) : 0;
+        return { total, totalCommande, totalAnnule, tauxAnnulation,
+                 detailParJour, detailParCategorie, detailParJourSemaine };
+    }
 
-            const contenu = document.getElementById('contenu');
-            contenu.innerHTML = '<p class="loading">⏳ Calcul des statistiques...</p>';
+    function calculerStatsDomicile(donnees, personneIdFiltre) {
+        const expParPersonne = {};
+        for (const ex of donnees.exceptionsDomicile) {
+            if (!expParPersonne[ex.personne_id]) expParPersonne[ex.personne_id] = {};
+            expParPersonne[ex.personne_id][ex.date_repas] = ex.quantite;
+        }
+        const JOURS = ['lundi','mardi','mercredi','jeudi','vendredi','samedi','dimanche'];
+        let total = 0;
+        const detailParJour = {};
+        const detailParJourSemaine = [0,0,0,0,0,0,0];
+        const composantsCount = { potage: 0, salade: 0, sauce_salade: 0, plat: 0, dessert: 0 };
+        const beneficiairesActifs = new Set();
 
-            const { data: presences, error } = await supaClient
-                .from(TABLE_PRESENCES)
-                .select('*')
-                .gte('date', dateDebut)
-                .lte('date', dateFin);
+        const personnesCible = personneIdFiltre
+            ? donnees.personnesDomicile.filter(p => p.id === personneIdFiltre)
+            : donnees.personnesDomicile;
 
-            if (error) {
-                contenu.innerHTML = `<div class="error">Erreur : ${error.message}</div>`;
-                return;
+        const dates = listerDates(donnees.debut, donnees.fin);
+        for (const date of dates) {
+            const [y, m, j] = date.split('-').map(Number);
+            const d = new Date(y, m - 1, j);
+            const idxJs = d.getDay();
+            const idxJour = idxJs === 0 ? 6 : idxJs - 1;
+            const nomJour = JOURS[idxJour];
+            for (const p of personnesCible) {
+                let qte;
+                if (expParPersonne[p.id] && expParPersonne[p.id][date] !== undefined) {
+                    qte = expParPersonne[p.id][date];
+                } else {
+                    qte = p['qte_' + nomJour] || 0;
+                }
+                if (qte > 0) {
+                    total += qte;
+                    beneficiairesActifs.add(p.id);
+                    if (!detailParJour[date]) detailParJour[date] = { petit_dej: 0, dejeuner: 0, diner: 0 };
+                    detailParJour[date].dejeuner += qte;
+                    detailParJourSemaine[idxJs] += qte;
+                    if (p.prend_potage !== false) composantsCount.potage += qte;
+                    if (p.prend_plat !== false) composantsCount.plat += qte;
+                    if (p.prend_dessert !== false) composantsCount.dessert += qte;
+                    const prendSalade = (p.prend_salade !== false);
+                    const prendSauce = (p.prend_sauce_salade !== false);
+                    if (prendSalade) composantsCount.salade += qte;
+                    if (prendSalade && prendSauce) composantsCount.sauce_salade += qte;
+                }
             }
+        }
+        return { total, detailParJour, detailParJourSemaine, composantsCount, nbBeneficiairesActifs: beneficiairesActifs.size };
+    }
 
-            let qCmd = supaClient
-                .from(TABLE_COMMANDES_EJC)
-                .select('*')
-                .gte('date', dateDebut)
-                .lte('date', dateFin);
-            let qAnn = supaClient
-                .from(TABLE_ANNULATIONS_EJC)
-                .select('*')
-                .gte('date', dateDebut)
-                .lte('date', dateFin);
+    function calculerStatsAppartement(donnees, occupantIdFiltre) {
+        const mapPres = {};
+        for (const pa of donnees.presencesAppart) {
+            mapPres[`${pa.sejour_id}::${pa.date}::${pa.repas}`] = pa;
+        }
+        const sejours = occupantIdFiltre
+            ? donnees.sejoursAppart.filter(s => s.personne && s.personne.id === occupantIdFiltre)
+            : donnees.sejoursAppart;
+        let total = 0, totalAbsences = 0;
+        const detailParJour = {};
+        const detailParRepas = { petit_dej: 0, dejeuner: 0, diner: 0 };
+        const occupantsUniques = new Set();
+        let nuiteesTotal = 0;
 
-            if (clientCourantId) {
-                qCmd = qCmd.eq('client_id', clientCourantId);
-                qAnn = qAnn.eq('client_id', clientCourantId);
+        const dates = listerDates(donnees.debut, donnees.fin);
+        for (const date of dates) {
+            for (const s of sejours) {
+                if (date < s.date_arrivee || date > s.date_depart) continue;
+                if (!s.personne) continue;
+                occupantsUniques.add(s.personne.id);
+                nuiteesTotal++;
+                for (const repas of REPAS_LISTE) {
+                    const pa = mapPres[`${s.id}::${date}::${repas}`];
+                    if (pa && pa.present === false) { totalAbsences++; continue; }
+                    total++;
+                    if (!detailParJour[date]) detailParJour[date] = { petit_dej: 0, dejeuner: 0, diner: 0 };
+                    detailParJour[date][repas]++;
+                    detailParRepas[repas]++;
+                }
             }
+        }
+        const ventesPourPeriode = donnees.ventesAppart.filter(v => v.statut !== 'annulee');
+        const ventesIds = new Set(ventesPourPeriode.map(v => v.id));
+        const produitsCount = {};
+        let caTotal = 0;
+        for (const lv of donnees.lignesVentes) {
+            if (!ventesIds.has(lv.vente_id)) continue;
+            const prod = donnees.catalogueAppart.find(p => p.id === lv.produit_id);
+            const nom = prod ? prod.nom : `Produit #${lv.produit_id}`;
+            if (!produitsCount[lv.produit_id]) produitsCount[lv.produit_id] = { nom, qte: 0, ca: 0 };
+            produitsCount[lv.produit_id].qte += (lv.quantite || 0);
+            produitsCount[lv.produit_id].ca += (lv.prix_unitaire_snap || 0) * (lv.quantite || 0);
+            caTotal += (lv.prix_unitaire_snap || 0) * (lv.quantite || 0);
+        }
+        return { total, totalAbsences, detailParJour, detailParRepas,
+                 nbOccupantsUniques: occupantsUniques.size, nuiteesTotal,
+                 produitsCount, caTotal };
+    }
 
-            const { data: ejcCmd } = await qCmd;
-            const { data: ejcAnn } = await qAnn;
+    function listerDates(debut, fin) {
+        const result = [];
+        const d = new Date(debut + 'T00:00:00');
+        const f = new Date(fin + 'T00:00:00');
+        while (d <= f) {
+            result.push(toIso(d));
+            d.setDate(d.getDate() + 1);
+        }
+        return result;
+    }
 
-            const jours = nbJoursEntre(dateDebut, dateFin);
+    function ajouterDetailParJour(cible, source) {
+        for (const date in source) {
+            if (!cible[date]) cible[date] = { petit_dej: 0, dejeuner: 0, diner: 0 };
+            cible[date].petit_dej += source[date].petit_dej;
+            cible[date].dejeuner += source[date].dejeuner;
+            cible[date].diner += source[date].diner;
+        }
+    }
 
-            const residentsConcernes = (vue === 'resident' && residentId)
-                ? tousResidents.filter(r => r.id === parseInt(residentId))
-                : tousResidents;
+    function evolutionBadge(actuel, precedent) {
+        if (precedent === 0) {
+            if (actuel === 0) return '';
+            return ` <span class="kpi-evolution neutre">nouveau</span>`;
+        }
+        const pct = Math.round((actuel - precedent) / precedent * 100);
+        if (pct === 0) return ` <span class="kpi-evolution neutre">=</span>`;
+        const signe = pct > 0 ? '+' : '';
+        const classe = pct > 0 ? 'hausse' : 'baisse';
+        return ` <span class="kpi-evolution ${classe}">${signe}${pct}%</span>`;
+    }
 
-            if (vue === 'resident' && !residentId) {
-                contenu.innerHTML = '<p class="info-msg">Sélectionne un résident pour voir ses statistiques.</p>';
-                return;
-            }
+    function detruireChart(cle) {
+        if (charts[cle]) { charts[cle].destroy(); delete charts[cle]; }
+    }
 
-            afficherStats({
-                dateDebut, dateFin, jours,
-                presences: presences || [],
-                ejcCmd: ejcCmd || [],
-                ejcAnn: ejcAnn || [],
-                residents: residentsConcernes,
-                vueGlobale: vue === 'ensemble'
+    function formatLabelDate(iso) {
+        const [y, m, d] = iso.split('-');
+        return `${d}/${m}`;
+    }
+
+    function calculerToutesStats(donnees) {
+        const bouleaux = calculerStatsResidents(donnees, 'bouleaux');
+        const passerelle = calculerStatsResidents(donnees, 'passerelle');
+        const ejcCorgemont = calculerStatsEjc(donnees, CLIENT_EJC_CORGEMONT);
+        const ejcPery = calculerStatsEjc(donnees, CLIENT_EJC_PERY);
+        const ecureuils = calculerStatsEjc(donnees, CLIENT_ECUREUILS);
+        const domicile = calculerStatsDomicile(donnees);
+        const appartement = calculerStatsAppartement(donnees);
+
+        const totalNet = bouleaux.net + passerelle.net
+                       + ejcCorgemont.total + ejcPery.total + ecureuils.total
+                       + domicile.total + appartement.total;
+        const totalBrut = bouleaux.brut + passerelle.brut
+                        + ejcCorgemont.total + ejcPery.total + ecureuils.total
+                        + domicile.total + appartement.total;
+
+        const nbResidents = donnees.residents.length;
+        const nbDomicile = donnees.personnesDomicile.length;
+        const occupantsAppart = new Set();
+        for (const s of donnees.sejoursAppart) {
+            if (s.personne) occupantsAppart.add(s.personne.id);
+        }
+        let nbClientsActifs = 0;
+        for (const cid of [CLIENT_EJC_CORGEMONT, CLIENT_EJC_PERY, CLIENT_ECUREUILS]) {
+            if (donnees.commandes.some(c => c.client_id === cid && (c.quantite || 0) > 0)) nbClientsActifs++;
+        }
+        const nbMangeursUniques = nbResidents + nbDomicile + occupantsAppart.size + nbClientsActifs;
+
+        const totalParJour = {};
+        ajouterDetailParJour(totalParJour, bouleaux.detailParJour);
+        ajouterDetailParJour(totalParJour, passerelle.detailParJour);
+        ajouterDetailParJour(totalParJour, ejcCorgemont.detailParJour);
+        ajouterDetailParJour(totalParJour, ejcPery.detailParJour);
+        ajouterDetailParJour(totalParJour, ecureuils.detailParJour);
+        ajouterDetailParJour(totalParJour, domicile.detailParJour);
+        ajouterDetailParJour(totalParJour, appartement.detailParJour);
+
+        let picVal = 0, picDate = null;
+        let sommeJournees = 0;
+        const nbJours = nbJoursEntre(donnees.debut, donnees.fin);
+        for (const date in totalParJour) {
+            const total = totalParJour[date].petit_dej + totalParJour[date].dejeuner + totalParJour[date].diner;
+            sommeJournees += total;
+            if (total > picVal) { picVal = total; picDate = date; }
+        }
+        const moyenneQuotidienne = nbJours > 0 ? Math.round(sommeJournees / nbJours) : 0;
+
+        return {
+            sources: { bouleaux, passerelle, ejcCorgemont, ejcPery, ecureuils, domicile, appartement },
+            totalParJour, totalNet, totalBrut,
+            nbMangeursUniques,
+            picJournalier: { valeur: picVal, date: picDate },
+            moyenneQuotidienne,
+            nbJours
+        };
+    }
+
+    // ============================================================
+    // SAISONNALITÉ (nouveau palier 3)
+    // ============================================================
+
+    function calculerSaisonnaliteJoursSemaine(donnees) {
+        // Toutes sources cumulées, par jour de la semaine
+        const stats = calculerToutesStats(donnees);
+        const totaux = [0,0,0,0,0,0,0]; // dim=0 .. sam=6
+        const compteurJours = [0,0,0,0,0,0,0];
+        for (const date in stats.totalParJour) {
+            const d = new Date(date + 'T00:00:00');
+            const jour = d.getDay();
+            const total = stats.totalParJour[date].petit_dej + stats.totalParJour[date].dejeuner + stats.totalParJour[date].diner;
+            totaux[jour] += total;
+            compteurJours[jour]++;
+        }
+        // Moyenne par jour de la semaine
+        const moyennes = totaux.map((t, i) => compteurJours[i] > 0 ? Math.round(t / compteurJours[i]) : 0);
+        return { totaux, moyennes };
+    }
+
+    function calculerSaisonnaliteMensuelle(donneesAnnee) {
+        // 12 mois glissants : pour chaque mois, total repas tous repas confondus
+        const stats = calculerToutesStats(donneesAnnee);
+        const parMois = {}; // 'YYYY-MM' => total
+        for (const date in stats.totalParJour) {
+            const ym = date.substring(0, 7);
+            if (!parMois[ym]) parMois[ym] = 0;
+            parMois[ym] += stats.totalParJour[date].petit_dej + stats.totalParJour[date].dejeuner + stats.totalParJour[date].diner;
+        }
+        // Construit la liste des 12 mois glissants ordonnés
+        const today = new Date();
+        const moisList = [];
+        for (let i = 11; i >= 0; i--) {
+            const d = new Date(today.getFullYear(), today.getMonth() - i, 1);
+            const ym = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
+            const label = `${NOMS_MOIS[d.getMonth()]} ${String(d.getFullYear()).slice(2)}`;
+            moisList.push({ ym, label, valeur: parMois[ym] || 0 });
+        }
+        return moisList;
+    }
+
+    // ============================================================
+    // VUE D'ENSEMBLE
+    // ============================================================
+
+    function afficherVueEnsemble() {
+        const stats = calculerToutesStats(donneesPeriode);
+        const statsPrec = calculerToutesStats(donneesPeriodePrec);
+
+        const html = `
+            <div class="section-titre">📊 Chiffres-clés sur la période</div>
+            <div class="kpi-grid">
+                <div class="kpi-card global">
+                    <div class="kpi-label">🍽️ Repas servis (total)</div>
+                    <div class="kpi-valeur">${stats.totalNet}${evolutionBadge(stats.totalNet, statsPrec.totalNet)}</div>
+                    <div class="kpi-sub">Capacité brute : ${stats.totalBrut}</div>
+                </div>
+                <div class="kpi-card global">
+                    <div class="kpi-label">👥 Mangeurs uniques</div>
+                    <div class="kpi-valeur">${stats.nbMangeursUniques}</div>
+                    <div class="kpi-sub">Résidents + clients + domicile + appart</div>
+                </div>
+                <div class="kpi-card global">
+                    <div class="kpi-label">📈 Pic journalier</div>
+                    <div class="kpi-valeur">${stats.picJournalier.valeur}</div>
+                    <div class="kpi-sub">${stats.picJournalier.date ? dateFr(stats.picJournalier.date) : '—'}</div>
+                </div>
+                <div class="kpi-card global">
+                    <div class="kpi-label">📊 Moyenne quotidienne</div>
+                    <div class="kpi-valeur">${stats.moyenneQuotidienne}</div>
+                    <div class="kpi-sub">Sur ${stats.nbJours} jour(s)</div>
+                </div>
+            </div>
+
+            <div class="section-titre">📈 Évolution dans le temps</div>
+            <p class="section-sous-titre">Clic sur une source dans la légende pour la cacher / afficher.</p>
+            <div class="graph-zone"><div class="graph-canvas-wrap"><canvas id="chart-evolution"></canvas></div></div>
+
+            <div class="section-titre">🥧 Répartition par source</div>
+            <div class="graph-zone"><div class="graph-canvas-wrap petit"><canvas id="chart-camembert"></canvas></div></div>
+
+            <div class="section-titre">📋 Détail par source</div>
+            ${construireTableauDetail(stats, statsPrec)}
+
+            <div class="section-titre">📅 Saisonnalité — Jours de la semaine</div>
+            <p class="section-sous-titre">Toutes sources confondues, sur la période sélectionnée. Identifie les jours forts et faibles.</p>
+            <div class="graph-zone"><div class="graph-canvas-wrap petit"><canvas id="chart-saison-jours"></canvas></div></div>
+
+            <div class="section-titre">📅 Saisonnalité — 12 derniers mois</div>
+            <p class="section-sous-titre">Évolution mensuelle sur l'année glissante (indépendant de la période choisie).</p>
+            <div class="graph-zone"><div class="graph-canvas-wrap petit"><canvas id="chart-saison-mois"></canvas></div></div>
+        `;
+
+        document.getElementById('contenu-vue-ensemble').innerHTML = html;
+        construireChartEvolution(stats);
+        construireChartCamembert(stats);
+        construireChartSaisonJours();
+        construireChartSaisonMois();
+    }
+
+    function construireTableauDetail(stats, statsPrec) {
+        const s = stats.sources;
+        const sp = statsPrec.sources;
+        const lignes = [
+            { lib: 'Bouleaux (net)',           valeur: s.bouleaux.net,         prec: sp.bouleaux.net,         couleur: COULEURS.bouleaux,      sub: `Brut : ${s.bouleaux.brut}` },
+            { lib: 'Passerelle (net)',         valeur: s.passerelle.net,       prec: sp.passerelle.net,       couleur: COULEURS.passerelle,    sub: `Brut : ${s.passerelle.brut}` },
+            { lib: 'EJC Corgémont',            valeur: s.ejcCorgemont.total,   prec: sp.ejcCorgemont.total,   couleur: COULEURS.ejc_corgemont, sub: `Annulés : ${s.ejcCorgemont.totalAnnule}` },
+            { lib: 'EJC Péry',                 valeur: s.ejcPery.total,        prec: sp.ejcPery.total,        couleur: COULEURS.ejc_pery,      sub: `Annulés : ${s.ejcPery.totalAnnule}` },
+            { lib: 'Maison enfance Écureuils', valeur: s.ecureuils.total,      prec: sp.ecureuils.total,      couleur: COULEURS.ecureuils,     sub: `Annulés : ${s.ecureuils.totalAnnule}` },
+            { lib: 'Repas à domicile',         valeur: s.domicile.total,       prec: sp.domicile.total,       couleur: COULEURS.domicile,      sub: '' },
+            { lib: 'Appartement Corgémont',    valeur: s.appartement.total,    prec: sp.appartement.total,    couleur: COULEURS.appartement,   sub: '' }
+        ];
+        const totalActuel = lignes.reduce((s, l) => s + l.valeur, 0);
+        let html = `<table class="table-stats">
+            <thead><tr>
+                <th>Source</th><th class="col-num">Repas servis</th><th class="col-num">Évolution</th><th class="col-num">% du total</th><th>Détail</th>
+            </tr></thead><tbody>`;
+        for (const l of lignes) {
+            const pct = totalActuel > 0 ? Math.round(l.valeur / totalActuel * 100) : 0;
+            html += `<tr>
+                <td><span class="source-pastille" style="background:${l.couleur}"></span>${l.lib}</td>
+                <td class="col-num">${l.valeur}</td>
+                <td class="col-num">${evolutionBadge(l.valeur, l.prec)}</td>
+                <td class="col-num">${pct}%</td>
+                <td><small style="color:#888;">${l.sub || '—'}</small></td>
+            </tr>`;
+        }
+        html += `</tbody><tfoot><tr>
+            <td>TOTAL</td><td class="col-num">${totalActuel}</td>
+            <td class="col-num">${evolutionBadge(stats.totalNet, statsPrec.totalNet)}</td>
+            <td class="col-num">100%</td><td>—</td>
+        </tr></tfoot></table>`;
+        return html;
+    }
+
+    function construireChartEvolution(stats) {
+        detruireChart('evolution');
+        const dates = listerDates(periodeDebut, periodeFin);
+        const labels = dates.map(d => formatLabelDate(d));
+        const sources = [
+            { lib: 'Bouleaux',                 couleur: COULEURS.bouleaux,      data: stats.sources.bouleaux.detailParJour },
+            { lib: 'Passerelle',               couleur: COULEURS.passerelle,    data: stats.sources.passerelle.detailParJour },
+            { lib: 'EJC Corgémont',            couleur: COULEURS.ejc_corgemont, data: stats.sources.ejcCorgemont.detailParJour },
+            { lib: 'EJC Péry',                 couleur: COULEURS.ejc_pery,      data: stats.sources.ejcPery.detailParJour },
+            { lib: 'Maison enfance Écureuils', couleur: COULEURS.ecureuils,     data: stats.sources.ecureuils.detailParJour },
+            { lib: 'Repas à domicile',         couleur: COULEURS.domicile,      data: stats.sources.domicile.detailParJour },
+            { lib: 'Appartement Corgémont',    couleur: COULEURS.appartement,   data: stats.sources.appartement.detailParJour }
+        ];
+        const datasets = sources.map(s => {
+            const vals = dates.map(d => {
+                if (!s.data[d]) return 0;
+                return s.data[d].petit_dej + s.data[d].dejeuner + s.data[d].diner;
             });
-        }
-
-        function nbJoursEntre(d1, d2) {
-            const date1 = new Date(d1);
-            const date2 = new Date(d2);
-            return Math.round((date2 - date1) / (1000 * 60 * 60 * 24)) + 1;
-        }
-
-        function afficherStats(ctx) {
-            const { dateDebut, dateFin, jours, presences, ejcCmd, ejcAnn, residents, vueGlobale } = ctx;
-            const repasPossibles = ['petit_dej', 'dejeuner', 'diner'];
-
-            const presMap = {};
-            for (const p of presences) {
-                presMap[`${p.resident_id}_${p.date}_${p.repas}`] = p;
+            return {
+                label: s.lib, data: vals,
+                backgroundColor: s.couleur + 'cc', borderColor: s.couleur,
+                borderWidth: 1.5, pointRadius: 0, pointHoverRadius: 4, tension: 0.2, fill: true
+            };
+        });
+        const ctx = document.getElementById('chart-evolution').getContext('2d');
+        charts.evolution = new Chart(ctx, {
+            type: 'line',
+            data: { labels, datasets },
+            options: {
+                responsive: true, maintainAspectRatio: false,
+                interaction: { mode: 'index', intersect: false },
+                plugins: {
+                    legend: { position: 'bottom', labels: { boxWidth: 14, padding: 10, font: { size: 12 } } },
+                    tooltip: { mode: 'index', intersect: false }
+                },
+                scales: {
+                    x: { stacked: true, ticks: { maxRotation: 45, minRotation: 45, autoSkip: true, maxTicksLimit: 20 } },
+                    y: { stacked: true, beginAtZero: true, title: { display: true, text: 'Repas servis' } }
+                }
             }
+        });
+    }
 
-            const datesPeriode = [];
-            const dCur = new Date(dateDebut);
-            const dEnd = new Date(dateFin);
-            while (dCur <= dEnd) {
-                datesPeriode.push(isoDate(dCur));
-                dCur.setDate(dCur.getDate() + 1);
-            }
-
-            const statsResidents = [];
-            for (const r of residents) {
-                const stats = {
-                    resident: r,
-                    nbPresent: 0,
-                    nbAbsent: 0,
-                    parLieu: {},
-                    aucunLieu: 0
-                };
-                for (const d of datesPeriode) {
-                    for (const repas of repasPossibles) {
-                        const p = presMap[`${r.id}_${d}_${repas}`];
-                        if (p && !p.present) {
-                            stats.nbAbsent++;
-                        } else {
-                            stats.nbPresent++;
-                            const lieuEnregistre = p && p.lieu_id != null ? p.lieu_id : null;
-                            const lieuDef = lieuDefautPourRepas(r, repas);
-                            const lieuEffectif = lieuEnregistre || lieuDef;
-                            if (lieuEffectif) {
-                                stats.parLieu[lieuEffectif] = (stats.parLieu[lieuEffectif] || 0) + 1;
-                            } else {
-                                stats.aucunLieu++;
+    function construireChartCamembert(stats) {
+        detruireChart('camembert');
+        const s = stats.sources;
+        const data = [
+            { lib: 'Bouleaux',                  val: s.bouleaux.net,        couleur: COULEURS.bouleaux },
+            { lib: 'Passerelle',                val: s.passerelle.net,      couleur: COULEURS.passerelle },
+            { lib: 'EJC Corgémont',             val: s.ejcCorgemont.total,  couleur: COULEURS.ejc_corgemont },
+            { lib: 'EJC Péry',                  val: s.ejcPery.total,       couleur: COULEURS.ejc_pery },
+            { lib: 'Maison enfance Écureuils',  val: s.ecureuils.total,     couleur: COULEURS.ecureuils },
+            { lib: 'Repas à domicile',          val: s.domicile.total,      couleur: COULEURS.domicile },
+            { lib: 'Appartement Corgémont',     val: s.appartement.total,   couleur: COULEURS.appartement }
+        ].filter(d => d.val > 0);
+        if (data.length === 0) {
+            document.getElementById('chart-camembert').parentElement.innerHTML =
+                '<div class="aucune-donnee">Aucune donnée à afficher pour cette période.</div>';
+            return;
+        }
+        const ctx = document.getElementById('chart-camembert').getContext('2d');
+        charts.camembert = new Chart(ctx, {
+            type: 'doughnut',
+            data: {
+                labels: data.map(d => d.lib),
+                datasets: [{ data: data.map(d => d.val), backgroundColor: data.map(d => d.couleur), borderColor: '#fff', borderWidth: 2 }]
+            },
+            options: {
+                responsive: true, maintainAspectRatio: false,
+                plugins: {
+                    legend: { position: 'right', labels: { boxWidth: 14, padding: 10, font: { size: 12 } } },
+                    tooltip: {
+                        callbacks: {
+                            label: function(ctx) {
+                                const total = ctx.dataset.data.reduce((a, b) => a + b, 0);
+                                const pct = total > 0 ? Math.round(ctx.parsed / total * 100) : 0;
+                                return `${ctx.label} : ${ctx.parsed} (${pct}%)`;
                             }
                         }
                     }
                 }
-                stats.total = stats.nbPresent + stats.nbAbsent;
-                statsResidents.push(stats);
             }
+        });
+    }
 
-            const totalPresent = statsResidents.reduce((s, x) => s + x.nbPresent, 0);
-            const totalAbsent = statsResidents.reduce((s, x) => s + x.nbAbsent, 0);
-            const totalRepasResidents = totalPresent + totalAbsent;
-            const tauxPresence = totalRepasResidents > 0
-                ? Math.round((totalPresent / totalRepasResidents) * 100) : 0;
-
-            const globalParLieu = {};
-            let globalAucunLieu = 0;
-            for (const s of statsResidents) {
-                for (const [lieuId, n] of Object.entries(s.parLieu)) {
-                    globalParLieu[lieuId] = (globalParLieu[lieuId] || 0) + n;
-                }
-                globalAucunLieu += s.aucunLieu;
+    function construireChartSaisonJours() {
+        detruireChart('saison-jours');
+        const { totaux, moyennes } = calculerSaisonnaliteJoursSemaine(donneesPeriode);
+        const ordre = [1, 2, 3, 4, 5, 6, 0]; // lundi..dimanche
+        const labels = ordre.map(i => NOMS_JOURS[i]);
+        const totauxOrdonnes = ordre.map(i => totaux[i]);
+        const moyennesOrdonnees = ordre.map(i => moyennes[i]);
+        const ctx = document.getElementById('chart-saison-jours').getContext('2d');
+        charts['saison-jours'] = new Chart(ctx, {
+            type: 'bar',
+            data: {
+                labels,
+                datasets: [
+                    { label: 'Total période', data: totauxOrdonnes, backgroundColor: '#2c5530cc' },
+                    { label: 'Moyenne par occurrence', data: moyennesOrdonnees, backgroundColor: '#1976d2cc' }
+                ]
+            },
+            options: {
+                responsive: true, maintainAspectRatio: false,
+                plugins: { legend: { position: 'bottom' } },
+                scales: { y: { beginAtZero: true, title: { display: true, text: 'Repas servis' } } }
             }
-            const totalAvecLieu = Object.values(globalParLieu).reduce((s, x) => s + x, 0) + globalAucunLieu;
+        });
+    }
 
-            const statsParClient = {};
-
-            for (const c of tousClients) {
-                statsParClient[c.id] = {
-                    client: c,
-                    cmd: 0,
-                    ann: 0,
-                    parCategorie: {},
-                    parDate: {}
-                };
+    function construireChartSaisonMois() {
+        detruireChart('saison-mois');
+        const moisList = calculerSaisonnaliteMensuelle(donneesAnneeGlissante);
+        const labels = moisList.map(m => m.label);
+        const vals = moisList.map(m => m.valeur);
+        const ctx = document.getElementById('chart-saison-mois').getContext('2d');
+        charts['saison-mois'] = new Chart(ctx, {
+            type: 'line',
+            data: {
+                labels,
+                datasets: [{
+                    label: 'Repas servis / mois',
+                    data: vals,
+                    borderColor: '#2c5530',
+                    backgroundColor: '#2c553033',
+                    tension: 0.3, fill: true,
+                    pointRadius: 4, pointHoverRadius: 6, borderWidth: 2
+                }]
+            },
+            options: {
+                responsive: true, maintainAspectRatio: false,
+                plugins: { legend: { display: false } },
+                scales: { y: { beginAtZero: true, title: { display: true, text: 'Repas servis (total)' } } }
             }
+        });
+    }
 
-            for (const cmd of ejcCmd) {
-                const cid = cmd.client_id;
-                if (!statsParClient[cid]) continue;
-                const q = cmd.quantite || 0;
-                statsParClient[cid].cmd += q;
-                statsParClient[cid].parCategorie[cmd.categorie_id] =
-                    (statsParClient[cid].parCategorie[cmd.categorie_id] || 0) + q;
-                statsParClient[cid].parDate[cmd.date] =
-                    (statsParClient[cid].parDate[cmd.date] || 0) + q;
-            }
-            for (const ann of ejcAnn) {
-                const cid = ann.client_id;
-                if (!statsParClient[cid]) continue;
-                const q = ann.quantite || 0;
-                statsParClient[cid].ann += q;
-                statsParClient[cid].parCategorie[ann.categorie_id] =
-                    (statsParClient[cid].parCategorie[ann.categorie_id] || 0) - q;
-                statsParClient[cid].parDate[ann.date] =
-                    (statsParClient[cid].parDate[ann.date] || 0) - q;
-            }
+    // ============================================================
+    // ONGLET RÉSIDENTS (identique palier 2)
+    // ============================================================
 
-            let totalEjcCmd = 0, totalEjcAnn = 0;
-            for (const c of ejcCmd) totalEjcCmd += (c.quantite || 0);
-            for (const a of ejcAnn) totalEjcAnn += (a.quantite || 0);
-            const totalEjcNet = totalEjcCmd - totalEjcAnn;
+    function afficherOngletResidents() {
+        const allResidents = [...donneesPeriode.residents].sort((a, b) => {
+            const an = (a.nom || '').localeCompare(b.nom || '');
+            if (an !== 0) return an;
+            return (a.prenom || '').localeCompare(b.prenom || '');
+        });
+        const bouleaux = calculerStatsResidents(donneesPeriode, 'bouleaux');
+        const passerelle = calculerStatsResidents(donneesPeriode, 'passerelle');
+        const bouleauxPrec = calculerStatsResidents(donneesPeriodePrec, 'bouleaux');
+        const passerellePrec = calculerStatsResidents(donneesPeriodePrec, 'passerelle');
 
-            const contenu = document.getElementById('contenu');
-            let html = `
-                <h3 style="margin-top:0;">Période : ${dateFr(dateDebut)} → ${dateFr(dateFin)} <span style="color:#888;font-weight:normal;">(${jours} jour${jours>1?'s':''})</span></h3>
-            `;
+        let html = `
+            <div class="section-titre">👥 Vue d'ensemble résidents</div>
+            <div class="kpi-grid">
+                <div class="kpi-card bouleaux">
+                    <div class="kpi-label">🏠 Bouleaux (net)</div>
+                    <div class="kpi-valeur">${bouleaux.net}${evolutionBadge(bouleaux.net, bouleauxPrec.net)}</div>
+                    <div class="kpi-sub">Brut : ${bouleaux.brut} · Absences prolongées : ${bouleaux.nbAbsences}</div>
+                </div>
+                <div class="kpi-card passerelle">
+                    <div class="kpi-label">🌉 Passerelle (net)</div>
+                    <div class="kpi-valeur">${passerelle.net}${evolutionBadge(passerelle.net, passerellePrec.net)}</div>
+                    <div class="kpi-sub">Brut : ${passerelle.brut} · Absences prolongées : ${passerelle.nbAbsences}</div>
+                </div>
+                <div class="kpi-card global">
+                    <div class="kpi-label">Total résidents</div>
+                    <div class="kpi-valeur">${bouleaux.net + passerelle.net}</div>
+                    <div class="kpi-sub">${donneesPeriode.residents.length} résidents actifs</div>
+                </div>
+            </div>
 
-            const labelClientCarte = clientCourantId
-                ? (tousClients.find(x => x.id === clientCourantId)?.nom || 'Client')
-                : 'Repas clients (net)';
+            <div class="section-titre">📊 Comparaison Bouleaux vs Passerelle</div>
+            <div class="graph-zone"><div class="graph-canvas-wrap petit"><canvas id="chart-residents-comparaison"></canvas></div></div>
 
-            html += `
-                <div class="stats-cards">
-                    <div class="stat-card">
-                        <div class="label">Repas servis (résidents)</div>
-                        <div class="valeur">${totalPresent}</div>
-                        <div class="sub">${residents.length} résident(s)</div>
+            <div class="section-titre">🔍 Détail par résident</div>
+            <div class="drilldown-zone">
+                <label for="select-resident">Sélectionner un résident :</label>
+                <select id="select-resident" onchange="changerResidentSelectionne()">
+                    <option value="">— Choisis un résident —</option>`;
+        for (const r of allResidents) {
+            const sel = (residentSelectionneId === r.id) ? 'selected' : '';
+            const unite = r.unite === 'bouleaux' ? '🏠' : '🌉';
+            html += `<option value="${r.id}" ${sel}>${unite} ${r.prenom} ${r.nom}</option>`;
+        }
+        html += `</select>
+            </div>
+            <div id="zone-detail-resident"></div>
+        `;
+        document.getElementById('contenu-residents').innerHTML = html;
+        construireChartResidentsComparaison(bouleaux, passerelle);
+        if (residentSelectionneId) afficherDetailResident();
+    }
+
+    function changerResidentSelectionne() {
+        const val = document.getElementById('select-resident').value;
+        residentSelectionneId = val || null;
+        afficherDetailResident();
+    }
+
+    function afficherDetailResident() {
+        const zone = document.getElementById('zone-detail-resident');
+        if (!residentSelectionneId) {
+            zone.innerHTML = '<div class="aucune-donnee">Choisis un résident pour voir ses statistiques détaillées.</div>';
+            return;
+        }
+        const r = donneesPeriode.residents.find(x => x.id == residentSelectionneId);
+        if (!r) { zone.innerHTML = '<div class="aucune-donnee">Résident introuvable.</div>'; return; }
+        const stats = calculerStatsResidents(donneesPeriode, r.unite, r.id);
+        const statsPrec = calculerStatsResidents(donneesPeriodePrec, r.unite, r.id);
+        const txDej = getTextureDefautResident(r, 'dejeuner');
+        const txPd  = getTextureDefautResident(r, 'petit_dej');
+        const txDin = getTextureDefautResident(r, 'diner');
+        const allergenes = (r.allergenes || []).map(a => nomAllergene(a));
+        const allergiesTexte = (r.allergies || '').trim();
+        const intolerances = (r.intolerances || '').trim();
+        const aversions = (r.aversions || '').trim();
+        const unite = r.unite === 'bouleaux' ? '🏠 Bouleaux' : '🌉 Passerelle';
+
+        let html = `
+            <div class="detail-individu">
+                <h4>${r.prenom} ${r.nom} — ${unite}</h4>
+                <div class="kpi-grid">
+                    <div class="kpi-card global">
+                        <div class="kpi-label">Repas servis (net)</div>
+                        <div class="kpi-valeur">${stats.net}${evolutionBadge(stats.net, statsPrec.net)}</div>
+                        <div class="kpi-sub">Capacité brute : ${stats.brut}</div>
                     </div>
-                    <div class="stat-card">
-                        <div class="label">Taux de présence</div>
-                        <div class="valeur">${tauxPresence}%</div>
-                        <div class="sub">${totalAbsent} absence(s)</div>
+                    <div class="kpi-card global">
+                        <div class="kpi-label">Absences prolongées</div>
+                        <div class="kpi-valeur">${stats.nbAbsences}</div>
+                        <div class="kpi-sub">repas non comptabilisés</div>
                     </div>
-                    <div class="stat-card client-card">
-                        <div class="label">${clientCourantId ? labelClientCarte + ' (net)' : 'Repas clients (net)'}</div>
-                        <div class="valeur">${Math.max(0, totalEjcNet)}</div>
-                        <div class="sub">${totalEjcCmd} cmd − ${totalEjcAnn} ann</div>
-                    </div>
-                    <div class="stat-card">
-                        <div class="label">Total repas servis</div>
-                        <div class="valeur">${totalPresent + Math.max(0, totalEjcNet)}</div>
-                        <div class="sub">résidents + clients</div>
+                    <div class="kpi-card global">
+                        <div class="kpi-label">Taux de présence</div>
+                        <div class="kpi-valeur">${stats.brut > 0 ? Math.round(stats.net / stats.brut * 100) : 0}%</div>
+                        <div class="kpi-sub">net / capacité brute</div>
                     </div>
                 </div>
-            `;
 
-            if (vueGlobale && totalAvecLieu > 0) {
-                html += `<div class="section-stats">
-                    <h3>📍 Répartition par lieu (vue d'ensemble)</h3>`;
-                html += renderBarreLieux(globalParLieu, globalAucunLieu, totalAvecLieu);
+                <div class="section-titre">🍽️ Répartition par repas</div>
+                <div class="graph-zone"><div class="graph-canvas-wrap mini"><canvas id="chart-resident-repas"></canvas></div></div>
 
-                html += `<table class="stats" style="margin-top:15px;">
-                    <thead><tr><th>Lieu</th><th style="text-align:right;">Repas</th><th style="text-align:right;">%</th></tr></thead>
-                    <tbody>`;
-                const trie = lieuxDisponibles
-                    .map(l => ({ lieu: l, n: globalParLieu[l.id] || 0 }))
-                    .filter(x => x.n > 0)
-                    .sort((a, b) => b.n - a.n);
-                for (const x of trie) {
-                    const pct = Math.round((x.n / totalAvecLieu) * 100);
-                    html += `<tr><td>📍 ${x.lieu.nom}</td><td style="text-align:right;">${x.n}</td><td style="text-align:right;" class="pourcent">${pct}%</td></tr>`;
-                }
-                if (globalAucunLieu > 0) {
-                    const pct = Math.round((globalAucunLieu / totalAvecLieu) * 100);
-                    html += `<tr><td>❓ Lieu non défini</td><td style="text-align:right;">${globalAucunLieu}</td><td style="text-align:right;" class="pourcent">${pct}%</td></tr>`;
-                }
-                html += `</tbody></table></div>`;
+                <div class="section-titre">📈 Présence quotidienne</div>
+                <p class="section-sous-titre">Comparaison avec la moyenne de son unité.</p>
+                <div class="graph-zone"><div class="graph-canvas-wrap"><canvas id="chart-resident-quotidien"></canvas></div></div>
+
+                <div class="section-titre">ℹ️ Profil</div>
+                <p><strong>Textures habituelles :</strong>
+                    <span class="badge-info">P-déj : ${nomTexture(txPd)}</span>
+                    <span class="badge-info">Déjeuner : ${nomTexture(txDej)}</span>
+                    <span class="badge-info">Dîner : ${nomTexture(txDin)}</span>
+                </p>
+                <p><strong>Allergènes UE :</strong>
+                    ${allergenes.length ? allergenes.map(a => `<span class="badge-info danger">⚠ ${a}</span>`).join(' ') : '<small style="color:#888;">aucun</small>'}
+                </p>
+                ${allergiesTexte ? `<p><strong>Autres allergies :</strong> <span class="badge-info warning">${allergiesTexte}</span></p>` : ''}
+                ${intolerances ? `<p><strong>Intolérances :</strong> <span class="badge-info warning">${intolerances}</span></p>` : ''}
+                ${aversions ? `<p><strong>Non-goûts :</strong> <span class="badge-info">${aversions}</span></p>` : ''}
+            </div>
+        `;
+        zone.innerHTML = html;
+        construireChartResidentRepas(stats);
+        construireChartResidentQuotidien(stats, r.unite);
+    }
+
+    function construireChartResidentsComparaison(bouleaux, passerelle) {
+        detruireChart('residents-comparaison');
+        const ctx = document.getElementById('chart-residents-comparaison').getContext('2d');
+        charts['residents-comparaison'] = new Chart(ctx, {
+            type: 'bar',
+            data: {
+                labels: ['Petit-déjeuner', 'Déjeuner', 'Dîner'],
+                datasets: [
+                    { label: 'Bouleaux',   data: [bouleaux.detailParRepas.petit_dej, bouleaux.detailParRepas.dejeuner, bouleaux.detailParRepas.diner],   backgroundColor: COULEURS.bouleaux },
+                    { label: 'Passerelle', data: [passerelle.detailParRepas.petit_dej, passerelle.detailParRepas.dejeuner, passerelle.detailParRepas.diner], backgroundColor: COULEURS.passerelle }
+                ]
+            },
+            options: {
+                responsive: true, maintainAspectRatio: false,
+                plugins: { legend: { position: 'bottom' } },
+                scales: { y: { beginAtZero: true, title: { display: true, text: 'Repas servis' } } }
             }
+        });
+    }
 
-            html += `<div class="section-stats">
-                <h3>👥 Détail par résident</h3>`;
+    function construireChartResidentRepas(stats) {
+        detruireChart('resident-repas');
+        const ctx = document.getElementById('chart-resident-repas').getContext('2d');
+        charts['resident-repas'] = new Chart(ctx, {
+            type: 'doughnut',
+            data: {
+                labels: ['Petit-déjeuner', 'Déjeuner', 'Dîner'],
+                datasets: [{
+                    data: [stats.detailParRepas.petit_dej, stats.detailParRepas.dejeuner, stats.detailParRepas.diner],
+                    backgroundColor: ['#f0ad4e', '#2c5530', '#5b3fa6'],
+                    borderColor: '#fff', borderWidth: 2
+                }]
+            },
+            options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { position: 'right' } } }
+        });
+    }
 
-            if (!statsResidents.length) {
-                html += `<p>Aucun résident à analyser.</p>`;
-            } else {
-                html += `<table class="stats">
-                    <thead>
-                        <tr>
-                            <th>Résident</th>
-                            <th style="text-align:right;">Présents</th>
-                            <th style="text-align:right;">Absents</th>
-                            <th style="text-align:right;">Présence</th>
-                            <th>Répartition lieux</th>
-                        </tr>
-                    </thead>
-                    <tbody>`;
-                const trie = [...statsResidents].sort((a, b) => b.nbPresent - a.nbPresent);
-                for (const s of trie) {
-                    const tx = s.total > 0 ? Math.round((s.nbPresent / s.total) * 100) : 0;
-                    const totalLieu = Object.values(s.parLieu).reduce((sum, x) => sum + x, 0) + s.aucunLieu;
-                    let detailLieux = '<span style="color:#999;">—</span>';
-                    if (totalLieu > 0) {
-                        const parts = [];
-                        for (const lieu of lieuxDisponibles) {
-                            const n = s.parLieu[lieu.id] || 0;
-                            if (n > 0) {
-                                const pct = Math.round((n / totalLieu) * 100);
-                                parts.push(`<strong>${lieu.nom}</strong> : ${pct}%`);
-                            }
-                        }
-                        if (s.aucunLieu > 0) {
-                            const pct = Math.round((s.aucunLieu / totalLieu) * 100);
-                            parts.push(`<span style="color:#999;">Non défini : ${pct}%</span>`);
-                        }
-                        detailLieux = parts.join(' · ');
-                    }
-                    html += `<tr>
-                        <td><strong>${s.resident.prenom} ${s.resident.nom}</strong></td>
-                        <td style="text-align:right;">${s.nbPresent}</td>
-                        <td style="text-align:right;">${s.nbAbsent}</td>
-                        <td style="text-align:right;" class="pourcent">${tx}%</td>
-                        <td>${detailLieux}</td>
-                    </tr>`;
+    function construireChartResidentQuotidien(stats, unite) {
+        detruireChart('resident-quotidien');
+        const dates = listerDates(periodeDebut, periodeFin);
+        const labels = dates.map(d => formatLabelDate(d));
+        const valsResident = dates.map(d => {
+            if (!stats.detailParJour[d]) return 0;
+            return stats.detailParJour[d].petit_dej + stats.detailParJour[d].dejeuner + stats.detailParJour[d].diner;
+        });
+        const statsUnite = calculerStatsResidents(donneesPeriode, unite);
+        const nbResidentsUnite = donneesPeriode.residents.filter(r => r.unite === unite).length || 1;
+        const valsMoyenne = dates.map(d => {
+            if (!statsUnite.detailParJour[d]) return 0;
+            const tot = statsUnite.detailParJour[d].petit_dej + statsUnite.detailParJour[d].dejeuner + statsUnite.detailParJour[d].diner;
+            return Math.round((tot / nbResidentsUnite) * 100) / 100;
+        });
+        const couleur = unite === 'bouleaux' ? COULEURS.bouleaux : COULEURS.passerelle;
+        const ctx = document.getElementById('chart-resident-quotidien').getContext('2d');
+        charts['resident-quotidien'] = new Chart(ctx, {
+            type: 'line',
+            data: {
+                labels,
+                datasets: [
+                    { label: 'Ce résident',          data: valsResident, borderColor: couleur, backgroundColor: couleur + '33', tension: 0.2, fill: false, borderWidth: 2 },
+                    { label: 'Moyenne unité (par rés.)', data: valsMoyenne,  borderColor: '#999',     backgroundColor: '#99999933',       tension: 0.2, fill: false, borderDash: [5, 5] }
+                ]
+            },
+            options: {
+                responsive: true, maintainAspectRatio: false,
+                plugins: { legend: { position: 'bottom' } },
+                scales: {
+                    x: { ticks: { maxRotation: 45, minRotation: 45, autoSkip: true, maxTicksLimit: 20 } },
+                    y: { beginAtZero: true, title: { display: true, text: 'Repas servis' } }
                 }
-                html += `</tbody></table>`;
             }
-            html += `</div>`;
+        });
+    }
 
-            if (!vueGlobale && statsResidents.length === 1) {
-                const s = statsResidents[0];
-                const totalLieu = Object.values(s.parLieu).reduce((sum, x) => sum + x, 0) + s.aucunLieu;
+    // ============================================================
+    // ONGLET EJC (identique palier 2)
+    // ============================================================
 
-                html += `<div class="section-stats">
-                    <h3>📍 Répartition des lieux pour ${s.resident.prenom} ${s.resident.nom}</h3>`;
-                if (totalLieu > 0) {
-                    html += renderBarreLieux(s.parLieu, s.aucunLieu, totalLieu);
-                } else {
-                    html += '<p>Aucune présence enregistrée sur cette période.</p>';
-                }
-                html += `</div>`;
+    function afficherOngletEjc() {
+        const corge = calculerStatsEjc(donneesPeriode, CLIENT_EJC_CORGEMONT);
+        const pery  = calculerStatsEjc(donneesPeriode, CLIENT_EJC_PERY);
+        const ecur  = calculerStatsEjc(donneesPeriode, CLIENT_ECUREUILS);
+        const corgePrec = calculerStatsEjc(donneesPeriodePrec, CLIENT_EJC_CORGEMONT);
+        const peryPrec  = calculerStatsEjc(donneesPeriodePrec, CLIENT_EJC_PERY);
+        const ecurPrec  = calculerStatsEjc(donneesPeriodePrec, CLIENT_ECUREUILS);
 
-                html += `<div class="section-stats">
-                    <h3>✅ Présence vs absence</h3>`;
-                if (s.total > 0) {
-                    const pctP = Math.round((s.nbPresent / s.total) * 100);
-                    const pctA = 100 - pctP;
-                    html += `<div class="barre-container">`;
-                    if (pctP > 0) {
-                        html += `<div class="barre-segment barre-present" style="width:${pctP}%;" title="${s.nbPresent} présent">${pctP > 8 ? pctP + '%' : ''}</div>`;
-                    }
-                    if (pctA > 0) {
-                        html += `<div class="barre-segment barre-absent" style="width:${pctA}%;" title="${s.nbAbsent} absent">${pctA > 8 ? pctA + '%' : ''}</div>`;
-                    }
-                    html += `</div>
-                    <div class="legende">
-                        <div class="legende-item"><span class="legende-puce" style="background:#2c5530;"></span>Présent (${s.nbPresent})</div>
-                        <div class="legende-item"><span class="legende-puce" style="background:#c44;"></span>Absent (${s.nbAbsent})</div>
-                    </div>`;
-                } else {
-                    html += '<p>Aucune donnée pour cette période.</p>';
-                }
-                html += `</div>`;
-            }
+        let html = `
+            <div class="section-titre">🍴 Vue d'ensemble clients externes</div>
+            <div class="kpi-grid">
+                <div class="kpi-card ejc" style="border-top-color:${COULEURS.ejc_corgemont};">
+                    <div class="kpi-label">EJC Corgémont</div>
+                    <div class="kpi-valeur">${corge.total}${evolutionBadge(corge.total, corgePrec.total)}</div>
+                    <div class="kpi-sub">Annulés : ${corge.totalAnnule} · Taux : ${corge.tauxAnnulation}%</div>
+                </div>
+                <div class="kpi-card ejc" style="border-top-color:${COULEURS.ejc_pery};">
+                    <div class="kpi-label">EJC Péry</div>
+                    <div class="kpi-valeur">${pery.total}${evolutionBadge(pery.total, peryPrec.total)}</div>
+                    <div class="kpi-sub">Annulés : ${pery.totalAnnule} · Taux : ${pery.tauxAnnulation}%</div>
+                </div>
+                <div class="kpi-card ejc" style="border-top-color:${COULEURS.ecureuils};">
+                    <div class="kpi-label">Écureuils</div>
+                    <div class="kpi-valeur">${ecur.total}${evolutionBadge(ecur.total, ecurPrec.total)}</div>
+                    <div class="kpi-sub">Annulés : ${ecur.totalAnnule} · Taux : ${ecur.tauxAnnulation}%</div>
+                </div>
+            </div>
 
-            html += renderStatsClients(statsParClient, totalEjcCmd, totalEjcAnn, totalEjcNet);
+            <div class="section-titre">📊 Comparaison clients</div>
+            <div class="graph-zone"><div class="graph-canvas-wrap petit"><canvas id="chart-ejc-comparaison"></canvas></div></div>
 
-            contenu.innerHTML = html;
+            <div class="section-titre">🔍 Détail par client</div>
+            <div class="drilldown-zone">
+                <label for="select-client">Sélectionner un client :</label>
+                <select id="select-client" onchange="changerClientSelectionne()">
+                    <option value="">— Choisis un client —</option>
+                    <option value="${CLIENT_EJC_CORGEMONT}" ${clientSelectionneId === CLIENT_EJC_CORGEMONT ? 'selected' : ''}>🍴 EJC Corgémont</option>
+                    <option value="${CLIENT_EJC_PERY}" ${clientSelectionneId === CLIENT_EJC_PERY ? 'selected' : ''}>🍴 EJC Péry</option>
+                    <option value="${CLIENT_ECUREUILS}" ${clientSelectionneId === CLIENT_ECUREUILS ? 'selected' : ''}>🍴 Maison enfance Écureuils</option>
+                </select>
+            </div>
+            <div id="zone-detail-client"></div>
+        `;
+        document.getElementById('contenu-ejc').innerHTML = html;
+        construireChartEjcComparaison(corge, pery, ecur);
+        if (clientSelectionneId) afficherDetailClient();
+    }
+
+    function changerClientSelectionne() {
+        const val = document.getElementById('select-client').value;
+        clientSelectionneId = val || null;
+        afficherDetailClient();
+    }
+
+    function afficherDetailClient() {
+        const zone = document.getElementById('zone-detail-client');
+        if (!clientSelectionneId) {
+            zone.innerHTML = '<div class="aucune-donnee">Choisis un client pour voir ses statistiques détaillées.</div>';
+            return;
         }
+        const nomClient = NOMS_CLIENTS[clientSelectionneId];
+        const couleur = COULEURS_CLIENTS[clientSelectionneId];
+        const stats = calculerStatsEjc(donneesPeriode, clientSelectionneId);
+        const statsPrec = calculerStatsEjc(donneesPeriodePrec, clientSelectionneId);
 
-        function renderStatsClients(statsParClient, totalCmd, totalAnn, totalNet) {
-            let clientsAAfficher;
-            if (clientCourantId) {
-                clientsAAfficher = tousClients.filter(c => c.id === clientCourantId);
-            } else {
-                clientsAAfficher = tousClients;
+        let html = `
+            <div class="detail-individu">
+                <h4>${nomClient}</h4>
+                <div class="kpi-grid">
+                    <div class="kpi-card ejc" style="border-top-color:${couleur};">
+                        <div class="kpi-label">Repas servis</div>
+                        <div class="kpi-valeur">${stats.total}${evolutionBadge(stats.total, statsPrec.total)}</div>
+                        <div class="kpi-sub">Sur ${stats.totalCommande} commandés au total</div>
+                    </div>
+                    <div class="kpi-card ejc" style="border-top-color:${couleur};">
+                        <div class="kpi-label">Annulations</div>
+                        <div class="kpi-valeur">${stats.totalAnnule}</div>
+                        <div class="kpi-sub">${stats.tauxAnnulation}% du total commandé</div>
+                    </div>
+                    <div class="kpi-card ejc" style="border-top-color:${couleur};">
+                        <div class="kpi-label">Nb jours actifs</div>
+                        <div class="kpi-valeur">${Object.keys(stats.detailParJour).length}</div>
+                        <div class="kpi-sub">jours avec au moins 1 repas</div>
+                    </div>
+                </div>
+
+                <div class="section-titre">📈 Évolution quotidienne</div>
+                <div class="graph-zone"><div class="graph-canvas-wrap"><canvas id="chart-client-quotidien"></canvas></div></div>
+
+                <div class="section-titre">🥧 Répartition par catégorie</div>
+                <div class="graph-zone"><div class="graph-canvas-wrap petit"><canvas id="chart-client-categories"></canvas></div></div>
+
+                <div class="section-titre">📅 Top jours de la semaine</div>
+                <div class="graph-zone"><div class="graph-canvas-wrap petit"><canvas id="chart-client-jours"></canvas></div></div>
+            </div>
+        `;
+        zone.innerHTML = html;
+        construireChartClientQuotidien(stats, couleur);
+        construireChartClientCategories(stats, couleur);
+        construireChartClientJours(stats, couleur);
+    }
+
+    function construireChartEjcComparaison(corge, pery, ecur) {
+        detruireChart('ejc-comparaison');
+        const ctx = document.getElementById('chart-ejc-comparaison').getContext('2d');
+        charts['ejc-comparaison'] = new Chart(ctx, {
+            type: 'bar',
+            data: {
+                labels: ['Commandés', 'Servis (net)', 'Annulés'],
+                datasets: [
+                    { label: 'EJC Corgémont',  data: [corge.totalCommande, corge.total, corge.totalAnnule], backgroundColor: COULEURS.ejc_corgemont },
+                    { label: 'EJC Péry',       data: [pery.totalCommande,  pery.total,  pery.totalAnnule],  backgroundColor: COULEURS.ejc_pery },
+                    { label: 'Écureuils',      data: [ecur.totalCommande,  ecur.total,  ecur.totalAnnule],  backgroundColor: COULEURS.ecureuils }
+                ]
+            },
+            options: {
+                responsive: true, maintainAspectRatio: false,
+                plugins: { legend: { position: 'bottom' } },
+                scales: { y: { beginAtZero: true, title: { display: true, text: 'Repas' } } }
             }
+        });
+    }
 
-            if (clientsAAfficher.length === 0) {
-                return '';
-            }
-
-            const titreSection = clientCourantId
-                ? `🍴 Statistiques pour ${clientsAAfficher[0].nom}`
-                : `🍴 Statistiques clients externes (vue agrégée)`;
-
-            let html = `<div class="section-stats section-clients">
-                <h3>${titreSection}</h3>`;
-
-            if (totalCmd === 0 && totalAnn === 0) {
-                html += `<p style="color:#888;">Aucune commande sur cette période.</p>`;
-                html += `</div>`;
-                return html;
-            }
-
-            if (!clientCourantId) {
-                html += `<h4 style="color:#b35a2a;margin-top:0;">📊 Comparatif par client</h4>`;
-                html += `<table class="stats table-clients">
-                    <thead>
-                        <tr>
-                            <th>Client</th>
-                            <th style="text-align:right;">Commandes</th>
-                            <th style="text-align:right;">Annulations</th>
-                            <th style="text-align:right;">Net</th>
-                            <th style="text-align:right;">Part du total</th>
-                            <th>Top catégorie</th>
-                        </tr>
-                    </thead>
-                    <tbody>`;
-
-                const lignes = clientsAAfficher.map(c => {
-                    const s = statsParClient[c.id];
-                    const net = s.cmd - s.ann;
-                    const part = totalNet > 0 ? Math.round((Math.max(0,net) / Math.max(1,totalNet)) * 100) : 0;
-                    const cats = categoriesParClient[c.id] || [];
-                    let topCat = '—';
-                    let topQte = 0;
-                    for (const [catId, qte] of Object.entries(s.parCategorie)) {
-                        if (qte > topQte) {
-                            const cat = cats.find(x => x.id === parseInt(catId));
-                            if (cat) {
-                                topCat = cat.nom;
-                                topQte = qte;
-                            }
-                        }
-                    }
-                    return { client: c, stats: s, net, part, topCat, topQte };
-                }).sort((a,b) => b.net - a.net);
-
-                for (const l of lignes) {
-                    html += `<tr>
-                        <td><strong>${l.client.nom}</strong></td>
-                        <td style="text-align:right;">${l.stats.cmd}</td>
-                        <td style="text-align:right;">${l.stats.ann}</td>
-                        <td style="text-align:right;"><strong style="color:#2c5530;">${Math.max(0,l.net)}</strong></td>
-                        <td style="text-align:right;" class="pourcent-client">${l.part}%</td>
-                        <td>${l.topCat !== '—' ? `${l.topCat} <span style="color:#888;">(${l.topQte})</span>` : '<span style="color:#999;">—</span>'}</td>
-                    </tr>`;
-                }
-                html += `<tr style="background:#fff8f0;font-weight:bold;">
-                    <td>TOTAL</td>
-                    <td style="text-align:right;">${totalCmd}</td>
-                    <td style="text-align:right;">${totalAnn}</td>
-                    <td style="text-align:right;color:#2c5530;">${Math.max(0,totalNet)}</td>
-                    <td style="text-align:right;">100%</td>
-                    <td></td>
-                </tr>`;
-                html += `</tbody></table>`;
-
-                html += `<h4 style="color:#b35a2a;margin-top:25px;">🎴 Détail par client</h4>`;
-                html += `<div class="cartes-par-client">`;
-                for (const l of lignes) {
-                    const s = l.stats;
-                    const tauxAnn = s.cmd > 0 ? Math.round((s.ann / s.cmd) * 100) : 0;
-                    html += `<div class="carte-client">
-                        <h4>${l.client.nom}</h4>
-                        <div class="ligne"><span class="label-petit">Commandes</span><span class="valeur-petit">${s.cmd}</span></div>
-                        <div class="ligne"><span class="label-petit">Annulations</span><span class="valeur-petit">${s.ann}</span></div>
-                        <div class="ligne"><span class="label-petit">Taux d'annulation</span><span class="valeur-petit">${tauxAnn}%</span></div>
-                        <div class="ligne"><span class="label-petit">Top catégorie</span><span class="valeur-petit">${l.topCat !== '—' ? l.topCat : '—'}</span></div>
-                        <div class="net">
-                            <span>Net :</span>
-                            <span class="net-valeur">${Math.max(0,l.net)}</span>
-                        </div>
-                    </div>`;
-                }
-                html += `</div>`;
-
-            } else {
-                const c = clientsAAfficher[0];
-                const s = statsParClient[c.id];
-                const tauxAnn = s.cmd > 0 ? Math.round((s.ann / s.cmd) * 100) : 0;
-                const cats = categoriesParClient[c.id] || [];
-
-                const topCats = Object.entries(s.parCategorie)
-                    .map(([catId, qte]) => {
-                        const cat = cats.find(x => x.id === parseInt(catId));
-                        return { id: parseInt(catId), nom: cat ? cat.nom : `Catégorie #${catId}`, qte };
-                    })
-                    .filter(x => x.qte > 0)
-                    .sort((a,b) => b.qte - a.qte)
-                    .slice(0, 5);
-
-                let jourMax = null;
-                let qteMax = 0;
-                for (const [date, qte] of Object.entries(s.parDate)) {
-                    if (qte > qteMax) {
-                        qteMax = qte;
-                        jourMax = date;
-                    }
-                }
-
-                html += `<div class="stats-cards" style="margin-bottom:15px;">
-                    <div class="stat-card client-card">
-                        <div class="label">Commandes</div>
-                        <div class="valeur">${s.cmd}</div>
-                        <div class="sub">brut</div>
-                    </div>
-                    <div class="stat-card client-card">
-                        <div class="label">Annulations</div>
-                        <div class="valeur">${s.ann}</div>
-                        <div class="sub">${tauxAnn}% du brut</div>
-                    </div>
-                    <div class="stat-card client-card">
-                        <div class="label">Net facturable</div>
-                        <div class="valeur">${Math.max(0, s.cmd - s.ann)}</div>
-                        <div class="sub">cmd − annulations</div>
-                    </div>
-                    <div class="stat-card client-card">
-                        <div class="label">Jour le plus chargé</div>
-                        <div class="valeur" style="font-size:18px;">${jourMax ? dateFr(jourMax) : '—'}</div>
-                        <div class="sub">${jourMax ? Math.max(0,qteMax) + ' repas (net)' : ''}</div>
-                    </div>
-                </div>`;
-
-                html += `<h4 style="color:#b35a2a;margin-top:20px;">🏆 Top 5 catégories les plus commandées</h4>`;
-                if (topCats.length === 0) {
-                    html += `<p style="color:#888;">Aucune donnée.</p>`;
-                } else {
-                    const totalTopCats = topCats.reduce((sum, x) => sum + x.qte, 0);
-                    html += `<table class="stats table-clients">
-                        <thead>
-                            <tr>
-                                <th>Rang</th>
-                                <th>Catégorie</th>
-                                <th style="text-align:right;">Quantité (net)</th>
-                                <th style="text-align:right;">% du top 5</th>
-                            </tr>
-                        </thead>
-                        <tbody>`;
-                    let rang = 1;
-                    for (const t of topCats) {
-                        const pct = totalTopCats > 0 ? Math.round((t.qte / totalTopCats) * 100) : 0;
-                        const medaille = rang === 1 ? '🥇' : rang === 2 ? '🥈' : rang === 3 ? '🥉' : '  ';
-                        html += `<tr>
-                            <td>${medaille} ${rang}</td>
-                            <td><strong>${t.nom}</strong></td>
-                            <td style="text-align:right;">${t.qte}</td>
-                            <td style="text-align:right;" class="pourcent-client">${pct}%</td>
-                        </tr>`;
-                        rang++;
-                    }
-                    html += `</tbody></table>`;
+    function construireChartClientQuotidien(stats, couleur) {
+        detruireChart('client-quotidien');
+        const dates = listerDates(periodeDebut, periodeFin);
+        const labels = dates.map(d => formatLabelDate(d));
+        const vals = dates.map(d => stats.detailParJour[d] ? stats.detailParJour[d].dejeuner : 0);
+        const ctx = document.getElementById('chart-client-quotidien').getContext('2d');
+        charts['client-quotidien'] = new Chart(ctx, {
+            type: 'bar',
+            data: { labels, datasets: [{ label: 'Repas servis', data: vals, backgroundColor: couleur }] },
+            options: {
+                responsive: true, maintainAspectRatio: false,
+                plugins: { legend: { display: false } },
+                scales: {
+                    x: { ticks: { maxRotation: 45, minRotation: 45, autoSkip: true, maxTicksLimit: 20 } },
+                    y: { beginAtZero: true }
                 }
             }
+        });
+    }
 
-            html += `</div>`;
-            return html;
+    function construireChartClientCategories(stats) {
+        detruireChart('client-categories');
+        const arr = Object.values(stats.detailParCategorie).sort((a, b) => b.qte - a.qte);
+        if (arr.length === 0) {
+            document.getElementById('chart-client-categories').parentElement.innerHTML =
+                '<div class="aucune-donnee">Aucune commande sur cette période.</div>';
+            return;
         }
+        const ctx = document.getElementById('chart-client-categories').getContext('2d');
+        charts['client-categories'] = new Chart(ctx, {
+            type: 'doughnut',
+            data: {
+                labels: arr.map(a => a.nom),
+                datasets: [{
+                    data: arr.map(a => a.qte),
+                    backgroundColor: arr.map((_, i) => `hsl(${30 + i * 25}, 70%, 50%)`),
+                    borderColor: '#fff', borderWidth: 2
+                }]
+            },
+            options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { position: 'right' } } }
+        });
+    }
 
-        function renderBarreLieux(parLieu, aucunLieu, total) {
-            if (total === 0) return '<p>Aucune donnée.</p>';
-            let html = '<div class="barre-container">';
-            const couleurs = ['barre-restaurant', 'barre-chambre'];
-            const items = [];
-            let i = 0;
-            for (const lieu of lieuxDisponibles) {
-                const n = parLieu[lieu.id] || 0;
-                if (n > 0) {
-                    const pct = (n / total) * 100;
-                    const cls = couleurs[i % couleurs.length];
-                    if (pct > 0) {
-                        html += `<div class="barre-segment ${cls}" style="width:${pct}%;" title="${lieu.nom} : ${n}">${pct > 8 ? Math.round(pct)+'%' : ''}</div>`;
-                    }
-                    items.push({ nom: lieu.nom, n, cls });
-                    i++;
-                }
+    function construireChartClientJours(stats, couleur) {
+        detruireChart('client-jours');
+        const ordre = [1, 2, 3, 4, 5, 6, 0];
+        const labels = ordre.map(i => NOMS_JOURS[i]);
+        const vals = ordre.map(i => stats.detailParJourSemaine[i]);
+        const ctx = document.getElementById('chart-client-jours').getContext('2d');
+        charts['client-jours'] = new Chart(ctx, {
+            type: 'bar',
+            data: { labels, datasets: [{ label: 'Repas', data: vals, backgroundColor: couleur }] },
+            options: {
+                responsive: true, maintainAspectRatio: false,
+                plugins: { legend: { display: false } },
+                scales: { y: { beginAtZero: true } }
             }
-            if (aucunLieu > 0) {
-                const pct = (aucunLieu / total) * 100;
-                if (pct > 0) {
-                    html += `<div class="barre-segment barre-aucun" style="width:${pct}%;" title="Non défini : ${aucunLieu}">${pct > 8 ? Math.round(pct)+'%' : ''}</div>`;
-                }
-                items.push({ nom: 'Non défini', n: aucunLieu, cls: 'barre-aucun' });
-            }
-            html += '</div>';
+        });
+    }
 
-            html += '<div class="legende">';
-            const couleursHex = { 'barre-restaurant': '#2c5530', 'barre-chambre': '#d4825a', 'barre-aucun': '#999' };
-            for (const it of items) {
-                html += `<div class="legende-item"><span class="legende-puce" style="background:${couleursHex[it.cls]};"></span>${it.nom} (${it.n})</div>`;
-            }
-            html += '</div>';
-            return html;
+    // ============================================================
+    // ONGLET DOMICILE (identique palier 2)
+    // ============================================================
+
+    function afficherOngletDomicile() {
+        const stats = calculerStatsDomicile(donneesPeriode);
+        const statsPrec = calculerStatsDomicile(donneesPeriodePrec);
+        const beneficiaires = [...donneesPeriode.personnesDomicile].sort((a, b) => {
+            const an = (a.nom || '').localeCompare(b.nom || '');
+            if (an !== 0) return an;
+            return (a.prenom || '').localeCompare(b.prenom || '');
+        });
+
+        let html = `
+            <div class="section-titre">🏠 Vue d'ensemble repas à domicile</div>
+            <div class="kpi-grid">
+                <div class="kpi-card domicile">
+                    <div class="kpi-label">Repas livrés (total)</div>
+                    <div class="kpi-valeur">${stats.total}${evolutionBadge(stats.total, statsPrec.total)}</div>
+                    <div class="kpi-sub">sur la période</div>
+                </div>
+                <div class="kpi-card domicile">
+                    <div class="kpi-label">Bénéficiaires actifs</div>
+                    <div class="kpi-valeur">${stats.nbBeneficiairesActifs}</div>
+                    <div class="kpi-sub">au moins 1 repas dans la période</div>
+                </div>
+                <div class="kpi-card domicile">
+                    <div class="kpi-label">Moyenne / bénéficiaire</div>
+                    <div class="kpi-valeur">${stats.nbBeneficiairesActifs > 0 ? Math.round(stats.total / stats.nbBeneficiairesActifs) : 0}</div>
+                    <div class="kpi-sub">repas par bénéficiaire</div>
+                </div>
+            </div>
+
+            <div class="section-titre">🍽️ Composants à produire (toute la période)</div>
+            <div class="graph-zone"><div class="graph-canvas-wrap petit"><canvas id="chart-domicile-composants"></canvas></div></div>
+
+            <div class="section-titre">📅 Répartition par jour de la semaine</div>
+            <div class="graph-zone"><div class="graph-canvas-wrap petit"><canvas id="chart-domicile-jours"></canvas></div></div>
+
+            <div class="section-titre">🔍 Détail par bénéficiaire</div>
+            <div class="drilldown-zone">
+                <label for="select-beneficiaire">Sélectionner un bénéficiaire :</label>
+                <select id="select-beneficiaire" onchange="changerBeneficiaireSelectionne()">
+                    <option value="">— Choisis un bénéficiaire —</option>`;
+        for (const p of beneficiaires) {
+            const sel = (beneficiaireDomicileId == p.id) ? 'selected' : '';
+            html += `<option value="${p.id}" ${sel}>${p.prenom} ${p.nom}</option>`;
         }
+        html += `</select>
+            </div>
+            <div id="zone-detail-beneficiaire"></div>
+        `;
+        document.getElementById('contenu-domicile').innerHTML = html;
+        construireChartDomicileComposants(stats);
+        construireChartDomicileJours(stats);
+        if (beneficiaireDomicileId) afficherDetailBeneficiaire();
+    }
 
-        // Démarrage protégé par auth (admin uniquement)
-        (async () => {
-            const auth = await verifierAuthEtRole(['admin']);
-            if (!auth) return;
-            afficherMenuComplet('stats', auth.user.email, auth.profil.role, auth.profil.nom_affiche);
-            await chargerInitial();
-        })();
+    function changerBeneficiaireSelectionne() {
+        const val = document.getElementById('select-beneficiaire').value;
+        beneficiaireDomicileId = val ? parseInt(val) : null;
+        afficherDetailBeneficiaire();
+    }
+
+    function afficherDetailBeneficiaire() {
+        const zone = document.getElementById('zone-detail-beneficiaire');
+        if (!beneficiaireDomicileId) {
+            zone.innerHTML = '<div class="aucune-donnee">Choisis un bénéficiaire pour voir ses statistiques détaillées.</div>';
+            return;
+        }
+        const p = donneesPeriode.personnesDomicile.find(x => x.id == beneficiaireDomicileId);
+        if (!p) { zone.innerHTML = '<div class="aucune-donnee">Bénéficiaire introuvable.</div>'; return; }
+        const stats = calculerStatsDomicile(donneesPeriode, p.id);
+        const statsPrec = calculerStatsDomicile(donneesPeriodePrec, p.id);
+
+        const composants = [];
+        if (p.prend_potage !== false) composants.push('🥣 Potage');
+        if (p.prend_salade !== false) composants.push('🥗 Salade');
+        if (p.prend_sauce_salade !== false && p.prend_salade !== false) composants.push('🫙 Sauce salade');
+        if (p.prend_plat !== false) composants.push('🍽️ Plat');
+        if (p.prend_dessert !== false) composants.push('🍰 Dessert');
+
+        let html = `
+            <div class="detail-individu">
+                <h4>${p.prenom} ${p.nom}</h4>
+                <div class="kpi-grid">
+                    <div class="kpi-card domicile">
+                        <div class="kpi-label">Repas livrés</div>
+                        <div class="kpi-valeur">${stats.total}${evolutionBadge(stats.total, statsPrec.total)}</div>
+                        <div class="kpi-sub">sur la période</div>
+                    </div>
+                    <div class="kpi-card domicile">
+                        <div class="kpi-label">Jours de livraison</div>
+                        <div class="kpi-valeur">${Object.keys(stats.detailParJour).length}</div>
+                        <div class="kpi-sub">dans la période</div>
+                    </div>
+                </div>
+                <p><strong>Composition habituelle :</strong> ${composants.map(c => `<span class="badge-info">${c}</span>`).join(' ')}</p>
+
+                <div class="section-titre">📈 Livraisons quotidiennes</div>
+                <div class="graph-zone"><div class="graph-canvas-wrap petit"><canvas id="chart-benef-quotidien"></canvas></div></div>
+
+                <div class="section-titre">📅 Par jour de la semaine</div>
+                <div class="graph-zone"><div class="graph-canvas-wrap mini"><canvas id="chart-benef-jours"></canvas></div></div>
+            </div>
+        `;
+        zone.innerHTML = html;
+        construireChartBenefQuotidien(stats);
+        construireChartBenefJours(stats);
+    }
+
+    function construireChartDomicileComposants(stats) {
+        detruireChart('domicile-composants');
+        const labels = ['🥣 Potages', '🥗 Salades', '🫙 Sauces salade', '🍽️ Plats', '🍰 Desserts'];
+        const vals = [stats.composantsCount.potage, stats.composantsCount.salade, stats.composantsCount.sauce_salade, stats.composantsCount.plat, stats.composantsCount.dessert];
+        const ctx = document.getElementById('chart-domicile-composants').getContext('2d');
+        charts['domicile-composants'] = new Chart(ctx, {
+            type: 'bar',
+            data: { labels, datasets: [{ label: 'Portions', data: vals, backgroundColor: COULEURS.domicile }] },
+            options: {
+                responsive: true, maintainAspectRatio: false,
+                plugins: { legend: { display: false } },
+                scales: { y: { beginAtZero: true } }
+            }
+        });
+    }
+
+    function construireChartDomicileJours(stats) {
+        detruireChart('domicile-jours');
+        const ordre = [1, 2, 3, 4, 5, 6, 0];
+        const labels = ordre.map(i => NOMS_JOURS[i]);
+        const vals = ordre.map(i => stats.detailParJourSemaine[i]);
+        const ctx = document.getElementById('chart-domicile-jours').getContext('2d');
+        charts['domicile-jours'] = new Chart(ctx, {
+            type: 'bar',
+            data: { labels, datasets: [{ label: 'Repas', data: vals, backgroundColor: COULEURS.domicile }] },
+            options: {
+                responsive: true, maintainAspectRatio: false,
+                plugins: { legend: { display: false } },
+                scales: { y: { beginAtZero: true } }
+            }
+        });
+    }
+
+    function construireChartBenefQuotidien(stats) {
+        detruireChart('benef-quotidien');
+        const dates = listerDates(periodeDebut, periodeFin);
+        const labels = dates.map(d => formatLabelDate(d));
+        const vals = dates.map(d => stats.detailParJour[d] ? stats.detailParJour[d].dejeuner : 0);
+        const ctx = document.getElementById('chart-benef-quotidien').getContext('2d');
+        charts['benef-quotidien'] = new Chart(ctx, {
+            type: 'bar',
+            data: { labels, datasets: [{ label: 'Repas livrés', data: vals, backgroundColor: COULEURS.domicile }] },
+            options: {
+                responsive: true, maintainAspectRatio: false,
+                plugins: { legend: { display: false } },
+                scales: {
+                    x: { ticks: { maxRotation: 45, minRotation: 45, autoSkip: true, maxTicksLimit: 20 } },
+                    y: { beginAtZero: true }
+                }
+            }
+        });
+    }
+
+    function construireChartBenefJours(stats) {
+        detruireChart('benef-jours');
+        const ordre = [1, 2, 3, 4, 5, 6, 0];
+        const labels = ordre.map(i => NOMS_JOURS[i]);
+        const vals = ordre.map(i => stats.detailParJourSemaine[i]);
+        const ctx = document.getElementById('chart-benef-jours').getContext('2d');
+        charts['benef-jours'] = new Chart(ctx, {
+            type: 'bar',
+            data: { labels, datasets: [{ label: 'Repas', data: vals, backgroundColor: COULEURS.domicile }] },
+            options: {
+                responsive: true, maintainAspectRatio: false,
+                plugins: { legend: { display: false } },
+                scales: { y: { beginAtZero: true } }
+            }
+        });
+    }
+
+    // ============================================================
+    // ONGLET APPARTEMENT (identique palier 2)
+    // ============================================================
+
+    function afficherOngletAppartement() {
+        const stats = calculerStatsAppartement(donneesPeriode);
+        const statsPrec = calculerStatsAppartement(donneesPeriodePrec);
+        const occupantsVus = new Map();
+        for (const s of donneesPeriode.sejoursAppart) {
+            if (s.personne) occupantsVus.set(s.personne.id, s.personne);
+        }
+        const occupants = [...occupantsVus.values()].sort((a, b) => {
+            const an = (a.nom || '').localeCompare(b.nom || '');
+            if (an !== 0) return an;
+            return (a.prenom || '').localeCompare(b.prenom || '');
+        });
+        const topProduits = Object.values(stats.produitsCount).sort((a, b) => b.qte - a.qte).slice(0, 10);
+
+        let html = `
+            <div class="section-titre">🏨 Vue d'ensemble appartement</div>
+            <div class="kpi-grid">
+                <div class="kpi-card appart">
+                    <div class="kpi-label">Repas servis</div>
+                    <div class="kpi-valeur">${stats.total}${evolutionBadge(stats.total, statsPrec.total)}</div>
+                    <div class="kpi-sub">Absences : ${stats.totalAbsences}</div>
+                </div>
+                <div class="kpi-card appart">
+                    <div class="kpi-label">Occupants uniques</div>
+                    <div class="kpi-valeur">${stats.nbOccupantsUniques}</div>
+                    <div class="kpi-sub">sur la période</div>
+                </div>
+                <div class="kpi-card appart">
+                    <div class="kpi-label">Nuitées</div>
+                    <div class="kpi-valeur">${stats.nuiteesTotal}</div>
+                    <div class="kpi-sub">jours d'occupation cumulés</div>
+                </div>
+                <div class="kpi-card appart">
+                    <div class="kpi-label">CA caisse</div>
+                    <div class="kpi-valeur">${stats.caTotal.toFixed(2)}</div>
+                    <div class="kpi-sub">CHF (TTC)</div>
+                </div>
+            </div>
+
+            <div class="section-titre">🍽️ Répartition par repas</div>
+            <div class="graph-zone"><div class="graph-canvas-wrap petit"><canvas id="chart-appart-repas"></canvas></div></div>
+
+            <div class="section-titre">🛒 Top 10 produits vendus à la caisse</div>`;
+        if (topProduits.length === 0) {
+            html += '<div class="aucune-donnee">Aucune vente sur cette période.</div>';
+        } else {
+            html += `<table class="table-stats">
+                <thead><tr><th>Produit</th><th class="col-num">Quantité</th><th class="col-num">CA (CHF)</th></tr></thead><tbody>`;
+            for (const p of topProduits) {
+                html += `<tr><td>${p.nom}</td><td class="col-num">${p.qte}</td><td class="col-num">${p.ca.toFixed(2)}</td></tr>`;
+            }
+            html += `</tbody></table>`;
+        }
+        html += `
+            <div class="section-titre">🔍 Détail par occupant</div>
+            <div class="drilldown-zone">
+                <label for="select-occupant">Sélectionner un occupant :</label>
+                <select id="select-occupant" onchange="changerOccupantSelectionne()">
+                    <option value="">— Choisis un occupant —</option>`;
+        for (const o of occupants) {
+            const sel = (occupantAppartId == o.id) ? 'selected' : '';
+            html += `<option value="${o.id}" ${sel}>${o.prenom || ''} ${o.nom || ''}</option>`;
+        }
+        html += `</select>
+            </div>
+            <div id="zone-detail-occupant"></div>
+        `;
+        document.getElementById('contenu-appartement').innerHTML = html;
+        construireChartAppartRepas(stats);
+        if (occupantAppartId) afficherDetailOccupant();
+    }
+
+    function changerOccupantSelectionne() {
+        const val = document.getElementById('select-occupant').value;
+        occupantAppartId = val ? parseInt(val) : null;
+        afficherDetailOccupant();
+    }
+
+    function afficherDetailOccupant() {
+        const zone = document.getElementById('zone-detail-occupant');
+        if (!occupantAppartId) {
+            zone.innerHTML = '<div class="aucune-donnee">Choisis un occupant pour voir ses statistiques détaillées.</div>';
+            return;
+        }
+        const stats = calculerStatsAppartement(donneesPeriode, occupantAppartId);
+        const statsPrec = calculerStatsAppartement(donneesPeriodePrec, occupantAppartId);
+        let occupant = null;
+        for (const s of donneesPeriode.sejoursAppart) {
+            if (s.personne && s.personne.id == occupantAppartId) { occupant = s.personne; break; }
+        }
+        if (!occupant) { zone.innerHTML = '<div class="aucune-donnee">Occupant introuvable.</div>'; return; }
+        const allergenes = (occupant.allergenes || []).map(a => nomAllergene(a));
+        const allergiesTexte = (occupant.allergies || '').trim();
+        const nonGouts = (occupant.non_gouts || '').trim();
+
+        let html = `
+            <div class="detail-individu">
+                <h4>${occupant.prenom || ''} ${occupant.nom || ''}</h4>
+                <div class="kpi-grid">
+                    <div class="kpi-card appart">
+                        <div class="kpi-label">Repas servis</div>
+                        <div class="kpi-valeur">${stats.total}${evolutionBadge(stats.total, statsPrec.total)}</div>
+                        <div class="kpi-sub">Absences : ${stats.totalAbsences}</div>
+                    </div>
+                    <div class="kpi-card appart">
+                        <div class="kpi-label">Nuitées</div>
+                        <div class="kpi-valeur">${stats.nuiteesTotal}</div>
+                        <div class="kpi-sub">jours d'occupation</div>
+                    </div>
+                </div>
+                <p><strong>Allergènes UE :</strong>
+                    ${allergenes.length ? allergenes.map(a => `<span class="badge-info danger">⚠ ${a}</span>`).join(' ') : '<small style="color:#888;">aucun</small>'}
+                </p>
+                ${allergiesTexte ? `<p><strong>Autres allergies :</strong> <span class="badge-info warning">${allergiesTexte}</span></p>` : ''}
+                ${nonGouts ? `<p><strong>Non-goûts :</strong> <span class="badge-info">${nonGouts}</span></p>` : ''}
+
+                <div class="section-titre">🍽️ Répartition par repas</div>
+                <div class="graph-zone"><div class="graph-canvas-wrap mini"><canvas id="chart-occupant-repas"></canvas></div></div>
+            </div>
+        `;
+        zone.innerHTML = html;
+        construireChartOccupantRepas(stats);
+    }
+
+    function construireChartAppartRepas(stats) {
+        detruireChart('appart-repas');
+        const ctx = document.getElementById('chart-appart-repas').getContext('2d');
+        charts['appart-repas'] = new Chart(ctx, {
+            type: 'doughnut',
+            data: {
+                labels: ['Petit-déjeuner', 'Déjeuner', 'Dîner'],
+                datasets: [{
+                    data: [stats.detailParRepas.petit_dej, stats.detailParRepas.dejeuner, stats.detailParRepas.diner],
+                    backgroundColor: ['#9c27b0', '#6a1b9a', '#4a148c'],
+                    borderColor: '#fff', borderWidth: 2
+                }]
+            },
+            options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { position: 'right' } } }
+        });
+    }
+
+    function construireChartOccupantRepas(stats) {
+        detruireChart('occupant-repas');
+        const ctx = document.getElementById('chart-occupant-repas').getContext('2d');
+        charts['occupant-repas'] = new Chart(ctx, {
+            type: 'doughnut',
+            data: {
+                labels: ['Petit-déjeuner', 'Déjeuner', 'Dîner'],
+                datasets: [{
+                    data: [stats.detailParRepas.petit_dej, stats.detailParRepas.dejeuner, stats.detailParRepas.diner],
+                    backgroundColor: ['#9c27b0', '#6a1b9a', '#4a148c'],
+                    borderColor: '#fff', borderWidth: 2
+                }]
+            },
+            options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { position: 'right' } } }
+        });
+    }
+
+    // ============================================================
+    // IMPRESSION DU RAPPORT
+    // ============================================================
+
+    function imprimerRapport() {
+        // Maj du pied de page imprimable avec date/heure de génération
+        const now = new Date();
+        const dateHeure = now.toLocaleString('fr-CH', {
+            day: '2-digit', month: '2-digit', year: 'numeric',
+            hour: '2-digit', minute: '2-digit'
+        });
+        document.getElementById('rapport-pied-impr').textContent =
+            `Document généré le ${dateHeure} — Restauration Les Bouleaux, service de direction`;
+
+        // Petite tempo pour laisser Chart.js finir ses animations
+        setTimeout(() => { window.print(); }, 300);
+    }
     </script>
 </body>
 </html>
