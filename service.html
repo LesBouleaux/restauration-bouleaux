@@ -209,6 +209,9 @@
         }
         .unite-tag.bouleaux { background: #2c5530; }
         .unite-tag.passerelle { background: #1976d2; }
+        .unite-tag.appart {
+            background: #1976d2;
+        }
 
         .lieu-section {
             background: #f5faf5;
@@ -221,6 +224,10 @@
             background: #fff8f0;
             border-left-color: #b35900;
         }
+        .lieu-section.lieu-section-appart {
+            background: #f0f8ff;
+            border-left-color: #1976d2;
+        }
         .lieu-section h3 {
             margin-top: 0;
             color: #2c5530;
@@ -230,6 +237,10 @@
         .lieu-section.lieu-section-chambre h3 {
             color: #b35900;
             border-bottom-color: #e8c8a8;
+        }
+        .lieu-section.lieu-section-appart h3 {
+            color: #1976d2;
+            border-bottom-color: #c0d8f0;
         }
         .ejc-cat-line { padding: 6px 0; }
         .ejc-cat-allergenes {
@@ -326,7 +337,8 @@
                 background: white;
                 border-left: 3px solid #000;
             }
-            .lieu-section.lieu-section-chambre {
+            .lieu-section.lieu-section-chambre,
+            .lieu-section.lieu-section-appart {
                 background: white;
                 border-left: 3px solid #000;
             }
@@ -399,6 +411,16 @@
             </div>
         </div>
 
+        <!-- Ligne Appartement -->
+        <div class="toolbar-ligne">
+            <span class="toolbar-label">🏨 Appartement :</span>
+            <div class="toggle-group" id="toggle-appart">
+                <button class="toggle-btn active" data-value="tous" onclick="setToggle('appart', this)">🏨 Tous</button>
+                <button class="toggle-btn" data-value="seul" onclick="setToggle('appart', this)">🏨 Uniquement</button>
+                <button class="toggle-btn" data-value="aucun" onclick="setToggle('appart', this)">⛔ Aucun</button>
+            </div>
+        </div>
+
         <!-- Boutons d'action -->
         <div class="toolbar-actions">
             <button class="btn-generer" onclick="genererService()">🔄 Générer</button>
@@ -422,6 +444,7 @@
         let valResidents = 'toutes';
         let valLieu = 'tous';
         let valClient = 'tous';
+        let valAppart = 'tous';
 
         function heureMaintenant() {
             return new Date().toLocaleString('fr-FR', {
@@ -467,6 +490,7 @@
             if (groupe === 'residents') valResidents = valeur;
             else if (groupe === 'lieu') valLieu = valeur;
             else if (groupe === 'client') valClient = valeur;
+            else if (groupe === 'appart') valAppart = valeur;
 
             genererService();
         }
@@ -524,6 +548,23 @@
             return tags.join(' ');
         }
 
+        // Tags pour un occupant d'appartement (allergenes + allergies texte + non_gouts)
+        function tagsOccupantAppart(o) {
+            const tags = [];
+            const parts = [];
+            if (o.allergenes && o.allergenes.length) {
+                for (const code of o.allergenes) parts.push(nomAllergene(code));
+            }
+            const autres = (o.allergies || '').trim();
+            if (autres) parts.push(autres);
+            const allergiesTxt = parts.join(' · ');
+            if (allergiesTxt) tags.push(`<span class="tag tag-allergie">⚠️ Sans : ${allergiesTxt}</span>`);
+            if (o.non_gouts && o.non_gouts.trim()) {
+                tags.push(`<span class="tag tag-aversion">Non-goûts : ${o.non_gouts.trim()}</span>`);
+            }
+            return tags.join(' ');
+        }
+
         function textureTag(r) {
             const tx = r.texture_effective || TEXTURE_DEFAUT;
             if (tx === TEXTURE_DEFAUT) return '';
@@ -545,6 +586,11 @@
                 passerelle: 'Résidents Passerelle',
                 aucun: 'Aucun résident'
             };
+            const labelsAppart = {
+                tous: 'Avec appartement',
+                seul: 'Appartement uniquement',
+                aucun: 'Sans appartement'
+            };
 
             const r = valRepas.length === 3 ? 'Tous les repas' : valRepas.map(x => labelsRepas[x]).join(', ');
 
@@ -563,7 +609,7 @@
                 cTxt = c ? c.nom : 'Client inconnu';
             }
 
-            return `Filtres : ${r} — ${labelsResidents[valResidents]} — ${lieuTxt} — ${cTxt}`;
+            return `Filtres : ${r} — ${labelsResidents[valResidents]} — ${lieuTxt} — ${cTxt} — ${labelsAppart[valAppart]}`;
         }
 
         // ===== CHARGEMENT DES DONNÉES =====
@@ -575,29 +621,38 @@
             const residentsChoix = valResidents;
             const lieuChoix = valLieu;
             const clientChoix = valClient;
+            const appartChoix = valAppart;
 
-            // LOGIQUE DE FILTRES SÉPARÉS :
-            // - Si un lieu résident précis est choisi → on masque les clients EJC
-            // - Si un client EJC précis est choisi → on masque les résidents
+            // LOGIQUE DE FILTRES SÉPARÉS
             const lieuPrecisChoisi = lieuChoix !== 'tous';
             const clientPrecisChoisi = clientChoix !== 'tous' && clientChoix !== 'aucun';
+            const appartSeul = appartChoix === 'seul';
 
             let inclureResidents = residentsChoix !== 'aucun';
             let inclureEjc = clientChoix !== 'aucun';
+            let inclureAppart = appartChoix !== 'aucun';
 
-            // Choisir un client EJC précis masque les résidents
+            // Choisir un client EJC précis masque les résidents et l'appartement
             if (clientPrecisChoisi) {
                 inclureResidents = false;
+                inclureAppart = false;
             }
-            // Choisir un lieu résident précis masque les clients EJC
+            // Choisir un lieu résident précis masque les clients EJC et l'appartement
             if (lieuPrecisChoisi) {
                 inclureEjc = false;
+                inclureAppart = false;
+            }
+            // Choisir 'Appartement uniquement' masque les résidents et les clients
+            if (appartSeul) {
+                inclureResidents = false;
+                inclureEjc = false;
+                inclureAppart = true;
             }
 
-            if (repasFiltres.length === 0 || (!inclureResidents && !inclureEjc)) {
+            if (repasFiltres.length === 0 || (!inclureResidents && !inclureEjc && !inclureAppart)) {
                 contenu.innerHTML = `<div class="filtre-info-vide">
                     ⚠️ <strong>Aucun élément à afficher</strong><br>
-                    Sélectionne au moins un repas et au moins une source de mangeurs (résidents ou clients externes).
+                    Sélectionne au moins un repas et au moins une source de mangeurs (résidents, clients externes ou appartement).
                 </div>`;
                 donneesServiceCache = null;
                 return;
@@ -642,6 +697,31 @@
                 }
             }
 
+            // ===== APPARTEMENT : séjours en cours qui couvrent la date =====
+            let sejoursAppart = [];
+            let presencesAppart = [];
+            if (inclureAppart) {
+                const { data: sejours, error: errS } = await supaClient
+                    .from('sejours_appartement')
+                    .select('*, personne:personnes_appartement(*)')
+                    .eq('statut', 'en_cours')
+                    .lte('date_arrivee', date)
+                    .gte('date_depart', date);
+                if (errS) console.error('Erreur séjours :', errS);
+                sejoursAppart = sejours || [];
+
+                if (sejoursAppart.length > 0) {
+                    const idsSejours = sejoursAppart.map(s => s.id);
+                    const { data: pa, error: errPA } = await supaClient
+                        .from('presences_appartement')
+                        .select('*')
+                        .eq('date', date)
+                        .in('sejour_id', idsSejours);
+                    if (errPA) console.error('Erreur présences appart :', errPA);
+                    presencesAppart = pa || [];
+                }
+            }
+
             const donneesParRepas = [];
             for (const repas of repasFiltres) {
                 const dataRepas = {
@@ -650,7 +730,9 @@
                     presents: [],
                     absents: [],
                     blocsEjc: [],
-                    totalEjcNet: 0
+                    totalEjcNet: 0,
+                    occupantsAppartPresents: [],
+                    occupantsAppartAbsents: []
                 };
 
                 if (inclureResidents) {
@@ -670,7 +752,6 @@
                                 ? p.texture
                                 : getTextureDefautResident(r, repas);
 
-                            // FILTRE PAR LIEU : si un lieu précis est choisi, on ne garde que ce lieu
                             if (lieuPrecisChoisi) {
                                 if (String(lieuEffectifId) !== String(lieuChoix)) {
                                     continue;
@@ -683,7 +764,6 @@
                                 texture_effective: textureEffective
                             });
                         } else {
-                            // Les absents ne sont affichés qu'en mode "tous les lieux"
                             if (!lieuPrecisChoisi) {
                                 dataRepas.absents.push(r);
                             }
@@ -756,17 +836,41 @@
                     }
                 }
 
+                // ===== Occupants d'appartement pour ce repas =====
+                if (inclureAppart) {
+                    const mapPresAppart = {};
+                    for (const pa of presencesAppart) {
+                        if (pa.repas === repas) {
+                            mapPresAppart[pa.sejour_id] = pa;
+                        }
+                    }
+
+                    for (const s of sejoursAppart) {
+                        if (!s.personne) continue;
+                        const pa = mapPresAppart[s.id];
+                        if (pa && pa.present === false) {
+                            dataRepas.occupantsAppartAbsents.push(s.personne);
+                        } else {
+                            dataRepas.occupantsAppartPresents.push(s.personne);
+                        }
+                    }
+                }
+
                 donneesParRepas.push(dataRepas);
             }
 
-            donneesServiceCache = { date, donneesParRepas, inclureResidents, inclureEjc, lieuPrecisChoisi };
+            donneesServiceCache = {
+                date, donneesParRepas,
+                inclureResidents, inclureEjc, inclureAppart,
+                lieuPrecisChoisi
+            };
             afficherService();
         }
 
         // ===== AFFICHAGE =====
         function afficherService() {
             const contenu = document.getElementById('contenu');
-            const { date, donneesParRepas, inclureResidents, inclureEjc } = donneesServiceCache;
+            const { date, donneesParRepas, inclureResidents, inclureEjc, inclureAppart } = donneesServiceCache;
 
             let html = `<div class="service-doc">
                 <h2 class="service-titre">Service du ${dateFr(date)}</h2>
@@ -777,7 +881,8 @@
 
             for (const dr of donneesParRepas) {
                 const aDuContenu = (inclureResidents && (dr.presents.length > 0 || dr.absents.length > 0))
-                                 || (inclureEjc && dr.totalEjcNet > 0);
+                                 || (inclureEjc && dr.totalEjcNet > 0)
+                                 || (inclureAppart && (dr.occupantsAppartPresents.length > 0 || dr.occupantsAppartAbsents.length > 0));
                 if (!aDuContenu) continue;
 
                 blocsAffiches++;
@@ -788,11 +893,17 @@
                 const partsResume = [];
                 if (inclureResidents) partsResume.push(`<strong>${dr.presents.length}</strong> résident(s) à servir`);
                 if (inclureEjc && dr.totalEjcNet > 0) partsResume.push(`<strong>${dr.totalEjcNet}</strong> client(s) externe(s)`);
+                if (inclureAppart && dr.occupantsAppartPresents.length > 0) {
+                    partsResume.push(`<strong>${dr.occupantsAppartPresents.length}</strong> occupant(s) appart.`);
+                }
                 if (inclureResidents && dr.absents.length > 0) partsResume.push(`<strong>${dr.absents.length}</strong> absent(s)`);
+                if (inclureAppart && dr.occupantsAppartAbsents.length > 0) {
+                    partsResume.push(`<strong>${dr.occupantsAppartAbsents.length}</strong> absent(s) appart.`);
+                }
                 html += partsResume.join(' · ') + '</p>';
 
+                // ===== Résidents =====
                 if (inclureResidents) {
-                    // Regroupement par lieu (sections séparées)
                     const groupes = {};
                     const sansLieu = [];
                     for (const r of dr.presents) {
@@ -851,19 +962,43 @@
                     }
                 }
 
+                // ===== Clients externes =====
                 if (inclureEjc && dr.blocsEjc.length) {
                     for (const bloc of dr.blocsEjc) {
                         html += bloc;
                     }
                 }
 
-                if (inclureResidents && dr.absents.length) {
+                // ===== Occupants d'appartement (présents) =====
+                if (inclureAppart && dr.occupantsAppartPresents.length > 0) {
+                    html += `<div class="lieu-section lieu-section-appart print-section">`;
+                    html += `<h3>🏨 Appartement Corgémont — ${dr.occupantsAppartPresents.length} occupant(s)</h3>`;
+                    html += '<ul class="print-list">';
+                    for (const o of dr.occupantsAppartPresents) {
+                        const tagAppart = '<span class="unite-tag appart">Appart.</span>';
+                        html += `<li><strong>${o.prenom || ''} ${o.nom || ''}</strong> ${tagAppart} ${tagsOccupantAppart(o)}</li>`;
+                    }
+                    html += '</ul></div>';
+                }
+
+                // ===== Absents (résidents + appartement) =====
+                const aDesAbsents = (inclureResidents && dr.absents.length > 0)
+                                  || (inclureAppart && dr.occupantsAppartAbsents.length > 0);
+                if (aDesAbsents) {
                     html += '<div class="print-section"><h3>❌ Absents</h3><ul class="print-list">';
-                    for (const r of dr.absents) {
-                        if (r._absenceProlongee) {
-                            html += `<li>${r.prenom} ${r.nom} ${uniteTag(r)} <span class="absence-prolongee-mention">🏥 Absence prolongée jusqu'au ${dateFr(r._absenceProlongee.date_fin)}</span></li>`;
-                        } else {
-                            html += `<li>${r.prenom} ${r.nom} ${uniteTag(r)}</li>`;
+                    if (inclureResidents) {
+                        for (const r of dr.absents) {
+                            if (r._absenceProlongee) {
+                                html += `<li>${r.prenom} ${r.nom} ${uniteTag(r)} <span class="absence-prolongee-mention">🏥 Absence prolongée jusqu'au ${dateFr(r._absenceProlongee.date_fin)}</span></li>`;
+                            } else {
+                                html += `<li>${r.prenom} ${r.nom} ${uniteTag(r)}</li>`;
+                            }
+                        }
+                    }
+                    if (inclureAppart) {
+                        for (const o of dr.occupantsAppartAbsents) {
+                            const tagAppart = '<span class="unite-tag appart">Appart.</span>';
+                            html += `<li>${o.prenom || ''} ${o.nom || ''} ${tagAppart}</li>`;
                         }
                     }
                     html += '</ul></div>';
@@ -900,7 +1035,6 @@
         }
 
         async function remplirToggleLieux() {
-            // chargerLieux() a déjà été appelé, mais on s'assure que c'est fait
             if (!lieuxDisponibles.length) await chargerLieux();
             const container = document.getElementById('toggle-lieu');
             for (const l of lieuxDisponibles) {
