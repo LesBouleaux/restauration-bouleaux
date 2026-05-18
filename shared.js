@@ -252,8 +252,7 @@ function afficherEntete() {
 // MENU À GROUPES DÉROULANTS
 // 9 boutons principaux, sous-menus dynamiques au clic
 // ============================================================
-
-const GROUPES_MENU_ADMIN = [
+     const GROUPES_MENU_ADMIN = [
     {
         id: 'accueil',
         titre: '🏠 Accueil',
@@ -287,8 +286,7 @@ const GROUPES_MENU_ADMIN = [
         type: 'groupe',
         onglets: [
             { id: 'commande-ejc',       titre: '📝 Commandes externes', url: 'commande-ejc.html' },
-            { id: 'categories-clients', titre: '🏷️ Catégories clients', url: 'categories-clients.html' },
-            { id: 'factures-clients',   titre: '🧾 Factures clients',   url: 'factures-clients-admin.html' }
+            { id: 'categories-clients', titre: '🏷️ Catégories clients', url: 'categories-clients.html' }
         ]
     },
     {
@@ -321,7 +319,8 @@ const GROUPES_MENU_ADMIN = [
         onglets: [
             { id: 'recap-clients',     titre: '📊 Récap clients externes', url: 'recap-clients.html' },
             { id: 'recap-domicile',    titre: '📊 Récap domicile',         url: 'recap-domicile.html' },
-            { id: 'recap-appartement', titre: '📊 Récap appartement',      url: 'recap-appartement.html' }
+            { id: 'recap-appartement', titre: '📊 Récap appartement',      url: 'recap-appartement.html' },
+            { id: 'factures-clients',  titre: '🧾 Factures clients',       url: 'factures-clients-admin.html' }
         ]
     },
     {

@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+ <!DOCTYPE html>
 <html lang="fr">
 <head>
     <meta charset="UTF-8">
@@ -199,7 +199,7 @@
             </div>
 
             <div class="confirm-danger">
-                Le délai de conservation RGPD doit correspondre à une <strong>obligation légale validée par votre direction</strong>. Une valeur trop courte pourrait entraîner la suppression de données que vous êtes légalement tenu de conserver.
+                Le délai de conservation NLPD doit correspondre à une <strong>obligation légale validée par votre direction</strong>. Une valeur trop courte pourrait entraîner la suppression de données que vous êtes légalement tenu de conserver.
             </div>
 
             <label class="confirm-checkbox-zone" for="confirm-check">
@@ -219,7 +219,7 @@
     <script>
         const PAGE_ACTIVE = 'parametres';
 
-        let parametreDelai = null;   // l'objet { cle, valeur, description, modifie_par, modifie_le }
+        let parametreDelai = null;
         let userEmail = null;
         let modificationEnCours = null;
 
@@ -256,7 +256,7 @@
 
             contenu.innerHTML = `
                 <div class="param-carte">
-                    <h3>🗑️ Délai de conservation RGPD</h3>
+                    <h3>🗑️ Délai de conservation NLPD</h3>
                     <p class="param-description">${parametreDelai.description || ''}</p>
 
                     <div class="param-valeur-actuelle">
@@ -291,7 +291,6 @@
             const actuelle = parseInt(parametreDelai.valeur);
             const btn = document.getElementById('btn-enregistrer');
 
-            // Le bouton s'active seulement si la valeur est valide ET différente de l'actuelle
             const valide = !isNaN(nouvelle) && nouvelle >= 1 && nouvelle <= 30;
             btn.disabled = !(valide && nouvelle !== actuelle);
         }
@@ -356,7 +355,6 @@
             fermerModalConfirm();
             btn.textContent = 'Confirmer la modification';
 
-            // Recharger les données et réafficher
             await charger();
 
             const msg = document.getElementById('message-param');

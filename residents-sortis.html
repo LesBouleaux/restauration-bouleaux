@@ -173,6 +173,9 @@
 
         .rgpd-actions-zone {
             margin-top: 10px;
+            display: flex;
+            gap: 8px;
+            flex-wrap: wrap;
         }
         .btn-hard-delete-discret {
             background: white;
@@ -185,6 +188,54 @@
             cursor: pointer;
         }
         .btn-hard-delete-discret:hover { background: #fff0f0; }
+
+        /* ===== BOUTON RÉACTIVER ===== */
+        .btn-reactiver {
+            background: white;
+            color: #2c5530;
+            border: 1px solid #2c5530;
+            padding: 6px 12px;
+            border-radius: 6px;
+            font-size: 12px;
+            font-weight: 600;
+            cursor: pointer;
+        }
+        .btn-reactiver:hover { background: #f0f8f0; }
+
+        /* ===== MODALE RÉACTIVATION ===== */
+        .rea-info {
+            background: #f0f8f0;
+            border-left: 4px solid #2c5530;
+            padding: 12px 14px;
+            border-radius: 6px;
+            margin: 12px 0;
+            font-size: 14px;
+            color: #1f3a22;
+        }
+        .rea-recap {
+            background: #f7f7f7;
+            border: 1px solid #ddd;
+            border-radius: 6px;
+            padding: 12px 14px;
+            margin: 12px 0;
+        }
+        .rea-recap-ligne { padding: 3px 0; font-size: 14px; }
+        .rea-recap-label {
+            font-weight: 700;
+            color: #555;
+            display: inline-block;
+            min-width: 150px;
+        }
+        .rea-impact {
+            background: #fff8e1;
+            border-left: 4px solid #e0a800;
+            padding: 10px 14px;
+            border-radius: 6px;
+            margin: 12px 0;
+            font-size: 13px;
+        }
+        .rea-impact ul { margin: 6px 0 0 20px; padding: 0; }
+        .rea-impact li { padding: 2px 0; }
 
         .hd-danger {
             background: #fdecea;
@@ -312,7 +363,7 @@
             </select>
         </div>
         <div class="filtre-groupe">
-            <span class="filtre-titre">⚠️ RGPD :</span>
+            <span class="filtre-titre">⚠️ NLPD :</span>
             <select id="filtre-rgpd" onchange="appliquerFiltres()">
                 <option value="tous">Tous</option>
                 <option value="pret">Prêts pour suppression</option>
@@ -324,10 +375,40 @@
         <p class="loading">⏳ Chargement...</p>
     </div>
 
+    <!-- Modal RÉACTIVATION -->
+    <div class="modal-overlay" id="modal-rea">
+        <div class="modal">
+            <h2 id="modal-rea-titre">↩️ Réactiver le résident</h2>
+
+            <div class="rea-info">
+                ↩️ <strong>Réactivation simple.</strong> Le résident va revenir dans la liste des résidents actifs de son unité, avec toutes ses informations d'origine (allergies, textures, etc.). Cette action est <strong>réversible</strong> — tu peux à nouveau le sortir si besoin.
+            </div>
+
+            <div class="rea-recap" id="rea-recap-contenu">
+                <!-- Rempli dynamiquement -->
+            </div>
+
+            <div class="rea-impact">
+                <strong>Ce qui se passera :</strong>
+                <ul>
+                    <li>✅ Le résident retourne dans <strong>« Résidents Bouleaux »</strong> ou <strong>« Résidents Passerelle »</strong></li>
+                    <li>✅ Sa fiche est restaurée à l'identique (allergies, textures, chambre…)</li>
+                    <li>🗑️ Les infos de sortie (date, motif, note) seront effacées</li>
+                    <li>📋 Tout son historique de présences passées <strong>reste intact</strong></li>
+                </ul>
+            </div>
+
+            <div class="form-actions">
+                <button type="button" class="btn-secondary" onclick="fermerModalRea()">Annuler</button>
+                <button type="button" class="btn-primary" onclick="confirmerReactivation()">↩️ Confirmer la réactivation</button>
+            </div>
+        </div>
+    </div>
+
     <!-- Modal 1 : Information sur le hard-delete -->
     <div class="modal-overlay" id="modal-hd">
         <div class="modal">
-            <h2 id="modal-hd-titre">🗑️ Suppression définitive (RGPD)</h2>
+            <h2 id="modal-hd-titre">🗑️ Suppression définitive (NLPD)</h2>
 
             <div class="hd-danger">
                 ⚠️ <strong>Action irréversible.</strong> Cette suppression efface définitivement le résident et toutes ses données de la base. Aucune récupération ne sera possible.
@@ -370,7 +451,7 @@
 
             <label class="hd-checkbox-zone" for="hd-confirm-check">
                 <input type="checkbox" id="hd-confirm-check" onchange="majBoutonHd()">
-                <span>Je comprends que cette suppression est définitive et irréversible, et je confirme la demande d'effacement RGPD.</span>
+                <span>Je comprends que cette suppression est définitive et irréversible, et je confirme la demande d'effacement NLPD.</span>
             </label>
 
             <div class="form-actions">
@@ -385,17 +466,13 @@
     <script>
         const PAGE_ACTIVE = 'residents-sortis';
 
-        // ============================================================
-        // Délai de conservation RGPD
-        // La valeur est lue depuis la table 'parametres' (onglet Paramètres).
-        // 10 = valeur de secours si la lecture échoue.
-        // ============================================================
         let DELAI_CONSERVATION_ANNEES = 10;
 
         const BUCKET_DOCUMENTS = 'documents-residents';
 
         let tousLesSortis = [];
         let hardDeleteEnCours = null;
+        let reactivationEnCours = null;
 
         function libelleMotifSortie(code) {
             const map = {
@@ -412,7 +489,6 @@
             return 'motif-' + code;
         }
 
-        // Lecture du délai RGPD depuis la table parametres
         async function chargerDelaiRgpd() {
             const { data, error } = await supaClient
                 .from('parametres')
@@ -421,7 +497,7 @@
                 .single();
 
             if (error) {
-                console.warn('Délai RGPD non trouvé, valeur par défaut 10 ans utilisée.', error.message);
+                console.warn('Délai NLPD non trouvé, valeur par défaut 10 ans utilisée.', error.message);
                 return;
             }
             const v = parseInt(data.valeur);
@@ -539,7 +615,7 @@
 
             let html = `<p class="compteur"><strong>${liste.length}</strong> résident(s) sorti(s) affiché(s)`;
             if (nbPrets > 0) {
-                html += ` — <strong style="color:#b3261e;">${nbPrets}</strong> prêt(s) pour suppression RGPD`;
+                html += ` — <strong style="color:#b3261e;">${nbPrets}</strong> prêt(s) pour suppression NLPD`;
             }
             html += ` <span style="color:#888;">· délai de conservation en vigueur : ${DELAI_CONSERVATION_ANNEES} ans</span>`;
             html += `</p>`;
@@ -580,17 +656,23 @@
                 const estPret = anc && anc.pretRgpd;
                 const carteCls = estPret ? 'resident-sorti rgpd-pret' : 'resident-sorti';
 
-                let zoneRgpd;
+                // ===== ZONE D'ACTIONS =====
+                // Bouton Réactiver (toujours présent) + bouton Suppression définitive
+                let zoneActions;
                 if (estPret) {
-                    zoneRgpd = `
+                    zoneActions = `
                         <div class="rgpd-alerte">
-                            <span>⚠️ <strong>Prêt pour suppression RGPD</strong> — sorti depuis ${anc.texte} (délai de conservation : ${DELAI_CONSERVATION_ANNEES} ans)</span>
-                            <button class="btn-hard-delete" onclick="ouvrirModalHd(${r.id})">🗑️ Supprimer définitivement (RGPD)</button>
+                            <span>⚠️ <strong>Prêt pour suppression NLPD</strong> — sorti depuis ${anc.texte} (délai de conservation : ${DELAI_CONSERVATION_ANNEES} ans)</span>
+                            <div style="display:flex;gap:8px;flex-wrap:wrap;">
+                                <button class="btn-reactiver" onclick="ouvrirModalRea(${r.id})">↩️ Réactiver</button>
+                                <button class="btn-hard-delete" onclick="ouvrirModalHd(${r.id})">🗑️ Supprimer définitivement (NLPD)</button>
+                            </div>
                         </div>`;
                 } else {
-                    zoneRgpd = `
+                    zoneActions = `
                         <div class="rgpd-actions-zone">
-                            <button class="btn-hard-delete-discret" onclick="ouvrirModalHd(${r.id})">🗑️ Supprimer définitivement (RGPD)</button>
+                            <button class="btn-reactiver" onclick="ouvrirModalRea(${r.id})">↩️ Réactiver ce résident</button>
+                            <button class="btn-hard-delete-discret" onclick="ouvrirModalHd(${r.id})">🗑️ Supprimer définitivement (NLPD)</button>
                         </div>`;
                 }
 
@@ -608,7 +690,7 @@
                         <div class="sortie-detail"><span class="label">Dernière chambre :</span> ${chambreTxt}</div>
                         ${noteBloc}
                         <div class="info-confidentiel">🔒 Information confidentielle — réservée aux administrateurs</div>
-                        ${zoneRgpd}
+                        ${zoneActions}
                     </div>`;
             }
 
@@ -618,7 +700,61 @@
         document.getElementById('recherche').addEventListener('input', appliquerFiltres);
 
         // ============================================================
-        // HARD-DELETE RGPD — Process en 2 étapes
+        // RÉACTIVATION D'UN RÉSIDENT SORTI
+        // ============================================================
+
+        function ouvrirModalRea(id) {
+            const r = tousLesSortis.find(x => x.id === id);
+            if (!r) return;
+            reactivationEnCours = { resident: r };
+
+            document.getElementById('modal-rea-titre').textContent =
+                `↩️ Réactiver — ${r.prenom} ${r.nom}`;
+
+            const uniteLabel = r.unite === 'bouleaux' ? '🏠 Bouleaux' : '🌉 Passerelle';
+
+            let recapHtml = `
+                <div class="rea-recap-ligne"><span class="rea-recap-label">Résident :</span> <strong>${r.prenom} ${r.nom}</strong></div>
+                <div class="rea-recap-ligne"><span class="rea-recap-label">Unité d'origine :</span> ${uniteLabel}</div>
+                <div class="rea-recap-ligne"><span class="rea-recap-label">Dernière chambre :</span> ${r.numero_chambre ? 'Chambre ' + r.numero_chambre : '—'}</div>
+                <div class="rea-recap-ligne"><span class="rea-recap-label">Date de sortie :</span> ${r.date_sortie ? dateFr(r.date_sortie) : '—'}</div>
+                <div class="rea-recap-ligne"><span class="rea-recap-label">Motif de sortie :</span> ${libelleMotifSortie(r.motif_sortie)}</div>`;
+            document.getElementById('rea-recap-contenu').innerHTML = recapHtml;
+
+            document.getElementById('modal-rea').classList.add('active');
+        }
+
+        function fermerModalRea() {
+            document.getElementById('modal-rea').classList.remove('active');
+            reactivationEnCours = null;
+        }
+
+        async function confirmerReactivation() {
+            if (!reactivationEnCours) return;
+            const r = reactivationEnCours.resident;
+
+            const { error } = await supaClient
+                .from(TABLE_RESIDENTS)
+                .update({
+                    actif: true,
+                    date_sortie: null,
+                    motif_sortie: null,
+                    note_sortie: null
+                })
+                .eq('id', r.id);
+
+            if (error) {
+                alert('❌ Erreur lors de la réactivation : ' + error.message);
+                return;
+            }
+
+            fermerModalRea();
+            alert(`✅ ${r.prenom} ${r.nom} a été réactivé(e) avec succès.\n\nIl/elle est de retour dans la liste des résidents ${r.unite === 'bouleaux' ? 'Bouleaux' : 'Passerelle'}.`);
+            charger();
+        }
+
+        // ============================================================
+        // HARD-DELETE NLPD — Process en 2 étapes
         // ============================================================
 
         function ouvrirModalHd(id) {
@@ -741,7 +877,7 @@
             const auth = await verifierAuthEtRole(['admin']);
             if (!auth) return;
             afficherMenuComplet(PAGE_ACTIVE, auth.user.email, auth.profil.role, auth.profil.nom_affiche);
-            await chargerDelaiRgpd();   // ⭐ on lit le délai depuis la base AVANT d'afficher
+            await chargerDelaiRgpd();
             charger();
         })();
     </script>
