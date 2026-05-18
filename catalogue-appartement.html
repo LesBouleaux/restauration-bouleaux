@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+ <!DOCTYPE html>
 <html lang="fr">
 <head>
     <meta charset="UTF-8">
@@ -63,15 +63,191 @@
             min-width: 90px;
             text-align: right;
         }
+        .produit-prix small {
+            font-size: 11px;
+            color: #888;
+            font-weight: normal;
+        }
         .produit-actions {
             display: flex;
             gap: 6px;
         }
 
-        /* Datalist pour proposer les catégories existantes */
         input[list] {
             font-family: inherit;
         }
+
+        /* Boutons d'import */
+        .toolbar-import {
+            background: #fff8e1;
+            border: 1px solid #ffc107;
+            padding: 12px 16px;
+            border-radius: 8px;
+            margin: 16px 0;
+            display: flex;
+            gap: 10px;
+            align-items: center;
+            flex-wrap: wrap;
+        }
+        .toolbar-import-label {
+            font-weight: bold;
+            color: #856404;
+        }
+
+        /* Modale d'import */
+        #modal-import .modal {
+            max-width: 800px;
+        }
+        .import-etape {
+            margin-bottom: 18px;
+        }
+        .import-etape-num {
+            display: inline-block;
+            background: #1976d2;
+            color: white;
+            width: 24px;
+            height: 24px;
+            border-radius: 50%;
+            text-align: center;
+            line-height: 24px;
+            font-weight: bold;
+            margin-right: 8px;
+        }
+        .import-etape-titre {
+            font-weight: bold;
+            font-size: 15px;
+            margin-bottom: 8px;
+        }
+        .modes-import {
+            display: grid;
+            grid-template-columns: 1fr;
+            gap: 8px;
+            margin-top: 8px;
+        }
+        .mode-import {
+            display: flex;
+            align-items: flex-start;
+            gap: 10px;
+            padding: 10px 12px;
+            border: 2px solid #ddd;
+            border-radius: 6px;
+            cursor: pointer;
+            transition: all 0.15s;
+        }
+        .mode-import:hover {
+            border-color: #1976d2;
+            background: #f5fafd;
+        }
+        .mode-import.selected {
+            border-color: #1976d2;
+            background: #e3f2fd;
+        }
+        .mode-import input[type="radio"] {
+            margin-top: 3px;
+            cursor: pointer;
+        }
+        .mode-import-titre {
+            font-weight: bold;
+            color: #0d47a1;
+            font-size: 14px;
+        }
+        .mode-import-desc {
+            font-size: 12px;
+            color: #555;
+            margin-top: 3px;
+        }
+        .apercu-resume {
+            background: #f0f8f0;
+            border-left: 4px solid #2c5530;
+            padding: 10px 14px;
+            border-radius: 6px;
+            margin: 10px 0;
+        }
+        .apercu-stat {
+            display: inline-block;
+            margin-right: 16px;
+            font-size: 14px;
+        }
+        .apercu-stat strong {
+            font-size: 18px;
+            display: inline-block;
+            margin-right: 4px;
+        }
+        .apercu-stat.creer strong { color: #2c5530; }
+        .apercu-stat.maj strong { color: #1976d2; }
+        .apercu-stat.desactiver strong { color: #b35900; }
+        .apercu-stat.erreur strong { color: #c0392b; }
+
+        .apercu-table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 13px;
+            margin-top: 8px;
+            max-height: 260px;
+            display: block;
+            overflow-y: auto;
+        }
+        .apercu-table thead {
+            position: sticky;
+            top: 0;
+            background: #f5f5f5;
+        }
+        .apercu-table th, .apercu-table td {
+            padding: 6px 10px;
+            border-bottom: 1px solid #eee;
+            text-align: left;
+        }
+        .apercu-badge {
+            display: inline-block;
+            padding: 2px 8px;
+            border-radius: 10px;
+            font-size: 11px;
+            font-weight: bold;
+        }
+        .apercu-badge.creer { background: #e8f4e8; color: #2c5530; }
+        .apercu-badge.maj { background: #e3f2fd; color: #0d47a1; }
+        .apercu-badge.desactiver { background: #fff3e0; color: #b35900; }
+        .apercu-badge.erreur { background: #fce4e4; color: #922b21; }
+        .apercu-badge.skip { background: #eee; color: #777; }
+
+        .zone-fichier {
+            border: 2px dashed #1976d2;
+            background: #f5fafd;
+            padding: 22px;
+            border-radius: 8px;
+            text-align: center;
+            margin-top: 8px;
+        }
+        .zone-fichier input[type="file"] {
+            display: block;
+            margin: 0 auto;
+        }
+
+        .btn-modele {
+            background: white;
+            color: #b35900;
+            border: 1px solid #b35900;
+            padding: 7px 14px;
+            border-radius: 6px;
+            font-size: 13px;
+            font-weight: 600;
+            cursor: pointer;
+            font-family: inherit;
+        }
+        .btn-modele:hover { background: #fff3e0; }
+
+        .btn-import {
+            background: #1976d2;
+            color: white;
+            border: 1px solid #1976d2;
+            padding: 7px 14px;
+            border-radius: 6px;
+            font-size: 13px;
+            font-weight: 600;
+            cursor: pointer;
+            font-family: inherit;
+        }
+        .btn-import:hover { background: #1565c0; }
     </style>
 </head>
 <body>
@@ -85,8 +261,15 @@
         <span class="emoji-grand">🛒</span>
         <div>
             <strong>Catalogue des produits vendus en complément</strong><br>
-            <small>Ces produits seront livrés depuis la cuisine et chargés à la vente sur les séjours des personnes.</small>
+            <small>Ces produits seront livrés depuis la cuisine et chargés à la vente sur les séjours des personnes. <strong>Tous les prix sont TTC.</strong></small>
         </div>
+    </div>
+
+    <!-- ===== Zone import Excel ===== -->
+    <div class="toolbar-import">
+        <span class="toolbar-import-label">📥 Import depuis ma caisse :</span>
+        <button type="button" class="btn-modele" onclick="telechargerModele()">📄 Télécharger le modèle Excel</button>
+        <button type="button" class="btn-import" onclick="ouvrirImport()">📥 Importer depuis Excel</button>
     </div>
 
     <h2>➕ Nouveau produit</h2>
@@ -107,7 +290,7 @@
             </div>
 
             <div class="form-group">
-                <label for="prix">Prix de vente (CHF) *</label>
+                <label for="prix">Prix de vente TTC (CHF) *</label>
                 <input type="number" id="prix" step="0.05" min="0" required placeholder="Ex : 2.50">
             </div>
 
@@ -156,7 +339,7 @@
                 </div>
 
                 <div class="form-group">
-                    <label for="modif-prix">Prix de vente (CHF) *</label>
+                    <label for="modif-prix">Prix de vente TTC (CHF) *</label>
                     <input type="number" id="modif-prix" step="0.05" min="0" required>
                 </div>
 
@@ -175,6 +358,88 @@
         </div>
     </div>
 
+    <!-- ===== Modal import Excel ===== -->
+    <div id="modal-import" class="modal-overlay">
+        <div class="modal">
+            <h2>📥 Importer le catalogue depuis Excel</h2>
+
+            <!-- Étape 1 : choix du mode -->
+            <div class="import-etape" id="etape-mode">
+                <div class="import-etape-titre">
+                    <span class="import-etape-num">1</span> Choisis le mode d'import
+                </div>
+
+                <div class="modes-import">
+                    <label class="mode-import selected" data-mode="maj">
+                        <input type="radio" name="mode-import" value="maj" checked>
+                        <div>
+                            <div class="mode-import-titre">🔵 Mise à jour intelligente <small>(recommandé)</small></div>
+                            <div class="mode-import-desc">
+                                Les produits existants (par nom) sont mis à jour avec les nouveaux prix.
+                                Les nouveaux produits sont créés. Le reste est laissé tranquille.
+                            </div>
+                        </div>
+                    </label>
+
+                    <label class="mode-import" data-mode="ajout">
+                        <input type="radio" name="mode-import" value="ajout">
+                        <div>
+                            <div class="mode-import-titre">🟡 Ajout seulement</div>
+                            <div class="mode-import-desc">
+                                Seuls les nouveaux produits (nom non présent) sont ajoutés. Aucun produit existant n'est modifié.
+                            </div>
+                        </div>
+                    </label>
+
+                    <label class="mode-import" data-mode="sync">
+                        <input type="radio" name="mode-import" value="sync">
+                        <div>
+                            <div class="mode-import-titre">🔴 Synchronisation complète</div>
+                            <div class="mode-import-desc">
+                                Met à jour ou crée les produits du fichier. <strong>Désactive</strong> les produits qui ne sont plus dans le fichier
+                                (l'historique des commandes est préservé).
+                            </div>
+                        </div>
+                    </label>
+                </div>
+            </div>
+
+            <!-- Étape 2 : choisir le fichier -->
+            <div class="import-etape" id="etape-fichier">
+                <div class="import-etape-titre">
+                    <span class="import-etape-num">2</span> Choisis ton fichier Excel
+                </div>
+                <div class="zone-fichier">
+                    <input type="file" id="import-fichier" accept=".xlsx,.xls" onchange="analyserFichierImport()">
+                    <small style="display:block; margin-top:10px; color:#666;">
+                        Format attendu : colonnes <code>nom</code>, <code>prix_ttc</code>, <code>categorie</code>.<br>
+                        Tu peux télécharger le modèle Excel ci-dessus.
+                    </small>
+                </div>
+            </div>
+
+            <!-- Étape 3 : aperçu -->
+            <div class="import-etape" id="etape-apercu" style="display:none;">
+                <div class="import-etape-titre">
+                    <span class="import-etape-num">3</span> Aperçu de l'import
+                </div>
+                <div id="apercu-contenu"></div>
+            </div>
+
+            <div id="import-message"></div>
+
+            <div class="form-actions">
+                <button type="button" class="btn btn-secondary" onclick="fermerImport()">Annuler</button>
+                <button type="button" class="btn btn-primary" id="btn-valider-import" onclick="validerImport()" disabled>
+                    Confirmer l'import
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- SheetJS pour lire les fichiers Excel -->
+    <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script src="shared.js"></script>
     <script>
@@ -184,6 +449,8 @@
 
     let vueCourante = 'actifs';
     let tousProduitsCache = [];
+    // Pour l'import : résultats d'analyse
+    let analyseImport = null;
 
     document.addEventListener('DOMContentLoaded', async () => {
         const auth = await verifierAuthEtRole(['admin']);
@@ -210,6 +477,16 @@
             .addEventListener('click', fermerModale);
         document.getElementById('recherche')
             .addEventListener('input', afficherListe);
+
+        // Effet visuel sur les cartes de mode d'import
+        document.querySelectorAll('.mode-import').forEach(label => {
+            label.addEventListener('click', () => {
+                document.querySelectorAll('.mode-import').forEach(l => l.classList.remove('selected'));
+                label.classList.add('selected');
+                // Si on a déjà analysé un fichier, on rafraîchit l'aperçu
+                if (analyseImport) afficherApercu();
+            });
+        });
     });
 
     // ----- Met à jour les datalist de catégories proposées -----
@@ -333,7 +610,6 @@
             return;
         }
 
-        // Regroupement par catégorie
         const parCategorie = {};
         produits.forEach(p => {
             const cat = p.categorie || 'Sans catégorie';
@@ -369,7 +645,7 @@
                     html += '<div class="produit-desc">' + echapper(p.description) + '</div>';
                 }
                 html +=   '</div>'
-                      + '<div class="produit-prix">' + prixFormate + ' CHF</div>'
+                      + '<div class="produit-prix">' + prixFormate + ' CHF <small>TTC</small></div>'
                       + '<div class="produit-actions">' + actions + '</div>'
                       + '</div>';
             });
@@ -449,7 +725,6 @@
         await chargerProduits();
     }
 
-    // ----- Archivage / réactivation -----
     async function archiverProduit(id) {
         const ok = confirm('Archiver ce produit ?\n\n'
                          + 'Il ne sera plus proposé à la vente, mais restera dans l\'historique.');
@@ -491,6 +766,438 @@
             .replace(/</g, '&lt;')
             .replace(/>/g, '&gt;')
             .replace(/"/g, '&quot;');
+    }
+
+    // ================================================
+    // IMPORT EXCEL
+    // ================================================
+
+    // ----- Télécharger le modèle Excel vide -----
+    function telechargerModele() {
+        const wb = XLSX.utils.book_new();
+        const donnees = [
+            ['nom', 'prix_ttc', 'categorie'],
+            ['Coca-Cola 33cl', 3.50, 'Boissons'],
+            ['Eau minérale 50cl', 2.00, 'Boissons'],
+            ['Croissant', 1.80, 'Viennoiseries']
+        ];
+        const ws = XLSX.utils.aoa_to_sheet(donnees);
+        ws['!cols'] = [{ wch: 30 }, { wch: 12 }, { wch: 20 }];
+        XLSX.utils.book_append_sheet(wb, ws, 'Catalogue');
+        XLSX.writeFile(wb, 'modele_catalogue_appartement.xlsx');
+    }
+
+    // ----- Ouvrir la modale d'import -----
+    function ouvrirImport() {
+        analyseImport = null;
+        document.getElementById('import-fichier').value = '';
+        document.getElementById('etape-apercu').style.display = 'none';
+        document.getElementById('import-message').innerHTML = '';
+        document.getElementById('btn-valider-import').disabled = true;
+
+        // Reset radios
+        document.querySelectorAll('input[name="mode-import"]').forEach(r => r.checked = false);
+        document.querySelector('input[name="mode-import"][value="maj"]').checked = true;
+        document.querySelectorAll('.mode-import').forEach(l => l.classList.remove('selected'));
+        document.querySelector('.mode-import[data-mode="maj"]').classList.add('selected');
+
+        document.getElementById('modal-import').classList.add('active');
+    }
+
+    function fermerImport() {
+        document.getElementById('modal-import').classList.remove('active');
+        analyseImport = null;
+    }
+
+    // ----- Lire le fichier Excel et faire l'analyse -----
+    async function analyserFichierImport() {
+        const message = document.getElementById('import-message');
+        message.innerHTML = '';
+
+        const fichier = document.getElementById('import-fichier').files[0];
+        if (!fichier) return;
+
+        try {
+            const buffer = await fichier.arrayBuffer();
+            const wb = XLSX.read(buffer, { type: 'array' });
+            const ws = wb.Sheets[wb.SheetNames[0]];
+            const lignes = XLSX.utils.sheet_to_json(ws, { defval: '' });
+
+            if (lignes.length === 0) {
+                message.innerHTML = '<div class="erreur-msg">Fichier vide ou aucune ligne détectée.</div>';
+                document.getElementById('btn-valider-import').disabled = true;
+                return;
+            }
+
+            // Détecte les colonnes (insensible à la casse + accents)
+            const premiereLigne = lignes[0];
+            const cles = Object.keys(premiereLigne);
+            const cleNom = trouverColonne(cles, ['nom', 'name', 'designation', 'libelle', 'libellé']);
+            const clePrix = trouverColonne(cles, ['prix_ttc', 'prix', 'prix ttc', 'price']);
+            const cleCat  = trouverColonne(cles, ['categorie', 'catégorie', 'category', 'cat']);
+
+            if (!cleNom || !clePrix || !cleCat) {
+                let manquantes = [];
+                if (!cleNom) manquantes.push('nom');
+                if (!clePrix) manquantes.push('prix_ttc');
+                if (!cleCat) manquantes.push('categorie');
+                message.innerHTML = '<div class="erreur-msg">Colonnes manquantes dans le fichier : '
+                                  + manquantes.join(', ')
+                                  + '. Télécharge le modèle pour voir le format attendu.</div>';
+                document.getElementById('btn-valider-import').disabled = true;
+                return;
+            }
+
+            // Construire la liste des produits importés (normalisés)
+            const produitsImportes = [];
+            const erreurs = [];
+
+            lignes.forEach((ligne, idx) => {
+                const numeroLigne = idx + 2; // ligne Excel (header = ligne 1)
+                const nom = String(ligne[cleNom] || '').trim();
+                const prix = parseFloat(String(ligne[clePrix]).replace(',', '.'));
+                const categorie = String(ligne[cleCat] || '').trim();
+
+                if (!nom) {
+                    erreurs.push({ ligne: numeroLigne, raison: 'Nom vide', donnees: ligne });
+                    return;
+                }
+                if (isNaN(prix) || prix < 0) {
+                    erreurs.push({ ligne: numeroLigne, raison: 'Prix invalide', donnees: ligne });
+                    return;
+                }
+                if (!categorie) {
+                    erreurs.push({ ligne: numeroLigne, raison: 'Catégorie vide', donnees: ligne });
+                    return;
+                }
+
+                produitsImportes.push({
+                    ligne: numeroLigne,
+                    nom: nom,
+                    prix: prix,
+                    categorie: categorie
+                });
+            });
+
+            // Calculer les actions (créer / mettre à jour / désactiver / ignorer)
+            // Comparaison insensible à la casse pour le nom
+            const produitsBase = await chargerTousProduits();
+            const produitsBaseParNom = {};
+            for (const p of produitsBase) {
+                const cle = (p.nom || '').trim().toLowerCase();
+                produitsBaseParNom[cle] = p;
+            }
+
+            const actions = [];
+            const nomsImportes = new Set();
+
+            for (const p of produitsImportes) {
+                const cle = p.nom.toLowerCase();
+                nomsImportes.add(cle);
+                const existant = produitsBaseParNom[cle];
+
+                if (existant) {
+                    // Détecter s'il y a réellement un changement
+                    const memePrix = parseFloat(existant.prix) === p.prix;
+                    const memeCat = (existant.categorie || '').trim() === p.categorie;
+                    const memeActif = existant.actif === true;
+                    if (memePrix && memeCat && memeActif) {
+                        actions.push({ type: 'inchange', produit: p, existant });
+                    } else {
+                        actions.push({ type: 'maj', produit: p, existant });
+                    }
+                } else {
+                    actions.push({ type: 'creer', produit: p });
+                }
+            }
+
+            // Pour le mode 'sync' on calcule aussi les produits à désactiver
+            const aDesactiver = [];
+            for (const p of produitsBase) {
+                if (p.actif === false) continue;
+                const cle = (p.nom || '').trim().toLowerCase();
+                if (!nomsImportes.has(cle)) {
+                    aDesactiver.push(p);
+                }
+            }
+
+            analyseImport = {
+                actions,
+                aDesactiver,
+                erreurs,
+                totalLignes: lignes.length
+            };
+
+            afficherApercu();
+            document.getElementById('btn-valider-import').disabled = false;
+            document.getElementById('etape-apercu').style.display = 'block';
+
+        } catch (e) {
+            console.error('Erreur lecture Excel :', e);
+            message.innerHTML = '<div class="erreur-msg">Impossible de lire le fichier : ' + e.message + '</div>';
+            document.getElementById('btn-valider-import').disabled = true;
+        }
+    }
+
+    // ----- Trouve une colonne en testant plusieurs alias (insensible casse/accents) -----
+    function trouverColonne(cles, alias) {
+        const normaliser = s => String(s || '')
+            .toLowerCase()
+            .normalize('NFD')
+            .replace(/[\u0300-\u036f]/g, '')
+            .replace(/[\s_-]/g, '');
+        for (const c of cles) {
+            const cn = normaliser(c);
+            for (const a of alias) {
+                if (cn === normaliser(a)) return c;
+            }
+        }
+        return null;
+    }
+
+    // ----- Charger tous les produits (actifs + archivés) -----
+    async function chargerTousProduits() {
+        const { data, error } = await supaClient
+            .from('catalogue_produits_appartement')
+            .select('*');
+        if (error) {
+            console.error('Erreur chargement complet :', error);
+            return [];
+        }
+        return data || [];
+    }
+
+    // ----- Afficher l'aperçu en fonction du mode choisi -----
+    function afficherApercu() {
+        if (!analyseImport) return;
+
+        const mode = document.querySelector('input[name="mode-import"]:checked').value;
+        const { actions, aDesactiver, erreurs, totalLignes } = analyseImport;
+
+        let nbCreer = 0, nbMaj = 0, nbInchange = 0, nbDesactiver = 0, nbSkip = 0;
+
+        const lignesApercu = [];
+
+        for (const a of actions) {
+            const p = a.produit;
+            const ex = a.existant;
+
+            if (a.type === 'creer') {
+                if (mode === 'maj' || mode === 'ajout' || mode === 'sync') {
+                    lignesApercu.push({
+                        badge: 'creer', label: 'À créer',
+                        nom: p.nom, prix: p.prix, categorie: p.categorie,
+                        detail: 'Nouveau produit'
+                    });
+                    nbCreer++;
+                }
+            } else if (a.type === 'maj') {
+                if (mode === 'maj' || mode === 'sync') {
+                    let details = [];
+                    if (parseFloat(ex.prix) !== p.prix) {
+                        details.push('Prix : ' + parseFloat(ex.prix).toFixed(2) + ' → ' + p.prix.toFixed(2));
+                    }
+                    if ((ex.categorie || '').trim() !== p.categorie) {
+                        details.push('Catégorie : ' + (ex.categorie || '—') + ' → ' + p.categorie);
+                    }
+                    if (ex.actif === false) {
+                        details.push('🔄 Réactivé');
+                    }
+                    lignesApercu.push({
+                        badge: 'maj', label: 'Mise à jour',
+                        nom: p.nom, prix: p.prix, categorie: p.categorie,
+                        detail: details.join(' · ')
+                    });
+                    nbMaj++;
+                } else {
+                    // mode ajout : on saute
+                    lignesApercu.push({
+                        badge: 'skip', label: 'Ignoré',
+                        nom: p.nom, prix: p.prix, categorie: p.categorie,
+                        detail: 'Existe déjà (mode ajout seulement)'
+                    });
+                    nbSkip++;
+                }
+            } else if (a.type === 'inchange') {
+                lignesApercu.push({
+                    badge: 'skip', label: 'Identique',
+                    nom: p.nom, prix: p.prix, categorie: p.categorie,
+                    detail: 'Aucun changement détecté'
+                });
+                nbSkip++;
+            }
+        }
+
+        // Produits à désactiver (uniquement en mode sync)
+        if (mode === 'sync') {
+            for (const p of aDesactiver) {
+                lignesApercu.push({
+                    badge: 'desactiver', label: 'Désactiver',
+                    nom: p.nom, prix: p.prix, categorie: p.categorie,
+                    detail: 'Plus présent dans le fichier — historique préservé'
+                });
+                nbDesactiver++;
+            }
+        }
+
+        // Construction du HTML
+        let html = '<div class="apercu-resume">'
+                 + '<div class="apercu-stat creer"><strong>' + nbCreer + '</strong>à créer</div>'
+                 + '<div class="apercu-stat maj"><strong>' + nbMaj + '</strong>à mettre à jour</div>';
+        if (mode === 'sync') {
+            html += '<div class="apercu-stat desactiver"><strong>' + nbDesactiver + '</strong>à désactiver</div>';
+        }
+        html +=    '<div class="apercu-stat"><strong>' + nbSkip + '</strong>sans changement</div>';
+        if (erreurs.length > 0) {
+            html += '<div class="apercu-stat erreur"><strong>' + erreurs.length + '</strong>en erreur</div>';
+        }
+        html += '<small style="display:block; margin-top:6px; color:#555;">'
+              + 'Total : ' + totalLignes + ' ligne(s) lue(s) dans le fichier</small>'
+              + '</div>';
+
+        if (erreurs.length > 0) {
+            html += '<details style="margin-bottom:10px;"><summary style="cursor:pointer; color:#c0392b; font-weight:bold;">⚠ '
+                  + erreurs.length + ' ligne(s) en erreur (cliquer pour voir)</summary>'
+                  + '<table class="apercu-table"><thead><tr><th>Ligne Excel</th><th>Raison</th></tr></thead><tbody>';
+            for (const e of erreurs) {
+                html += '<tr><td>' + e.ligne + '</td><td>' + echapper(e.raison) + '</td></tr>';
+            }
+            html += '</tbody></table></details>';
+        }
+
+        if (lignesApercu.length > 0) {
+            html += '<table class="apercu-table"><thead><tr>'
+                  + '<th>Action</th><th>Nom</th><th>Catégorie</th><th>Prix TTC</th><th>Détail</th>'
+                  + '</tr></thead><tbody>';
+            for (const l of lignesApercu) {
+                html += '<tr>'
+                      + '<td><span class="apercu-badge ' + l.badge + '">' + l.label + '</span></td>'
+                      + '<td>' + echapper(l.nom) + '</td>'
+                      + '<td>' + echapper(l.categorie) + '</td>'
+                      + '<td>' + (parseFloat(l.prix) || 0).toFixed(2) + '</td>'
+                      + '<td><small>' + echapper(l.detail) + '</small></td>'
+                      + '</tr>';
+            }
+            html += '</tbody></table>';
+        } else {
+            html += '<div class="info-msg">Aucune action à effectuer avec ce mode.</div>';
+        }
+
+        document.getElementById('apercu-contenu').innerHTML = html;
+    }
+
+    // ----- Exécuter l'import -----
+    async function validerImport() {
+        if (!analyseImport) return;
+
+        const mode = document.querySelector('input[name="mode-import"]:checked').value;
+        const { actions, aDesactiver } = analyseImport;
+        const message = document.getElementById('import-message');
+        const btn = document.getElementById('btn-valider-import');
+
+        // Récap pour la confirmation
+        let nbCreer = 0, nbMaj = 0, nbDesactiver = 0;
+        for (const a of actions) {
+            if (a.type === 'creer') nbCreer++;
+            else if (a.type === 'maj' && (mode === 'maj' || mode === 'sync')) nbMaj++;
+        }
+        if (mode === 'sync') nbDesactiver = aDesactiver.length;
+
+        let msgConfirm = 'Confirmer l\'import ?\n\n'
+                       + '• ' + nbCreer + ' produit(s) à créer\n'
+                       + '• ' + nbMaj + ' produit(s) à mettre à jour\n';
+        if (mode === 'sync') msgConfirm += '• ' + nbDesactiver + ' produit(s) à désactiver\n';
+
+        if (!confirm(msgConfirm)) return;
+
+        btn.disabled = true;
+        message.innerHTML = '<div class="loading">Import en cours…</div>';
+
+        let okCreer = 0, okMaj = 0, okDesactiver = 0, erreurs = 0;
+
+        // 1) Créations
+        const aCreer = [];
+        for (const a of actions) {
+            if (a.type === 'creer') {
+                aCreer.push({
+                    nom: a.produit.nom,
+                    prix: a.produit.prix,
+                    categorie: a.produit.categorie
+                });
+            }
+        }
+        if (aCreer.length > 0) {
+            const { error } = await supaClient
+                .from('catalogue_produits_appartement')
+                .insert(aCreer);
+            if (error) {
+                console.error('Erreur création :', error);
+                erreurs += aCreer.length;
+            } else {
+                okCreer = aCreer.length;
+            }
+        }
+
+        // 2) Mises à jour
+        if (mode === 'maj' || mode === 'sync') {
+            for (const a of actions) {
+                if (a.type !== 'maj') continue;
+                const { error } = await supaClient
+                    .from('catalogue_produits_appartement')
+                    .update({
+                        prix: a.produit.prix,
+                        categorie: a.produit.categorie,
+                        actif: true
+                    })
+                    .eq('id', a.existant.id);
+                if (error) {
+                    console.error('Erreur MAJ :', error);
+                    erreurs++;
+                } else {
+                    okMaj++;
+                }
+            }
+        }
+
+        // 3) Désactivations (mode sync uniquement)
+        if (mode === 'sync' && aDesactiver.length > 0) {
+            const ids = aDesactiver.map(p => p.id);
+            const { error } = await supaClient
+                .from('catalogue_produits_appartement')
+                .update({ actif: false })
+                .in('id', ids);
+            if (error) {
+                console.error('Erreur désactivation :', error);
+                erreurs += ids.length;
+            } else {
+                okDesactiver = ids.length;
+            }
+        }
+
+        // Rapport final
+        let msgFinal = '<div class="success">✔ Import terminé !</div>'
+                     + '<div style="margin-top:8px; font-size:14px;">'
+                     + '🆕 Créés : <strong>' + okCreer + '</strong><br>'
+                     + '🔄 Mis à jour : <strong>' + okMaj + '</strong><br>';
+        if (mode === 'sync') {
+            msgFinal += '⏸️ Désactivés : <strong>' + okDesactiver + '</strong><br>';
+        }
+        if (erreurs > 0) {
+            msgFinal += '⚠ Erreurs : <strong>' + erreurs + '</strong>';
+        }
+        msgFinal += '</div>';
+
+        message.innerHTML = msgFinal;
+        analyseImport = null;
+        document.getElementById('btn-valider-import').disabled = true;
+
+        // Recharge le catalogue
+        await chargerProduits();
+
+        // Ferme la modale automatiquement après 3 secondes
+        setTimeout(() => {
+            fermerImport();
+        }, 3000);
     }
     </script>
 
