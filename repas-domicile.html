@@ -5,6 +5,83 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Repas à domicile — Les Bouleaux</title>
   <link rel="stylesheet" href="shared.css">
+  <style>
+    /* Bloc des cases à cocher composants */
+    .composants-bloc {
+      background: #f0f8f0;
+      border-left: 4px solid #2c5530;
+      padding: 14px 16px;
+      border-radius: 6px;
+      margin-top: 8px;
+    }
+    .composants-titre {
+      font-weight: bold;
+      color: #2c5530;
+      font-size: 14px;
+      margin-bottom: 4px;
+    }
+    .composants-aide {
+      font-size: 13px;
+      color: #666;
+      margin-bottom: 12px;
+    }
+    .composants-grille {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(170px, 1fr));
+      gap: 8px;
+    }
+    .composant-case {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      background: white;
+      padding: 8px 12px;
+      border-radius: 6px;
+      border: 1px solid #ddd;
+      cursor: pointer;
+      font-size: 14px;
+      transition: all 0.15s;
+    }
+    .composant-case:hover {
+      border-color: #2c5530;
+      background: #fafffa;
+    }
+    .composant-case input[type="checkbox"] {
+      width: 18px;
+      height: 18px;
+      cursor: pointer;
+      accent-color: #2c5530;
+    }
+    .composant-case.coche {
+      background: #f0f8f0;
+      border-color: #2c5530;
+      font-weight: bold;
+      color: #2c5530;
+    }
+
+    /* Résumé des composants dans le tableau (sous forme de badges) */
+    .comp-badges {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 4px;
+    }
+    .comp-badge {
+      display: inline-block;
+      padding: 2px 8px;
+      border-radius: 10px;
+      font-size: 11px;
+      font-weight: bold;
+      background: #e8f4e8;
+      color: #2c5530;
+      border: 1px solid #c8e0c8;
+    }
+    .comp-badge.sans {
+      background: #f5f5f5;
+      color: #888;
+      border-color: #ddd;
+      text-decoration: line-through;
+    }
+  </style>
 </head>
 <body>
 
@@ -48,10 +125,35 @@
       </div>
 
       <div class="form-group">
-        <label for="formule_code">Formule de menu *</label>
-        <select id="formule_code" name="formule_code" required>
-          <option value="">— Choisir une formule —</option>
-        </select>
+        <label>🍽️ Composition du repas</label>
+        <div class="composants-bloc">
+          <div class="composants-titre">Que prend cette personne ?</div>
+          <div class="composants-aide">
+            Tous les composants sont cochés par défaut. Décoche ceux que la personne ne souhaite pas.
+          </div>
+          <div class="composants-grille">
+            <label class="composant-case coche" id="case-potage">
+              <input type="checkbox" id="prend_potage" checked>
+              <span>🥣 Potage</span>
+            </label>
+            <label class="composant-case coche" id="case-salade">
+              <input type="checkbox" id="prend_salade" checked>
+              <span>🥗 Salade</span>
+            </label>
+            <label class="composant-case coche" id="case-sauce">
+              <input type="checkbox" id="prend_sauce_salade" checked>
+              <span>🫙 Sauce à salade</span>
+            </label>
+            <label class="composant-case coche" id="case-plat">
+              <input type="checkbox" id="prend_plat" checked>
+              <span>🍽️ Plat principal</span>
+            </label>
+            <label class="composant-case coche" id="case-dessert">
+              <input type="checkbox" id="prend_dessert" checked>
+              <span>🍰 Dessert</span>
+            </label>
+          </div>
+        </div>
       </div>
 
       <div class="form-group">
@@ -138,10 +240,35 @@
         </div>
 
         <div class="form-group">
-          <label for="modif-formule">Formule de menu *</label>
-          <select id="modif-formule" required>
-            <option value="">— Choisir une formule —</option>
-          </select>
+          <label>🍽️ Composition du repas</label>
+          <div class="composants-bloc">
+            <div class="composants-titre">Que prend cette personne ?</div>
+            <div class="composants-aide">
+              Décoche les composants que la personne ne souhaite pas.
+            </div>
+            <div class="composants-grille">
+              <label class="composant-case" id="modif-case-potage">
+                <input type="checkbox" id="modif-prend_potage">
+                <span>🥣 Potage</span>
+              </label>
+              <label class="composant-case" id="modif-case-salade">
+                <input type="checkbox" id="modif-prend_salade">
+                <span>🥗 Salade</span>
+              </label>
+              <label class="composant-case" id="modif-case-sauce">
+                <input type="checkbox" id="modif-prend_sauce_salade">
+                <span>🫙 Sauce à salade</span>
+              </label>
+              <label class="composant-case" id="modif-case-plat">
+                <input type="checkbox" id="modif-prend_plat">
+                <span>🍽️ Plat principal</span>
+              </label>
+              <label class="composant-case" id="modif-case-dessert">
+                <input type="checkbox" id="modif-prend_dessert">
+                <span>🍰 Dessert</span>
+              </label>
+            </div>
+          </div>
         </div>
 
         <div class="form-group">
@@ -189,14 +316,14 @@
   // ================================================
   // PAGE REPAS À DOMICILE
   // Création + liste active + modification + archivage
-  // + vue archivées + rythme EN QUANTITÉS + village
+  // Composants à la carte (potage, salade, sauce, plat, dessert)
   // ================================================
 
-  let formulesParCode = {};
   let villagesParCode = {};
   let vueCourante = 'actives';
 
   const JOURS = ['lundi','mardi','mercredi','jeudi','vendredi','samedi','dimanche'];
+  const COMPOSANTS = ['potage', 'salade', 'sauce_salade', 'plat', 'dessert'];
 
   document.addEventListener('DOMContentLoaded', async () => {
     const auth = await verifierAuthEtRole(['admin']);
@@ -209,7 +336,6 @@
       auth.profil.nom_affiche
     );
 
-    await chargerFormules();
     await chargerVillages();
     await chargerPersonnes();
 
@@ -223,38 +349,34 @@
       .addEventListener('submit', enregistrerModification);
     document.getElementById('btn-annuler-modif')
       .addEventListener('click', fermerModale);
+
+    // Effet visuel sur les cases à cocher
+    brancherEffetCases();
   });
 
-  // ----- Charger les formules -----
-  async function chargerFormules() {
-    const { data, error } = await supaClient
-      .from('formules_repas')
-      .select('code, libelle')
-      .eq('actif', true)
-      .order('ordre_affichage', { ascending: true });
+  // ----- Branche l'effet visuel des cases à cocher (création + modif) -----
+  function brancherEffetCases() {
+    const couples = [
+      ['prend_potage',        'case-potage'],
+      ['prend_salade',        'case-salade'],
+      ['prend_sauce_salade',  'case-sauce'],
+      ['prend_plat',          'case-plat'],
+      ['prend_dessert',       'case-dessert'],
+      ['modif-prend_potage',        'modif-case-potage'],
+      ['modif-prend_salade',        'modif-case-salade'],
+      ['modif-prend_sauce_salade',  'modif-case-sauce'],
+      ['modif-prend_plat',          'modif-case-plat'],
+      ['modif-prend_dessert',       'modif-case-dessert']
+    ];
 
-    if (error) {
-      console.error('Erreur chargement formules :', error);
-      document.getElementById('form-message').innerHTML =
-        '<div class="erreur-msg">Erreur : impossible de charger les formules.</div>';
-      return;
-    }
-
-    const selectCreation = document.getElementById('formule_code');
-    const selectModale   = document.getElementById('modif-formule');
-
-    data.forEach(formule => {
-      formulesParCode[formule.code] = formule.libelle;
-
-      const optionA = document.createElement('option');
-      optionA.value = formule.code;
-      optionA.textContent = formule.libelle;
-      selectCreation.appendChild(optionA);
-
-      const optionB = document.createElement('option');
-      optionB.value = formule.code;
-      optionB.textContent = formule.libelle;
-      selectModale.appendChild(optionB);
+    couples.forEach(([cbId, caseId]) => {
+      const cb = document.getElementById(cbId);
+      const ca = document.getElementById(caseId);
+      if (!cb || !ca) return;
+      cb.addEventListener('change', () => {
+        if (cb.checked) ca.classList.add('coche');
+        else ca.classList.remove('coche');
+      });
     });
   }
 
@@ -311,8 +433,12 @@
       adresse_livraison:   document.getElementById('adresse_livraison').value.trim() || null,
       village_code:        document.getElementById('village_code').value,
       telephone:           document.getElementById('telephone').value.trim() || null,
-      formule_code:        document.getElementById('formule_code').value,
-      consignes_livraison: document.getElementById('consignes_livraison').value.trim() || null
+      consignes_livraison: document.getElementById('consignes_livraison').value.trim() || null,
+      prend_potage:        document.getElementById('prend_potage').checked,
+      prend_salade:        document.getElementById('prend_salade').checked,
+      prend_sauce_salade:  document.getElementById('prend_sauce_salade').checked,
+      prend_plat:          document.getElementById('prend_plat').checked,
+      prend_dessert:       document.getElementById('prend_dessert').checked
     };
 
     // Les 7 quantités par défaut : qte_lundi, qte_mardi, etc.
@@ -320,9 +446,9 @@
       fiche['qte_' + jour] = lireQuantite('qte-' + jour);
     });
 
-    if (!fiche.prenom || !fiche.nom || !fiche.formule_code || !fiche.village_code) {
+    if (!fiche.prenom || !fiche.nom || !fiche.village_code) {
       message.innerHTML =
-        '<div class="erreur-msg">Merci de remplir le prénom, le nom, le village et la formule.</div>';
+        '<div class="erreur-msg">Merci de remplir le prénom, le nom et le village.</div>';
       return;
     }
 
@@ -339,6 +465,8 @@
 
     message.innerHTML = '<div class="success">Fiche enregistrée ✔</div>';
     document.getElementById('form-personne').reset();
+    // Après reset(), les cases checked du HTML sont restaurées : on remet l'effet visuel
+    document.querySelectorAll('#form-personne .composant-case').forEach(c => c.classList.add('coche'));
 
     vueCourante = 'actives';
     majBoutonsVue();
@@ -379,6 +507,23 @@
     return morceaux.join(' · ');
   }
 
+  // ----- Badges visuels des composants pris -----
+  function badgesComposants(p) {
+    const liste = [
+      { champ: 'prend_potage',       court: 'Potage',  emoji: '🥣' },
+      { champ: 'prend_salade',       court: 'Salade',  emoji: '🥗' },
+      { champ: 'prend_sauce_salade', court: 'Sauce',   emoji: '🫙' },
+      { champ: 'prend_plat',         court: 'Plat',    emoji: '🍽️' },
+      { champ: 'prend_dessert',      court: 'Dessert', emoji: '🍰' }
+    ];
+
+    return '<div class="comp-badges">' + liste.map(c => {
+      const pris = p[c.champ] !== false; // par défaut true si jamais null
+      const cls = pris ? 'comp-badge' : 'comp-badge sans';
+      return '<span class="' + cls + '">' + c.emoji + ' ' + c.court + '</span>';
+    }).join('') + '</div>';
+  }
+
   // ----- Charger et afficher la liste -----
   async function chargerPersonnes() {
     const conteneur = document.getElementById('liste-personnes');
@@ -410,12 +555,11 @@
 
     let html = '<table class="presences"><thead><tr>'
              + '<th>Nom</th><th>Prénom</th><th>Adresse</th><th>Village</th>'
-             + '<th>Téléphone</th><th>Formule</th><th>Rythme</th><th>Consignes</th>'
+             + '<th>Téléphone</th><th>Composition</th><th>Rythme</th><th>Consignes</th>'
              + '<th>Actions</th>'
              + '</tr></thead><tbody>';
 
     data.forEach(p => {
-      const libelleFormule = formulesParCode[p.formule_code] || p.formule_code;
       const libelleVillage = villagesParCode[p.village_code] || p.village_code || '—';
 
       let actions = '';
@@ -435,7 +579,7 @@
             + '<td>' + echapper(p.adresse_livraison || '—') + '</td>'
             + '<td>' + echapper(libelleVillage) + '</td>'
             + '<td>' + echapper(p.telephone || '—') + '</td>'
-            + '<td>' + echapper(libelleFormule) + '</td>'
+            + '<td>' + badgesComposants(p) + '</td>'
             + '<td>' + echapper(resumeRythme(p)) + '</td>'
             + '<td>' + echapper(p.consignes_livraison || '—') + '</td>'
             + '<td>' + actions + '</td>'
@@ -469,8 +613,23 @@
     document.getElementById('modif-adresse').value   = data.adresse_livraison || '';
     document.getElementById('modif-village').value   = data.village_code || '';
     document.getElementById('modif-telephone').value = data.telephone || '';
-    document.getElementById('modif-formule').value   = data.formule_code || '';
     document.getElementById('modif-consignes').value = data.consignes_livraison || '';
+
+    // Pré-remplit les 5 cases à cocher composants
+    const mapping = [
+      ['modif-prend_potage',       'prend_potage',       'modif-case-potage'],
+      ['modif-prend_salade',       'prend_salade',       'modif-case-salade'],
+      ['modif-prend_sauce_salade', 'prend_sauce_salade', 'modif-case-sauce'],
+      ['modif-prend_plat',         'prend_plat',         'modif-case-plat'],
+      ['modif-prend_dessert',      'prend_dessert',      'modif-case-dessert']
+    ];
+    mapping.forEach(([cbId, champ, caseId]) => {
+      const coche = data[champ] !== false; // true par défaut
+      document.getElementById(cbId).checked = coche;
+      const ca = document.getElementById(caseId);
+      if (coche) ca.classList.add('coche');
+      else ca.classList.remove('coche');
+    });
 
     // Pré-remplit les 7 champs de quantité
     JOURS.forEach(jour => {
@@ -504,17 +663,21 @@
       adresse_livraison:   document.getElementById('modif-adresse').value.trim() || null,
       village_code:        document.getElementById('modif-village').value,
       telephone:           document.getElementById('modif-telephone').value.trim() || null,
-      formule_code:        document.getElementById('modif-formule').value,
-      consignes_livraison: document.getElementById('modif-consignes').value.trim() || null
+      consignes_livraison: document.getElementById('modif-consignes').value.trim() || null,
+      prend_potage:        document.getElementById('modif-prend_potage').checked,
+      prend_salade:        document.getElementById('modif-prend_salade').checked,
+      prend_sauce_salade:  document.getElementById('modif-prend_sauce_salade').checked,
+      prend_plat:          document.getElementById('modif-prend_plat').checked,
+      prend_dessert:       document.getElementById('modif-prend_dessert').checked
     };
 
     JOURS.forEach(jour => {
       fiche['qte_' + jour] = lireQuantite('modif-qte-' + jour);
     });
 
-    if (!fiche.prenom || !fiche.nom || !fiche.formule_code || !fiche.village_code) {
+    if (!fiche.prenom || !fiche.nom || !fiche.village_code) {
       message.innerHTML =
-        '<div class="erreur-msg">Merci de remplir le prénom, le nom, le village et la formule.</div>';
+        '<div class="erreur-msg">Merci de remplir le prénom, le nom et le village.</div>';
       return;
     }
 

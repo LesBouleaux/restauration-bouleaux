@@ -5,6 +5,41 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Présences repas à domicile — Les Bouleaux</title>
   <link rel="stylesheet" href="shared.css">
+  <style>
+    /* Badges de composition pour la feuille de livraison */
+    .comp-badges {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 3px;
+    }
+    .comp-badge {
+      display: inline-block;
+      padding: 1px 6px;
+      border-radius: 8px;
+      font-size: 10px;
+      font-weight: bold;
+      background: #e8f4e8;
+      color: #2c5530;
+      border: 1px solid #c8e0c8;
+      white-space: nowrap;
+    }
+    .comp-badge.sans {
+      background: #f5f5f5;
+      color: #888;
+      border-color: #ddd;
+      text-decoration: line-through;
+    }
+    @media print {
+      /* À l'impression : on cache tout sauf la feuille de livraison */
+      h1, p, .toolbar, #liste-personnes {
+        display: none !important;
+      }
+      .comp-badge {
+        font-size: 9px;
+        padding: 1px 4px;
+      }
+    }
+  </style>
 </head>
 <body>
 
@@ -70,15 +105,14 @@
   // ================================================
   // PAGE PRÉSENCES REPAS À DOMICILE
   // Liste des personnes + pop-up de pointage mensuel EN QUANTITÉS
-  // + feuille de livraison imprimable
+  // + feuille de livraison imprimable avec composition par badges
   // ================================================
 
   const JOURS = ['lundi','mardi','mercredi','jeudi','vendredi','samedi','dimanche'];
   const NOMS_MOIS = ['janvier','février','mars','avril','mai','juin',
                      'juillet','août','septembre','octobre','novembre','décembre'];
 
-  // Référentiels
-  let formulesParCode = {};
+  // Référentiel villages uniquement (formules_repas n'existe plus)
   let villagesParCode = {};
   let villagesOrdre = {};
 
@@ -86,11 +120,7 @@
   let personneCourante = null;
   let anneeAffichee = null;
   let moisAffiche = null;
-  // Exceptions de la personne courante, par date "AAAA-MM-JJ"
-  // valeur = { quantite: N, signe_par: '...' }
   let exceptionsCourantes = {};
-  // Quantité saisie pour chaque jour affiché, par date "AAAA-MM-JJ"
-  // C'est ce que l'utilisateur modifie dans les champs
   let quantitesJours = {};
 
   document.addEventListener('DOMContentLoaded', async () => {
@@ -128,13 +158,8 @@
       .addEventListener('click', () => decalerJourLivraison(1));
   });
 
-  // ----- Charger les référentiels (formules + villages) -----
+  // ----- Charger les villages -----
   async function chargerReferentiels() {
-    const { data: formules } = await supaClient
-      .from('formules_repas')
-      .select('code, libelle');
-    (formules || []).forEach(f => { formulesParCode[f.code] = f.libelle; });
-
     const { data: villages } = await supaClient
       .from('villages')
       .select('code, libelle, ordre_affichage');
@@ -209,6 +234,23 @@
     return morceaux.join(', ');
   }
 
+  // ----- Badges visuels des composants pris -----
+  function badgesComposants(p) {
+    const liste = [
+      { champ: 'prend_potage',       court: 'Potage',  emoji: '🥣' },
+      { champ: 'prend_salade',       court: 'Salade',  emoji: '🥗' },
+      { champ: 'prend_sauce_salade', court: 'Sauce',   emoji: '🫙' },
+      { champ: 'prend_plat',         court: 'Plat',    emoji: '🍽️' },
+      { champ: 'prend_dessert',      court: 'Dessert', emoji: '🍰' }
+    ];
+
+    return '<div class="comp-badges">' + liste.map(c => {
+      const pris = p[c.champ] !== false;
+      const cls = pris ? 'comp-badge' : 'comp-badge sans';
+      return '<span class="' + cls + '">' + c.emoji + ' ' + c.court + '</span>';
+    }).join('') + '</div>';
+  }
+
   // ================================================
   // POP-UP DE POINTAGE
   // ================================================
@@ -271,7 +313,6 @@
       return;
     }
 
-    // Range les exceptions par date
     exceptionsCourantes = {};
     (data || []).forEach(ex => {
       exceptionsCourantes[ex.date_repas] = {
@@ -280,9 +321,6 @@
       };
     });
 
-    // Construit la quantité de chaque jour du mois :
-    // - si exception => sa quantité
-    // - sinon => la quantité du rythme pour ce jour de la semaine
     quantitesJours = {};
     for (let jour = 1; jour <= nbJours; jour++) {
       const dateStr = formatDate(anneeAffichee, moisAffiche, jour);
@@ -298,12 +336,11 @@
     afficherSignataires();
   }
 
-  // ----- Quantité prévue par le rythme pour une date donnée -----
   function quantiteRythme(personne, dateStr) {
     const [a, m, j] = dateStr.split('-').map(Number);
     const d = new Date(a, m - 1, j);
-    const indexJs = d.getDay();                       // 0=dimanche..6=samedi
-    const indexJour = (indexJs === 0) ? 6 : indexJs - 1; // 0=lundi..6=dimanche
+    const indexJs = d.getDay();
+    const indexJour = (indexJs === 0) ? 6 : indexJs - 1;
     const nomJour = JOURS[indexJour];
     return personne['qte_' + nomJour] || 0;
   }
@@ -335,7 +372,6 @@
       const qteSaisie = quantitesJours[dateStr];
       const qtePrevue = quantiteRythme(personneCourante, dateStr);
 
-      // Couleur de la case selon l'écart entre saisie et rythme
       let styleCase = 'aspect-ratio:1; border-radius:5px; padding:2px; '
                     + 'display:flex; flex-direction:column; align-items:center; '
                     + 'justify-content:center;';
@@ -344,17 +380,14 @@
       let styleNum = 'font-size:10px;';
 
       if (qteSaisie > qtePrevue) {
-        // Augmentation => jaune
         styleCase += 'background:#fff3cd; border:2px solid #f0ad4e;';
         styleChamp += 'border:1px solid #f0ad4e; color:#a05000;';
         styleNum += 'color:#a05000;';
       } else if (qteSaisie < qtePrevue) {
-        // Réduction ou absence => rouge
         styleCase += 'background:#fdecea; border:2px solid #c0392b;';
         styleChamp += 'border:1px solid #c0392b; color:#922b21;';
         styleNum += 'color:#922b21;';
       } else {
-        // Conforme au rythme => vert pâle
         styleCase += 'background:#eef3ee; border:1px solid #cdddcd;';
         styleChamp += 'border:1px solid #2c5530; color:#2c5530;';
         styleNum += 'color:#888;';
@@ -372,7 +405,6 @@
     document.getElementById('pointage-calendrier').innerHTML = html;
   }
 
-  // ----- L'utilisateur change la quantité d'un jour -----
   function changerQuantite(dateStr, valeur) {
     let n = parseInt(valeur, 10);
     if (isNaN(n) || n < 0) n = 0;
@@ -399,7 +431,6 @@
     }
   }
 
-  // ----- Enregistrer le pointage du mois -----
   async function enregistrerPointage() {
     const message = document.getElementById('pointage-message');
     message.innerHTML = '';
@@ -413,8 +444,8 @@
 
     const nbJours = new Date(anneeAffichee, moisAffiche + 1, 0).getDate();
 
-    const aSupprimer = []; // dates dont l'exception doit disparaître
-    const aPoser = [];     // exceptions à créer/mettre à jour
+    const aSupprimer = [];
+    const aPoser = [];
 
     for (let jour = 1; jour <= nbJours; jour++) {
       const dateStr = formatDate(anneeAffichee, moisAffiche, jour);
@@ -422,13 +453,10 @@
       const qtePrevue = quantiteRythme(personneCourante, dateStr);
 
       if (qteSaisie === qtePrevue) {
-        // Conforme au rythme : aucune exception nécessaire.
-        // Si une exception existait pour ce jour, elle doit être supprimée.
         if (exceptionsCourantes[dateStr]) {
           aSupprimer.push(dateStr);
         }
       } else {
-        // Écart par rapport au rythme : une exception enregistre la quantité réelle.
         aPoser.push({
           personne_id: personneCourante.id,
           date_repas: dateStr,
@@ -501,7 +529,6 @@
 
     zone.innerHTML = '<div class="loading">Préparation de la feuille…</div>';
 
-    // 1) Toutes les personnes actives
     const { data: personnes, error: errP } = await supaClient
       .from('personnes_domicile')
       .select('*')
@@ -513,7 +540,6 @@
       return;
     }
 
-    // 2) Toutes les exceptions de ce jour-là
     const { data: exceptions, error: errE } = await supaClient
       .from('livraisons_exceptions')
       .select('*')
@@ -525,16 +551,11 @@
       return;
     }
 
-    // Range les exceptions du jour par personne
     const exceptionParPersonne = {};
     (exceptions || []).forEach(ex => {
       exceptionParPersonne[ex.personne_id] = ex.quantite;
     });
 
-    // 3) Pour chaque personne, la quantité du jour :
-    //    - exception => sa quantité
-    //    - sinon => la quantité du rythme
-    //    On ne garde que les personnes avec une quantité > 0.
     const aLivrer = [];
     (personnes || []).forEach(p => {
       let qte;
@@ -555,7 +576,6 @@
       return;
     }
 
-    // 4) Regrouper par village
     const parVillage = {};
     aLivrer.forEach(item => {
       const codeV = item.personne.village_code || '_sans_village';
@@ -569,10 +589,8 @@
       return (villagesOrdre[a] || 999) - (villagesOrdre[b] || 999);
     });
 
-    // Total général de repas (somme des quantités)
     const totalRepas = aLivrer.reduce((s, item) => s + item.quantite, 0);
 
-    // 5) Construire la feuille imprimable
     let html = '<div class="print-area">';
     html += '<h2>Feuille de livraison — ' + dateEnToutesLettres(dateStr) + '</h2>';
     html += '<p>' + totalRepas + ' repas à livrer</p>';
@@ -582,7 +600,6 @@
         ? 'Village non renseigné'
         : (villagesParCode[codeV] || codeV);
 
-      // Trie les personnes du village par nom
       const items = parVillage[codeV].sort((a, b) => {
         const nomA = (a.personne.nom || '').toLowerCase();
         const nomB = (b.personne.nom || '').toLowerCase();
@@ -597,19 +614,18 @@
       html += '<h3>' + echapper(nomVillage) + ' — ' + totalVillage + ' repas</h3>';
       html += '<table class="presences"><thead><tr>'
             + '<th>Nb</th><th>Nom</th><th>Prénom</th><th>Adresse</th>'
-            + '<th>Téléphone</th><th>Formule</th><th>Consignes</th>'
+            + '<th>Téléphone</th><th>Composition</th><th>Consignes</th>'
             + '</tr></thead><tbody>';
 
       items.forEach(item => {
         const p = item.personne;
-        const libelleFormule = formulesParCode[p.formule_code] || p.formule_code || '—';
         html += '<tr>'
               + '<td><strong>' + item.quantite + '</strong></td>'
               + '<td>' + echapper(p.nom) + '</td>'
               + '<td>' + echapper(p.prenom) + '</td>'
               + '<td>' + echapper(p.adresse_livraison || '—') + '</td>'
               + '<td>' + echapper(p.telephone || '—') + '</td>'
-              + '<td>' + echapper(libelleFormule) + '</td>'
+              + '<td>' + badgesComposants(p) + '</td>'
               + '<td>' + echapper(p.consignes_livraison || '—') + '</td>'
               + '</tr>';
       });

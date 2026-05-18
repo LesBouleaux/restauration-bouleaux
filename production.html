@@ -201,6 +201,12 @@
             color: #c0392b;
             border-bottom: 1px solid #f0c0c0;
         }
+        .table-bloc-titre-domicile {
+            padding: 8px 0 2px !important;
+            font-weight: 600;
+            color: #1976d2;
+            border-bottom: 1px solid #c0d8f0;
+        }
         .nombre-cellule {
             text-align: right;
             font-weight: 600;
@@ -209,6 +215,11 @@
             text-align: right;
             font-weight: 600;
             color: #c0392b;
+        }
+        .nombre-cellule-domicile {
+            text-align: right;
+            font-weight: 700;
+            color: #1976d2;
         }
         .bloc-info {
             margin-top: 10px;
@@ -352,9 +363,17 @@
         let tousLesClients = [];
         let toutesLesCategories = [];
 
-        // Repas à domicile : référentiel des formules + jours de la semaine
-        let formulesDomicile = [];
+        // Repas à domicile : jours de la semaine
         const JOURS_DOMICILE = ['lundi','mardi','mercredi','jeudi','vendredi','samedi','dimanche'];
+
+        // Définition des composants pour les repas à domicile
+        const COMPOSANTS_DOMICILE = [
+            { code: 'potage',       libelle: 'Potages',         emoji: '🥣', champ: 'prend_potage' },
+            { code: 'salade',       libelle: 'Salades',         emoji: '🥗', champ: 'prend_salade' },
+            { code: 'sauce_salade', libelle: 'Sauces à salade', emoji: '🫙', champ: 'prend_sauce_salade' },
+            { code: 'plat',         libelle: 'Plats principaux', emoji: '🍽️', champ: 'prend_plat' },
+            { code: 'dessert',      libelle: 'Desserts',        emoji: '🍰', champ: 'prend_dessert' }
+        ];
 
         let valRepas = ['dejeuner'];
         let valUnite = 'toutes';
@@ -427,14 +446,6 @@
             btnDomicile.textContent = '🏠 Domicile';
             btnDomicile.onclick = function() { setToggle('client', this); };
             container.insertBefore(btnDomicile, btnAucun);
-
-            // Référentiel des formules de repas à domicile
-            const { data: formules } = await supaClient
-                .from('formules_repas')
-                .select('code, libelle, ordre_affichage')
-                .eq('actif', true)
-                .order('ordre_affichage', { ascending: true });
-            formulesDomicile = formules || [];
         }
 
         async function chargerDonneesProd(date) {
@@ -512,18 +523,15 @@
         // ============================================================
         // REPAS À DOMICILE : quantité d'une personne pour une date
         // ============================================================
-        // Quantité prévue par le rythme (colonnes qte_lundi, etc.)
         function quantiteRythmeDomicile(personne, dateStr) {
             const [a, m, j] = dateStr.split('-').map(Number);
             const d = new Date(a, m - 1, j);
-            const indexJs = d.getDay(); // 0=dimanche..6=samedi
-            const indexJour = (indexJs === 0) ? 6 : indexJs - 1; // 0=lundi..6=dimanche
+            const indexJs = d.getDay();
+            const indexJour = (indexJs === 0) ? 6 : indexJs - 1;
             const nomJour = JOURS_DOMICILE[indexJour];
             return personne['qte_' + nomJour] || 0;
         }
 
-        // Renvoie [{ personne, quantite }, ...] pour les personnes ayant
-        // une quantité > 0 à cette date (exception si elle existe, sinon rythme).
         function domicileDuJourAvecQuantites(donnees, date) {
             const exceptionParPersonne = {};
             for (const ex of donnees.exceptionsDomicile) {
@@ -543,6 +551,38 @@
                 }
             }
             return resultat;
+        }
+
+        // ============================================================
+        // CALCUL DES COMPOSANTS À PRODUIRE pour les repas à domicile
+        // Mode auto : sans salade = pas de sauce non plus
+        // ============================================================
+        function calculerComposantsDomicile(domicileItems) {
+            const counts = {
+                potage: 0,
+                salade: 0,
+                sauce_salade: 0,
+                plat: 0,
+                dessert: 0
+            };
+
+            for (const item of (domicileItems || [])) {
+                const p = item.personne;
+                const q = item.quantite;
+
+                // Pour chaque composant coché par la personne, on ajoute la quantité
+                if (p.prend_potage !== false) counts.potage += q;
+                if (p.prend_plat !== false) counts.plat += q;
+                if (p.prend_dessert !== false) counts.dessert += q;
+
+                // Mode auto : sauce salade seulement si salade est cochée AUSSI
+                const prendSalade = (p.prend_salade !== false);
+                const prendSauce  = (p.prend_sauce_salade !== false);
+                if (prendSalade) counts.salade += q;
+                if (prendSalade && prendSauce) counts.sauce_salade += q;
+            }
+
+            return counts;
         }
 
         async function genererFeuille() {
@@ -624,8 +664,7 @@
                 return { ...c, quantite_nette: Math.max(0, qte) };
             }).filter(c => c.quantite_nette > 0);
 
-            // Repas à domicile : uniquement sur le déjeuner, et seulement si
-            // le filtre client est 'tous' ou 'domicile'.
+            // Repas à domicile : uniquement sur le déjeuner, si filtre client OK
             let domicileItems = [];
             const domicileAutorise = (filtreClient === 'tous' || filtreClient === 'domicile');
             if (repas === 'dejeuner' && domicileAutorise) {
@@ -651,7 +690,6 @@
 
             const nbResidents = residentsPresents.length;
             const nbClients = commandesNettes.reduce((s, c) => s + c.quantite_nette, 0);
-            // Total domicile = SOMME DES QUANTITÉS (le foyer de 2 compte pour 2)
             const nbDomicile = (domicileItems || []).reduce((s, item) => s + item.quantite, 0);
             const totalRepas = nbResidents + nbClients + nbDomicile;
 
@@ -683,12 +721,8 @@
                 clientCatCounts[k] = (clientCatCounts[k] || 0) + c.quantite_nette;
             }
 
-            // Comptage des repas à domicile PAR FORMULE = somme des quantités
-            const domicileCounts = {};
-            for (const item of (domicileItems || [])) {
-                const code = item.personne.formule_code || '_sans_formule';
-                domicileCounts[code] = (domicileCounts[code] || 0) + item.quantite;
-            }
+            // ===== Composants à produire pour les repas à domicile =====
+            const composantsDomicile = calculerComposantsDomicile(domicileItems);
 
             const allergeneCounts = {};
             for (const r of residentsPresents) {
@@ -765,12 +799,30 @@
                 portions[cle].qte += c.quantite_nette;
             }
 
-            // Les repas à domicile dans le détail des portions (somme des quantités)
-            for (const code in domicileCounts) {
-                const formule = formulesDomicile.find(f => f.code === code);
-                const nomFormule = formule ? formule.libelle : 'Formule non renseignée';
-                const cle = `D::${code}`;
-                portions[cle] = { qte: domicileCounts[code], libelle: `Domicile — ${nomFormule}` };
+            // ===== Détail des portions DOMICILE : regroupé par "profil de composants" =====
+            // Une "recette" = une combinaison de cases cochées (potage/salade/sauce/plat/dessert)
+            const domicileProfils = {};
+            for (const item of (domicileItems || [])) {
+                const p = item.personne;
+                const profilKey = [
+                    p.prend_potage !== false ? '1' : '0',
+                    p.prend_salade !== false ? '1' : '0',
+                    p.prend_sauce_salade !== false ? '1' : '0',
+                    p.prend_plat !== false ? '1' : '0',
+                    p.prend_dessert !== false ? '1' : '0'
+                ].join('');
+
+                if (!domicileProfils[profilKey]) {
+                    domicileProfils[profilKey] = { qte: 0, profil: p };
+                }
+                domicileProfils[profilKey].qte += item.quantite;
+            }
+
+            for (const key in domicileProfils) {
+                const d = domicileProfils[key];
+                const libelle = construireLibelleProfilDomicile(d.profil);
+                const cle = `D::${key}`;
+                portions[cle] = { qte: d.qte, libelle: 'Domicile — ' + libelle };
             }
 
             const portionsArr = Object.values(portions).sort((a, b) => b.qte - a.qte);
@@ -796,7 +848,7 @@
                     <div class="grid-2cols">
                         <div>
                             <div class="section-titre">Vue d'ensemble</div>
-                            ${construireTableEnsemble(textureCounts, clientCatCounts, allergeneCounts, commandesNettes, categories, clients, nbResidents, nbClients, domicileCounts, nbDomicile)}
+                            ${construireTableEnsemble(textureCounts, clientCatCounts, allergeneCounts, commandesNettes, categories, clients, nbResidents, nbClients, composantsDomicile, nbDomicile)}
                             ${construireBlocAutresAllergies(autresAllergies)}
                             ${construireBlocNonGouts(nonGouts)}
                         </div>
@@ -808,6 +860,36 @@
                     </div>
                 </div>
             `;
+        }
+
+        // Construit un libellé compact selon les composants pris
+        // Ex: "Complet" si tout, sinon "sans potage" / "sans salade et sauce" etc.
+        function construireLibelleProfilDomicile(p) {
+            const prendPotage = p.prend_potage !== false;
+            const prendSalade = p.prend_salade !== false;
+            const prendSauce  = p.prend_sauce_salade !== false;
+            const prendPlat   = p.prend_plat !== false;
+            const prendDessert = p.prend_dessert !== false;
+
+            // Tout coché = complet
+            if (prendPotage && prendSalade && prendSauce && prendPlat && prendDessert) {
+                return 'menu complet';
+            }
+
+            const sans = [];
+            if (!prendPotage) sans.push('potage');
+            // si pas de salade, on dit "salade" (la sauce suit, pas besoin de la nommer en plus)
+            if (!prendSalade) {
+                sans.push('salade');
+            } else if (!prendSauce) {
+                // salade prise mais sans sauce → on précise
+                sans.push('sauce salade');
+            }
+            if (!prendPlat) sans.push('plat');
+            if (!prendDessert) sans.push('dessert');
+
+            if (sans.length === 0) return 'menu complet';
+            return 'sans ' + sans.join(' + ');
         }
 
         function libelleAllergeneCourt(code) {
@@ -832,7 +914,7 @@
             return `<div class="feuille-filtres-actifs">🔍 Filtres actifs : ${parts.join(' · ')}</div>`;
         }
 
-        function construireTableEnsemble(textureCounts, clientCatCounts, allergeneCounts, commandesNettes, categories, clients, nbResidents, nbClients, domicileCounts, nbDomicile) {
+        function construireTableEnsemble(textureCounts, clientCatCounts, allergeneCounts, commandesNettes, categories, clients, nbResidents, nbClients, composantsDomicile, nbDomicile) {
             let html = '<table>';
 
             if (nbResidents > 0) {
@@ -865,18 +947,12 @@
                 }
             }
 
-            // Bloc Repas à domicile, par formule (quantités)
+            // ===== Bloc Composants à produire (repas à domicile) =====
             if (nbDomicile > 0) {
-                html += `<tr><td colspan="2" class="table-bloc-titre">Repas à domicile (${nbDomicile})</td></tr>`;
-                for (const f of formulesDomicile) {
-                    const n = domicileCounts[f.code] || 0;
-                    if (n > 0) {
-                        html += `<tr><td>${f.libelle}</td><td class="nombre-cellule">${n}</td></tr>`;
-                    }
-                }
-                const nSansFormule = domicileCounts['_sans_formule'] || 0;
-                if (nSansFormule > 0) {
-                    html += `<tr><td>Formule non renseignée</td><td class="nombre-cellule">${nSansFormule}</td></tr>`;
+                html += `<tr><td colspan="2" class="table-bloc-titre-domicile">🏠 Repas à domicile — Composants à produire (${nbDomicile} repas)</td></tr>`;
+                for (const c of COMPOSANTS_DOMICILE) {
+                    const n = composantsDomicile[c.code] || 0;
+                    html += `<tr><td>${c.emoji} ${c.libelle}</td><td class="nombre-cellule-domicile">${n}</td></tr>`;
                 }
             }
 
