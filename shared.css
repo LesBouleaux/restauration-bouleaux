@@ -290,4 +290,121 @@ table.presences input[type="checkbox"] {
     body { background: white; padding: 0; max-width: 100%; }
     .menu-onglets, .tabs, .toolbar, .user-bar, .no-print, button { display: none !important; }
     .print-area { box-shadow: none; padding: 0; }
+}/* ============================================================
+   MENU À GROUPES DÉROULANTS
+   ============================================================ */
+
+.menu-onglets-bar {
+    display: flex;
+    gap: 6px;
+    flex-wrap: wrap;
+    padding: 10px 0 0 0;
+    border-bottom: 2px solid #2c5530;
+    margin-bottom: 20px;
+    position: relative;
+}
+
+/* Onglet direct (Accueil, Statistiques, Paramètres) */
+.onglet-direct {
+    padding: 9px 14px;
+    background: #e8e8e8;
+    color: #333;
+    border: none;
+    border-radius: 8px 8px 0 0;
+    font-weight: 500;
+    font-size: 14px;
+    cursor: pointer;
+    font-family: inherit;
+    text-decoration: none;
+    display: inline-block;
+    transition: background 0.15s, color 0.15s;
+}
+.onglet-direct:hover {
+    background: #d4d4d4;
+    color: #222;
+}
+.onglet-direct.actif {
+    background: #2c5530;
+    color: white;
+}
+
+/* Groupe avec sous-menu */
+.groupe-menu {
+    position: relative;
+}
+.groupe-btn {
+    padding: 9px 14px;
+    background: #e8e8e8;
+    color: #333;
+    border: none;
+    border-radius: 8px 8px 0 0;
+    font-weight: 500;
+    font-size: 14px;
+    cursor: pointer;
+    font-family: inherit;
+    transition: background 0.15s, color 0.15s;
+}
+.groupe-btn:hover {
+    background: #d4d4d4;
+    color: #222;
+}
+.groupe-menu.actif .groupe-btn,
+.groupe-menu.ouvert .groupe-btn {
+    background: #2c5530;
+    color: white;
+}
+.groupe-btn .chev {
+    font-size: 10px;
+    margin-left: 4px;
+    display: inline-block;
+    transition: transform 0.2s;
+}
+.groupe-menu.ouvert .groupe-btn .chev {
+    transform: rotate(180deg);
+}
+
+/* Sous-menu (caché par défaut) */
+.sous-menu {
+    display: none;
+    position: absolute;
+    top: 100%;
+    left: 0;
+    z-index: 1000;
+    background: white;
+    border: 1px solid #2c5530;
+    border-top: 2px solid #2c5530;
+    border-radius: 0 0 8px 8px;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+    min-width: 240px;
+    padding: 6px;
+}
+.sous-menu.ouvert {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+}
+.sous-menu-item {
+    padding: 9px 14px;
+    color: #2c5530;
+    text-decoration: none;
+    border-radius: 6px;
+    font-size: 14px;
+    font-weight: 500;
+    transition: background 0.12s;
+    display: block;
+    white-space: nowrap;
+}
+.sous-menu-item:hover {
+    background: #f0f8f0;
+}
+.sous-menu-item.actif {
+    background: #2c5530;
+    color: white;
+}
+
+/* Responsive : sur mobile, les groupes s'enchaînent sur plusieurs lignes */
+@media (max-width: 700px) {
+    .menu-onglets-bar { gap: 4px; }
+    .onglet-direct, .groupe-btn { padding: 7px 10px; font-size: 13px; }
+    .sous-menu { min-width: 200px; }
 }

@@ -1,4 +1,4 @@
-// ============================================================
+ // ============================================================
 // SHARED.JS - Restauration Les Bouleaux
 // Configuration Supabase + utilitaires partagés
 // ============================================================
@@ -249,54 +249,190 @@ function afficherEntete() {
 }
 
 // ============================================================
-// MENU & ENTÊTE
+// MENU À GROUPES DÉROULANTS
+// 9 boutons principaux, sous-menus dynamiques au clic
 // ============================================================
 
-function genererMenuOnglets(pageActive, role) {
-    const ongletsAdmin = [
-        { id: 'dashboard',              titre: '🏠 Accueil',               url: 'dashboard.html' },
-        { id: 'residents-bouleaux',     titre: '👥 Résidents Bouleaux',    url: 'residents-bouleaux.html' },
-        { id: 'residents-passerelle',   titre: '🌉 Résidents Passerelle',  url: 'residents-passerelle.html' },
-        { id: 'residents-sortis',       titre: '📤 Résidents sortis',      url: 'residents-sortis.html' },
-        { id: 'presences-bouleaux',     titre: '✅ Présences Bouleaux',    url: 'presences-bouleaux.html' },
-        { id: 'presences-passerelle',   titre: '✅ Présences Passerelle',  url: 'presences-passerelle.html' },
-        { id: 'production',             titre: '📋 Production J-1',        url: 'production.html' },
-        { id: 'service',                titre: '🍽️ Service du jour',       url: 'service.html' },
-        { id: 'commande-ejc',           titre: '📝 Commandes externes',    url: 'commande-ejc.html' },
-        { id: 'personnes-appartement',  titre: '🏨 Personnes appartement', url: 'personnes-appartement.html' },
-        { id: 'sejours-appartement',    titre: '📅 Séjours appartement',   url: 'sejours-appartement.html' },
-        { id: 'presences-appartement',  titre: '✅ Présences appartement', url: 'presences-appartement.html' },
-        { id: 'catalogue-appartement',  titre: '🏷️ Catalogue appartement', url: 'catalogue-appartement.html' },
-        { id: 'commandes-appartement',  titre: '🛒 Commandes appartement', url: 'commandes-appartement.html' },
-        { id: 'livraisons-cuisine',     titre: '📦 Livraisons cuisine',    url: 'livraisons-cuisine.html' },
-        { id: 'caisse-appartement',     titre: '💰 Caisse appartement',    url: 'caisse-appartement.html' },
-        { id: 'recap-appartement',      titre: '📊 Récap appartement',     url: 'recap-appartement.html' },
-        { id: 'repas-domicile',         titre: '🏠 Repas à domicile',      url: 'repas-domicile.html' },
-        { id: 'presences-domicile',     titre: '🗓️ Présences domicile',    url: 'presences-domicile.html' },
-        { id: 'recap-clients',          titre: '📊 Récap clients',         url: 'recap-clients.html' },
-        { id: 'recap-domicile',         titre: '📊 Récap domicile',        url: 'recap-domicile.html' },
-        { id: 'categories-clients',     titre: '🏷️ Catégories clients',    url: 'categories-clients.html' },
-        { id: 'factures-clients-admin', titre: '🧾 Factures clients',      url: 'factures-clients-admin.html' },
-        { id: 'stats',                  titre: '📊 Statistiques',          url: 'stats.html' },
-        { id: 'parametres',             titre: '⚙️ Paramètres',            url: 'parametres.html' }
-    ];
-
-    const ongletsEjc = [
-        { id: 'dashboard',    titre: '🏠 Accueil',       url: 'dashboard.html' },
-        { id: 'commande-ejc', titre: '🍽️ Saisie repas',  url: 'commande-ejc.html' },
-        { id: 'factures-ejc', titre: '🧾 Mes factures',  url: 'factures-ejc.html' }
-    ];
-
-    const onglets = role === 'client_ejc' ? ongletsEjc : ongletsAdmin;
-
-    let html = '<div class="menu-onglets">';
-    for (const o of onglets) {
-        const cls = o.id === pageActive ? 'active' : '';
-        html += `<a href="${o.url}" class="onglet ${cls}">${o.titre}</a>`;
+const GROUPES_MENU_ADMIN = [
+    {
+        id: 'accueil',
+        titre: '🏠 Accueil',
+        type: 'direct',
+        onglet: { id: 'accueil', titre: '🏠 Accueil', url: 'dashboard.html' }
+    },
+    {
+        id: 'residents',
+        titre: '👥 Résidents',
+        type: 'groupe',
+        onglets: [
+            { id: 'residents-bouleaux',   titre: '👥 Résidents Bouleaux',   url: 'residents-bouleaux.html' },
+            { id: 'residents-passerelle', titre: '🌉 Résidents Passerelle', url: 'residents-passerelle.html' },
+            { id: 'residents-sortis',     titre: '📤 Résidents sortis',     url: 'residents-sortis.html' },
+            { id: 'presences-bouleaux',   titre: '✅ Présences Bouleaux',   url: 'presences-bouleaux.html' },
+            { id: 'presences-passerelle', titre: '✅ Présences Passerelle', url: 'presences-passerelle.html' }
+        ]
+    },
+    {
+        id: 'cuisine',
+        titre: '🍽️ Cuisine',
+        type: 'groupe',
+        onglets: [
+            { id: 'production',      titre: '📋 Production J-1',  url: 'production.html' },
+            { id: 'service-du-jour', titre: '🍽️ Service du jour', url: 'service.html' }
+        ]
+    },
+    {
+        id: 'ejc',
+        titre: '📝 Clients externes',
+        type: 'groupe',
+        onglets: [
+            { id: 'commande-ejc',       titre: '📝 Commandes externes', url: 'commande-ejc.html' },
+            { id: 'categories-clients', titre: '🏷️ Catégories clients', url: 'categories-clients.html' },
+            { id: 'factures-clients',   titre: '🧾 Factures clients',   url: 'factures-clients-admin.html' }
+        ]
+    },
+    {
+        id: 'domicile',
+        titre: '🏠 Repas à domicile',
+        type: 'groupe',
+        onglets: [
+            { id: 'repas-domicile',     titre: '🏠 Fiches domicile',    url: 'repas-domicile.html' },
+            { id: 'presences-domicile', titre: '🗓️ Présences domicile', url: 'presences-domicile.html' }
+        ]
+    },
+    {
+        id: 'appartement',
+        titre: '🏨 Appartement',
+        type: 'groupe',
+        onglets: [
+            { id: 'sejours-appartement',    titre: '📅 Séjours',           url: 'sejours-appartement.html' },
+            { id: 'personnes-appartement',  titre: '🏨 Personnes',         url: 'personnes-appartement.html' },
+            { id: 'presences-appartement',  titre: '✅ Présences',         url: 'presences-appartement.html' },
+            { id: 'caisse-appartement',     titre: '💰 Caisse',            url: 'caisse-appartement.html' },
+            { id: 'catalogue-appartement',  titre: '🏷️ Catalogue',         url: 'catalogue-appartement.html' },
+            { id: 'commandes-appartement',  titre: '🛒 Commandes',         url: 'commandes-appartement.html' },
+            { id: 'livraisons-cuisine',     titre: '📦 Livraisons cuisine', url: 'livraisons-cuisine.html' }
+        ]
+    },
+    {
+        id: 'compta',
+        titre: '💰 Compta',
+        type: 'groupe',
+        onglets: [
+            { id: 'recap-clients',     titre: '📊 Récap clients externes', url: 'recap-clients.html' },
+            { id: 'recap-domicile',    titre: '📊 Récap domicile',         url: 'recap-domicile.html' },
+            { id: 'recap-appartement', titre: '📊 Récap appartement',      url: 'recap-appartement.html' }
+        ]
+    },
+    {
+        id: 'statistiques',
+        titre: '📊 Statistiques',
+        type: 'direct',
+        onglet: { id: 'statistiques', titre: '📊 Statistiques', url: 'stats.html' }
+    },
+    {
+        id: 'parametres',
+        titre: '⚙️ Paramètres',
+        type: 'direct',
+        onglet: { id: 'parametres', titre: '⚙️ Paramètres', url: 'parametres.html' }
     }
+];
+
+// Liste des ids/alias d'onglets qui doivent activer le bouton "Accueil"
+// (au cas où certaines pages s'identifient sous d'autres noms)
+const ALIAS_ACCUEIL = ['accueil', 'dashboard'];
+
+function genererMenuOnglets(pageActive, role) {
+    // Menu spécifique pour les clients EJC
+    if (role === 'client_ejc') {
+        let h = '<div class="menu-onglets">';
+        const ongletsEjc = [
+            { id: 'dashboard',    titre: '🏠 Accueil',      url: 'dashboard.html' },
+            { id: 'commande-ejc', titre: '🍽️ Saisie repas', url: 'commande-ejc.html' },
+            { id: 'factures-ejc', titre: '🧾 Mes factures', url: 'factures-ejc.html' }
+        ];
+        for (const o of ongletsEjc) {
+            const cls = o.id === pageActive ? 'active' : '';
+            h += `<a href="${o.url}" class="onglet ${cls}">${o.titre}</a>`;
+        }
+        h += '</div>';
+        return h;
+    }
+
+    // Cherche le groupe qui contient la page active (pour la mise en évidence)
+    let groupeActifId = null;
+    GROUPES_MENU_ADMIN.forEach(grp => {
+        if (grp.type === 'direct') {
+            // Accueil accepte les alias 'accueil' OU 'dashboard'
+            if (grp.id === 'accueil') {
+                if (ALIAS_ACCUEIL.includes(pageActive)) groupeActifId = grp.id;
+            } else if (grp.onglet.id === pageActive) {
+                groupeActifId = grp.id;
+            }
+        } else if (grp.type === 'groupe') {
+            grp.onglets.forEach(o => {
+                if (o.id === pageActive) groupeActifId = grp.id;
+            });
+        }
+    });
+
+    let html = '<div class="menu-onglets-bar">';
+
+    GROUPES_MENU_ADMIN.forEach(grp => {
+        const estActif = grp.id === groupeActifId;
+
+        if (grp.type === 'direct') {
+            html += '<a href="' + grp.onglet.url + '" '
+                  + 'class="onglet-direct' + (estActif ? ' actif' : '') + '">'
+                  + grp.titre
+                  + '</a>';
+        } else {
+            html += '<div class="groupe-menu' + (estActif ? ' actif' : '') + '" data-grp="' + grp.id + '">'
+                  +   '<button type="button" class="groupe-btn" onclick="toggleSousMenu(\'' + grp.id + '\')">'
+                  +     grp.titre + ' <span class="chev">▾</span>'
+                  +   '</button>'
+                  +   '<div class="sous-menu" id="sous-menu-' + grp.id + '">';
+
+            grp.onglets.forEach(o => {
+                const ongletActif = o.id === pageActive;
+                html += '<a href="' + o.url + '" class="sous-menu-item' + (ongletActif ? ' actif' : '') + '">'
+                      + o.titre
+                      + '</a>';
+            });
+
+            html += '  </div>'
+                  + '</div>';
+        }
+    });
+
     html += '</div>';
     return html;
 }
+
+// Ouvre / ferme le sous-menu d'un groupe
+function toggleSousMenu(grpId) {
+    const tous = document.querySelectorAll('.sous-menu');
+    const groupes = document.querySelectorAll('.groupe-menu');
+    const cible = document.getElementById('sous-menu-' + grpId);
+    const grpCible = document.querySelector('.groupe-menu[data-grp="' + grpId + '"]');
+    const estOuvert = cible && cible.classList.contains('ouvert');
+
+    tous.forEach(sm => sm.classList.remove('ouvert'));
+    groupes.forEach(g => g.classList.remove('ouvert'));
+
+    if (!estOuvert && cible) {
+        cible.classList.add('ouvert');
+        if (grpCible) grpCible.classList.add('ouvert');
+    }
+}
+
+// Ferme les sous-menus quand on clique ailleurs
+document.addEventListener('click', function(e) {
+    if (!e.target.closest('.groupe-menu')) {
+        document.querySelectorAll('.sous-menu').forEach(sm => sm.classList.remove('ouvert'));
+        document.querySelectorAll('.groupe-menu').forEach(g => g.classList.remove('ouvert'));
+    }
+});
 
 function afficherMenu(pageActive) {
     afficherEntete();
@@ -317,7 +453,7 @@ function afficherMenuComplet(pageActive, emailUtilisateur, role, nomAffiche) {
 }
 
 // ============================================================
-// UNITÉS D'HÉBERGEMENT (Bouleaux / Passerelle) ⭐ NOUVEAU
+// UNITÉS D'HÉBERGEMENT (Bouleaux / Passerelle)
 // ============================================================
 
 const UNITES_LISTE = [
@@ -336,7 +472,7 @@ function nomUniteSansEmoji(code) {
 }
 
 // ============================================================
-// TEXTURES MODIFIÉES ⭐ NOUVEAU
+// TEXTURES MODIFIÉES
 // ============================================================
 
 const TEXTURE_DEFAUT = 'normale';
@@ -360,7 +496,6 @@ function nomTextureSansEmoji(code) {
     return t ? t.nom : code;
 }
 
-// Récupère la texture par défaut d'un résident pour un repas donné
 function getTextureDefautResident(resident, repas) {
     if (!resident) return TEXTURE_DEFAUT;
     switch (repas) {
@@ -371,7 +506,6 @@ function getTextureDefautResident(resident, repas) {
     }
 }
 
-// Génère un <select> HTML pour choisir une texture
 function selectTextureHtml(nomChamp, valeurSelectionnee = TEXTURE_DEFAUT, attributs = '') {
     let html = `<select name="${nomChamp}" ${attributs}>`;
     for (const t of TEXTURES_LISTE) {
@@ -386,7 +520,6 @@ function selectTextureHtml(nomChamp, valeurSelectionnee = TEXTURE_DEFAUT, attrib
 // RÉSIDENTS - Chargement
 // ============================================================
 
-// Chargement de tous les résidents actifs (toutes unités confondues)
 async function chargerResidentsActifs(unite = null) {
     let query = supaClient
         .from(TABLE_RESIDENTS)
@@ -403,7 +536,6 @@ async function chargerResidentsActifs(unite = null) {
     return data || [];
 }
 
-// Helper rétro-compatible : charge UNIQUEMENT les résidents d'une unité
 async function chargerResidentsParUnite(unite) {
     return chargerResidentsActifs(unite);
 }
