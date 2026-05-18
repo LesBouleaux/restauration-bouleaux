@@ -252,7 +252,7 @@ function afficherEntete() {
 // MENU À GROUPES DÉROULANTS
 // 9 boutons principaux, sous-menus dynamiques au clic
 // ============================================================
-     const GROUPES_MENU_ADMIN = [
+const GROUPES_MENU_ADMIN = [
     {
         id: 'accueil',
         titre: '🏠 Accueil',
@@ -266,7 +266,6 @@ function afficherEntete() {
         onglets: [
             { id: 'residents-bouleaux',   titre: '👥 Résidents Bouleaux',   url: 'residents-bouleaux.html' },
             { id: 'residents-passerelle', titre: '🌉 Résidents Passerelle', url: 'residents-passerelle.html' },
-            { id: 'residents-sortis',     titre: '📤 Résidents sortis',     url: 'residents-sortis.html' },
             { id: 'presences-bouleaux',   titre: '✅ Présences Bouleaux',   url: 'presences-bouleaux.html' },
             { id: 'presences-passerelle', titre: '✅ Présences Passerelle', url: 'presences-passerelle.html' }
         ]
@@ -330,10 +329,13 @@ function afficherEntete() {
         onglet: { id: 'statistiques', titre: '📊 Statistiques', url: 'stats.html' }
     },
     {
-        id: 'parametres',
-        titre: '⚙️ Paramètres',
-        type: 'direct',
-        onglet: { id: 'parametres', titre: '⚙️ Paramètres', url: 'parametres.html' }
+        id: 'direction',
+        titre: '🏛️ Direction',
+        type: 'groupe',
+        onglets: [
+            { id: 'parametres',       titre: '⚙️ Paramètres généraux', url: 'parametres.html' },
+            { id: 'residents-sortis', titre: '📤 Résidents sortis',    url: 'residents-sortis.html' }
+        ]
     }
 ];
 
