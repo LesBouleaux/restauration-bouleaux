@@ -207,6 +207,12 @@
             color: #1976d2;
             border-bottom: 1px solid #c0d8f0;
         }
+        .table-bloc-titre-appart {
+            padding: 8px 0 2px !important;
+            font-weight: 600;
+            color: #1976d2;
+            border-bottom: 1px solid #c0d8f0;
+        }
         .nombre-cellule {
             text-align: right;
             font-weight: 600;
@@ -217,6 +223,11 @@
             color: #c0392b;
         }
         .nombre-cellule-domicile {
+            text-align: right;
+            font-weight: 700;
+            color: #1976d2;
+        }
+        .nombre-cellule-appart {
             text-align: right;
             font-weight: 700;
             color: #1976d2;
@@ -347,6 +358,14 @@
             </div>
         </div>
 
+        <div class="toolbar-ligne">
+            <span class="toolbar-label">🏨 Appartement :</span>
+            <div class="toggle-group" id="toggle-appart">
+                <button class="toggle-btn active" data-value="tous" onclick="setToggle('appart', this)">🏨 Tous</button>
+                <button class="toggle-btn" data-value="aucun" onclick="setToggle('appart', this)">⛔ Aucun</button>
+            </div>
+        </div>
+
         <div class="toolbar-actions">
             <button class="btn-charger" onclick="genererFeuille()">🔄 Charger</button>
             <button class="btn-imprimer" onclick="window.print()">🖨️ Imprimer</button>
@@ -378,6 +397,7 @@
         let valRepas = ['dejeuner'];
         let valUnite = 'toutes';
         let valClient = 'tous';
+        let valAppart = 'tous';
 
         function demainIso() {
             const d = new Date();
@@ -422,6 +442,7 @@
             const valeur = btn.dataset.value;
             if (groupe === 'unite') valUnite = valeur;
             else if (groupe === 'client') valClient = valeur;
+            else if (groupe === 'appart') valAppart = valeur;
 
             genererFeuille();
         }
@@ -490,6 +511,28 @@
                 .eq('date_repas', date);
             if (errED) throw errED;
 
+            // ===== APPARTEMENT : séjours en cours qui couvrent la date =====
+            const { data: sejours, error: errS } = await supaClient
+                .from('sejours_appartement')
+                .select('*, personne:personnes_appartement(*)')
+                .eq('statut', 'en_cours')
+                .lte('date_arrivee', date)
+                .gte('date_depart', date);
+            if (errS) throw errS;
+
+            // Présences appartement de la date (pour repérer les absents)
+            let presencesAppart = [];
+            if (sejours && sejours.length > 0) {
+                const idsSejours = sejours.map(s => s.id);
+                const { data: pa, error: errPA } = await supaClient
+                    .from('presences_appartement')
+                    .select('*')
+                    .eq('date', date)
+                    .in('sejour_id', idsSejours);
+                if (errPA) throw errPA;
+                presencesAppart = pa || [];
+            }
+
             return {
                 residents: residents || [],
                 presences: presences || [],
@@ -498,7 +541,9 @@
                 annulations: annulations || [],
                 categories: toutesLesCategories,
                 personnesDomicile: personnesDomicile || [],
-                exceptionsDomicile: exceptionsDomicile || []
+                exceptionsDomicile: exceptionsDomicile || [],
+                sejoursAppart: sejours || [],
+                presencesAppart: presencesAppart
             };
         }
 
@@ -518,6 +563,29 @@
             const p = mapPresences[key];
             if (p && p.texture) return p.texture;
             return getTextureDefautResident(resident, repas);
+        }
+
+        // ============================================================
+        // APPARTEMENT : occupants présents au repas
+        // ============================================================
+        // Présent par défaut sauf si une présence à FALSE existe pour ce repas/jour
+        function occupantsPresentsAuRepas(donnees, repas) {
+            const mapPresAppart = {};
+            for (const pa of donnees.presencesAppart) {
+                if (pa.repas === repas) {
+                    mapPresAppart[pa.sejour_id] = pa;
+                }
+            }
+
+            const resultat = [];
+            for (const s of donnees.sejoursAppart) {
+                const pa = mapPresAppart[s.id];
+                // Absent uniquement si present === false explicitement
+                if (pa && pa.present === false) continue;
+                if (!s.personne) continue;
+                resultat.push(s.personne);
+            }
+            return resultat;
         }
 
         // ============================================================
@@ -559,23 +627,15 @@
         // ============================================================
         function calculerComposantsDomicile(domicileItems) {
             const counts = {
-                potage: 0,
-                salade: 0,
-                sauce_salade: 0,
-                plat: 0,
-                dessert: 0
+                potage: 0, salade: 0, sauce_salade: 0, plat: 0, dessert: 0
             };
 
             for (const item of (domicileItems || [])) {
                 const p = item.personne;
                 const q = item.quantite;
-
-                // Pour chaque composant coché par la personne, on ajoute la quantité
                 if (p.prend_potage !== false) counts.potage += q;
                 if (p.prend_plat !== false) counts.plat += q;
                 if (p.prend_dessert !== false) counts.dessert += q;
-
-                // Mode auto : sauce salade seulement si salade est cochée AUSSI
                 const prendSalade = (p.prend_salade !== false);
                 const prendSauce  = (p.prend_sauce_salade !== false);
                 if (prendSalade) counts.salade += q;
@@ -601,6 +661,7 @@
 
             const filtreUnite = valUnite;
             const filtreClient = valClient;
+            const filtreAppart = valAppart;
 
             contenu.innerHTML = '<p class="loading">⏳ Chargement...</p>';
 
@@ -617,13 +678,13 @@
 
             let htmlComplet = '';
             for (const repas of repasAffiches) {
-                htmlComplet += construireFeuillePourRepas(repas, date, donnees, filtreUnite, filtreClient);
+                htmlComplet += construireFeuillePourRepas(repas, date, donnees, filtreUnite, filtreClient, filtreAppart);
             }
 
             contenu.innerHTML = htmlComplet;
         }
 
-        function construireFeuillePourRepas(repas, date, donnees, filtreUnite, filtreClient) {
+        function construireFeuillePourRepas(repas, date, donnees, filtreUnite, filtreClient, filtreAppart) {
             let residentsFiltres = donnees.residents;
             if (filtreUnite === 'bouleaux') {
                 residentsFiltres = residentsFiltres.filter(r => r.unite === 'bouleaux');
@@ -671,6 +732,12 @@
                 domicileItems = domicileDuJourAvecQuantites(donnees, date);
             }
 
+            // ===== Occupants appartement présents à ce repas =====
+            let occupantsAppart = [];
+            if (filtreAppart === 'tous') {
+                occupantsAppart = occupantsPresentsAuRepas(donnees, repas);
+            }
+
             return construireFeuille({
                 date, repas,
                 residentsPresents,
@@ -680,18 +747,22 @@
                 clients: tousLesClients,
                 filtreUnite,
                 filtreClient,
-                domicileItems
+                filtreAppart,
+                domicileItems,
+                occupantsAppart
             });
         }
 
         function construireFeuille(ctx) {
             const { date, repas, residentsPresents, mapPresences, commandesNettes,
-                    categories, clients, filtreUnite, filtreClient, domicileItems } = ctx;
+                    categories, clients, filtreUnite, filtreClient, filtreAppart,
+                    domicileItems, occupantsAppart } = ctx;
 
             const nbResidents = residentsPresents.length;
             const nbClients = commandesNettes.reduce((s, c) => s + c.quantite_nette, 0);
             const nbDomicile = (domicileItems || []).reduce((s, item) => s + item.quantite, 0);
-            const totalRepas = nbResidents + nbClients + nbDomicile;
+            const nbAppart = (occupantsAppart || []).length;
+            const totalRepas = nbResidents + nbClients + nbDomicile + nbAppart;
 
             if (totalRepas === 0) {
                 return `<div class="feuille-prod">
@@ -721,9 +792,10 @@
                 clientCatCounts[k] = (clientCatCounts[k] || 0) + c.quantite_nette;
             }
 
-            // ===== Composants à produire pour les repas à domicile =====
+            // Composants à produire pour les repas à domicile
             const composantsDomicile = calculerComposantsDomicile(domicileItems);
 
+            // ===== Allergènes : on cumule résidents + clients externes + appartement =====
             const allergeneCounts = {};
             for (const r of residentsPresents) {
                 for (const a of (r.allergenes || [])) {
@@ -738,14 +810,37 @@
                     }
                 }
             }
+            for (const o of (occupantsAppart || [])) {
+                for (const a of (o.allergenes || [])) {
+                    allergeneCounts[a] = (allergeneCounts[a] || 0) + 1;
+                }
+            }
 
-            const autresAllergies = residentsPresents
-                .filter(r => (r.allergies || '').trim())
-                .map(r => ({ nom: `${r.prenom} ${r.nom}`, valeur: r.allergies.trim() }));
+            // ===== Autres allergies (texte libre) : résidents + appartement =====
+            const autresAllergies = [];
+            for (const r of residentsPresents) {
+                if ((r.allergies || '').trim()) {
+                    autresAllergies.push({ nom: `${r.prenom} ${r.nom}`, valeur: r.allergies.trim() });
+                }
+            }
+            for (const o of (occupantsAppart || [])) {
+                if ((o.allergies || '').trim()) {
+                    autresAllergies.push({ nom: `${o.prenom} ${o.nom} (appart.)`, valeur: o.allergies.trim() });
+                }
+            }
 
-            const nonGouts = residentsPresents
-                .filter(r => (r.aversions || '').trim())
-                .map(r => ({ nom: `${r.prenom} ${r.nom}`, valeur: r.aversions.trim() }));
+            // ===== Non-goûts : résidents (aversions) + appartement (non_gouts) =====
+            const nonGouts = [];
+            for (const r of residentsPresents) {
+                if ((r.aversions || '').trim()) {
+                    nonGouts.push({ nom: `${r.prenom} ${r.nom}`, valeur: r.aversions.trim() });
+                }
+            }
+            for (const o of (occupantsAppart || [])) {
+                if ((o.non_gouts || '').trim()) {
+                    nonGouts.push({ nom: `${o.prenom} ${o.nom} (appart.)`, valeur: o.non_gouts.trim() });
+                }
+            }
 
             const portions = {};
 
@@ -799,8 +894,7 @@
                 portions[cle].qte += c.quantite_nette;
             }
 
-            // ===== Détail des portions DOMICILE : regroupé par "profil de composants" =====
-            // Une "recette" = une combinaison de cases cochées (potage/salade/sauce/plat/dessert)
+            // ===== Détail des portions DOMICILE : regroupé par profil de composants =====
             const domicileProfils = {};
             for (const item of (domicileItems || [])) {
                 const p = item.personne;
@@ -825,10 +919,33 @@
                 portions[cle] = { qte: d.qte, libelle: 'Domicile — ' + libelle };
             }
 
+            // ===== Détail des portions APPARTEMENT : regroupé par allergènes =====
+            // (texture toujours normale, pas de régime, donc seuls les allergènes différencient)
+            for (const o of (occupantsAppart || [])) {
+                const allergenes = [...(o.allergenes || [])].sort();
+                const autresAllergie = (o.allergies || '').trim();
+
+                let libelle = 'Appartement — normale standard';
+                const parts = [];
+                if (allergenes.length) {
+                    parts.push('sans ' + allergenes.map(a => libelleAllergeneCourt(a)).join(' + '));
+                }
+                if (autresAllergie) {
+                    parts.push(`(autre allergie : ${autresAllergie})`);
+                }
+                if (parts.length) {
+                    libelle = 'Appartement — normale ' + parts.join(' ');
+                }
+
+                const cle = `A::${allergenes.join(',')}::${autresAllergie}`;
+                if (!portions[cle]) portions[cle] = { qte: 0, libelle };
+                portions[cle].qte += 1;
+            }
+
             const portionsArr = Object.values(portions).sort((a, b) => b.qte - a.qte);
             const totalRecettes = portionsArr.length;
 
-            const filtresActifs = construireBandeauFiltres(filtreUnite, filtreClient, clients);
+            const filtresActifs = construireBandeauFiltres(filtreUnite, filtreClient, filtreAppart, clients);
 
             return `
                 <div class="feuille-prod">
@@ -848,7 +965,7 @@
                     <div class="grid-2cols">
                         <div>
                             <div class="section-titre">Vue d'ensemble</div>
-                            ${construireTableEnsemble(textureCounts, clientCatCounts, allergeneCounts, commandesNettes, categories, clients, nbResidents, nbClients, composantsDomicile, nbDomicile)}
+                            ${construireTableEnsemble(textureCounts, clientCatCounts, allergeneCounts, commandesNettes, categories, clients, nbResidents, nbClients, composantsDomicile, nbDomicile, nbAppart)}
                             ${construireBlocAutresAllergies(autresAllergies)}
                             ${construireBlocNonGouts(nonGouts)}
                         </div>
@@ -863,7 +980,6 @@
         }
 
         // Construit un libellé compact selon les composants pris
-        // Ex: "Complet" si tout, sinon "sans potage" / "sans salade et sauce" etc.
         function construireLibelleProfilDomicile(p) {
             const prendPotage = p.prend_potage !== false;
             const prendSalade = p.prend_salade !== false;
@@ -871,18 +987,15 @@
             const prendPlat   = p.prend_plat !== false;
             const prendDessert = p.prend_dessert !== false;
 
-            // Tout coché = complet
             if (prendPotage && prendSalade && prendSauce && prendPlat && prendDessert) {
                 return 'menu complet';
             }
 
             const sans = [];
             if (!prendPotage) sans.push('potage');
-            // si pas de salade, on dit "salade" (la sauce suit, pas besoin de la nommer en plus)
             if (!prendSalade) {
                 sans.push('salade');
             } else if (!prendSauce) {
-                // salade prise mais sans sauce → on précise
                 sans.push('sauce salade');
             }
             if (!prendPlat) sans.push('plat');
@@ -897,7 +1010,7 @@
             return a ? a.nom.toLowerCase() : code;
         }
 
-        function construireBandeauFiltres(filtreUnite, filtreClient, clients) {
+        function construireBandeauFiltres(filtreUnite, filtreClient, filtreAppart, clients) {
             const parts = [];
             if (filtreUnite === 'bouleaux') parts.push('🏠 Bouleaux uniquement');
             else if (filtreUnite === 'passerelle') parts.push('🌉 Passerelle uniquement');
@@ -910,11 +1023,13 @@
                 if (c) parts.push(`Client : ${c.nom}`);
             }
 
+            if (filtreAppart === 'aucun') parts.push('🏨 Sans appartement');
+
             if (!parts.length) return '';
             return `<div class="feuille-filtres-actifs">🔍 Filtres actifs : ${parts.join(' · ')}</div>`;
         }
 
-        function construireTableEnsemble(textureCounts, clientCatCounts, allergeneCounts, commandesNettes, categories, clients, nbResidents, nbClients, composantsDomicile, nbDomicile) {
+        function construireTableEnsemble(textureCounts, clientCatCounts, allergeneCounts, commandesNettes, categories, clients, nbResidents, nbClients, composantsDomicile, nbDomicile, nbAppart) {
             let html = '<table>';
 
             if (nbResidents > 0) {
@@ -945,6 +1060,12 @@
                 for (const l of lignes) {
                     html += `<tr><td>${l.libelle}</td><td class="nombre-cellule">${l.qte}</td></tr>`;
                 }
+            }
+
+            // ===== Bloc Appartement Corgémont =====
+            if (nbAppart > 0) {
+                html += `<tr><td colspan="2" class="table-bloc-titre-appart">🏨 Appartement Corgémont (${nbAppart})</td></tr>`;
+                html += `<tr><td>Occupants présents</td><td class="nombre-cellule-appart">${nbAppart}</td></tr>`;
             }
 
             // ===== Bloc Composants à produire (repas à domicile) =====
