@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+ <!DOCTYPE html>
 <html lang="fr">
 <head>
     <meta charset="UTF-8">
@@ -80,6 +80,12 @@
             text-align: left;
         }
         table.recap td.col-num { text-align: center; font-weight: bold; }
+        table.recap td.col-journees {
+            text-align: center;
+            font-weight: bold;
+            color: #1976d2;
+            font-size: 16px;
+        }
         table.recap td.col-total {
             text-align: right;
             font-weight: bold;
@@ -158,14 +164,14 @@
         }
         .justif-chiffre {
             flex: 1;
-            min-width: 110px;
-            padding: 12px 14px;
+            min-width: 140px;
+            padding: 14px 16px;
             text-align: center;
             border-right: 1px solid #e0e0e0;
         }
         .justif-chiffre:last-child { border-right: none; }
         .justif-chiffre-nombre {
-            font-size: 22px;
+            font-size: 26px;
             font-weight: bold;
             color: #1976d2;
             line-height: 1;
@@ -188,12 +194,12 @@
             border-bottom: 1.5px solid #1976d2;
         }
 
-        table.t-repas, table.t-ventes {
+        table.t-ventes {
             width: 100%;
             border-collapse: collapse;
             font-size: 12.5px;
         }
-        table.t-repas th, table.t-ventes th {
+        table.t-ventes th {
             color: #1976d2;
             font-size: 10px;
             text-transform: uppercase;
@@ -202,11 +208,11 @@
             text-align: left;
             border-bottom: 1px solid #e0e0e0;
         }
-        table.t-repas td, table.t-ventes td {
+        table.t-ventes td {
             padding: 5px 6px;
             border-bottom: 1px solid #f0f0f0;
         }
-        table.t-repas td.num, table.t-ventes td.num {
+        table.t-ventes td.num {
             text-align: right;
             font-weight: bold;
         }
@@ -234,17 +240,35 @@
         .panier-bloc.annulee { opacity: 0.6; background: #fce4e4; }
         .panier-bloc.annulee .panier-entete { background: #fce4e4; color: #922b21; }
 
-        .justif-total-final {
+        .lignes-facture {
             margin-top: 18px;
-            padding: 14px 16px;
-            background: #1976d2;
-            color: white;
+            border: 1px solid #e0e0e0;
             border-radius: 6px;
+            overflow: hidden;
+        }
+        .ligne-facture {
             display: flex;
             justify-content: space-between;
             align-items: center;
+            padding: 14px 16px;
+            border-bottom: 1px solid #e0e0e0;
         }
-        .justif-total-final .montant { font-size: 24px; font-weight: bold; }
+        .ligne-facture:last-child { border-bottom: none; }
+        .ligne-facture-titre {
+            font-size: 14px;
+            font-weight: bold;
+            color: #222;
+        }
+        .ligne-facture-sous {
+            font-size: 11px;
+            color: #888;
+            margin-top: 2px;
+        }
+        .ligne-facture-valeur {
+            font-size: 18px;
+            font-weight: bold;
+            color: #1976d2;
+        }
 
         .justif-pied {
             margin-top: 20px;
@@ -320,6 +344,10 @@
     <script>
         // ================================================
         // RÉCAP APPARTEMENT — COMPTA
+        // Tout est BORNÉ à la période sélectionnée en haut :
+        //   - le décompte des journées facturables
+        //   - les prestations complémentaires (ventes)
+        // Permet la facturation à cheval sur deux mois.
         // ================================================
 
         const RESIDENCE_NOM = 'Résidence Les Bouleaux';
@@ -329,7 +357,7 @@
         const NOMS_MOIS_R = ['janvier','février','mars','avril','mai','juin',
                              'juillet','août','septembre','octobre','novembre','décembre'];
 
-        let donneesCache = null;  // { sejours: [...], periode: {debut, fin}, inclureEnCours }
+        let donneesCache = null;
 
         // ================================================
         // UTILITAIRES
@@ -357,24 +385,74 @@
             return j + '.' + m + '.' + a + ' ' + h + ':' + mi;
         }
 
+        // Date d'un timestamp en ISO YYYY-MM-DD (pour comparer aux dates)
+        function dateIsoDeTimestamp(isoTimestamp) {
+            if (!isoTimestamp) return '';
+            const d = new Date(isoTimestamp);
+            return d.getFullYear() + '-'
+                 + String(d.getMonth()+1).padStart(2,'0') + '-'
+                 + String(d.getDate()).padStart(2,'0');
+        }
+
         function dateDuJourLisible() {
             const d = new Date();
             return d.getDate() + ' ' + NOMS_MOIS_R[d.getMonth()] + ' ' + d.getFullYear();
         }
 
-        function nbNuits(arrivee, depart) {
-            const a = new Date(arrivee + 'T00:00:00');
-            const d = new Date(depart + 'T00:00:00');
-            return Math.round((d - a) / (1000 * 60 * 60 * 24));
+        function aujourdhuiIso() {
+            const d = new Date();
+            return d.getFullYear() + '-'
+                 + String(d.getMonth()+1).padStart(2,'0') + '-'
+                 + String(d.getDate()).padStart(2,'0');
         }
 
-        function libelleRepasR(code) {
-            const map = {
-                petit_dej: '🥐 Petit-déjeuner',
-                dejeuner: '🍽️ Déjeuner',
-                diner: '🌙 Dîner'
+        // Comparaisons de dates ISO comme chaînes (YYYY-MM-DD est lexicographiquement triable)
+        function maxDateIso(a, b) { return a > b ? a : b; }
+        function minDateIso(a, b) { return a < b ? a : b; }
+
+        // ================================================
+        // RÈGLE DE FACTURATION — BORNES DE LA TRANCHE
+        //
+        // Pour un séjour donné et une période sélectionnée [debut, fin],
+        // on calcule la "tranche facturable" : l'intersection entre :
+        //   - la période [date_arrivee, date_depart] du séjour
+        //   - la période [debut, fin] sélectionnée en haut
+        //   - si en cours : on borne aussi à aujourd'hui
+        //
+        // Renvoie { trancheDebut, trancheFin, nbJournees }
+        // Si pas d'intersection, nbJournees = 0.
+        // ================================================
+        function calculerTranche(sejour, periodeDebut, periodeFin) {
+            // Borne supérieure du séjour : date_depart, sauf si en cours
+            // auquel cas on s'arrête à aujourd'hui (option 1B confirmée).
+            let bornHaute = sejour.date_depart;
+            if (sejour.statut === 'en_cours') {
+                bornHaute = minDateIso(bornHaute, aujourdhuiIso());
+            }
+
+            // Intersection avec la période sélectionnée
+            const trancheDebut = maxDateIso(sejour.date_arrivee, periodeDebut);
+            const trancheFin   = minDateIso(bornHaute, periodeFin);
+
+            if (trancheDebut > trancheFin) {
+                return { trancheDebut: null, trancheFin: null, nbJournees: 0 };
+            }
+
+            const a = new Date(trancheDebut + 'T00:00:00');
+            const d = new Date(trancheFin + 'T00:00:00');
+            const ecartJours = Math.round((d - a) / (1000 * 60 * 60 * 24));
+            return {
+                trancheDebut: trancheDebut,
+                trancheFin: trancheFin,
+                nbJournees: ecartJours + 1
             };
-            return map[code] || code;
+        }
+
+        // Une vente est-elle dans la tranche ? Comparaison sur la DATE de cree_le.
+        function venteDansTranche(vente, trancheDebut, trancheFin) {
+            if (!trancheDebut || !trancheFin) return false;
+            const dateVente = dateIsoDeTimestamp(vente.cree_le);
+            return dateVente >= trancheDebut && dateVente <= trancheFin;
         }
 
         // ================================================
@@ -397,7 +475,6 @@
                 return;
             }
 
-            // 1) Récupère les séjours qui couvrent la période
             const statutsAutorises = inclureEnCours ? ['termine', 'en_cours'] : ['termine'];
             const { data: sejours, error: errS } = await supaClient
                 .from('sejours_appartement')
@@ -418,7 +495,6 @@
                 return;
             }
 
-            // 2) Personnes liées
             const idsPersonnes = [...new Set(sejours.map(s => s.personne_id))];
             const { data: personnes, error: errP } = await supaClient
                 .from('personnes_appartement')
@@ -431,18 +507,8 @@
             const personnesParId = {};
             (personnes || []).forEach(p => { personnesParId[p.id] = p; });
 
-            // 3) Présences pour ces séjours
             const idsSejours = sejours.map(s => s.id);
-            const { data: presences, error: errPr } = await supaClient
-                .from('presences_appartement')
-                .select('*')
-                .in('sejour_id', idsSejours);
-            if (errPr) {
-                contenu.innerHTML = '<div class="erreur-msg">Erreur : ' + errPr.message + '</div>';
-                return;
-            }
 
-            // 4) Ventes pour ces séjours (avec lignes)
             const { data: ventes, error: errV } = await supaClient
                 .from('ventes_appartement')
                 .select('*, lignes:lignes_vente_appartement(*)')
@@ -453,7 +519,6 @@
                 return;
             }
 
-            // 5) Catalogue produits (pour les noms)
             const { data: produits, error: errProd } = await supaClient
                 .from('catalogue_produits_appartement')
                 .select('id, nom, categorie');
@@ -464,13 +529,6 @@
             const produitsParId = {};
             (produits || []).forEach(p => { produitsParId[p.id] = p; });
 
-            // 6) Construit l'objet par séjour
-            const presencesParSejour = {};
-            (presences || []).forEach(pr => {
-                if (!presencesParSejour[pr.sejour_id]) presencesParSejour[pr.sejour_id] = [];
-                presencesParSejour[pr.sejour_id].push(pr);
-            });
-
             const ventesParSejour = {};
             (ventes || []).forEach(v => {
                 if (!ventesParSejour[v.sejour_id]) ventesParSejour[v.sejour_id] = [];
@@ -479,27 +537,30 @@
 
             const sejoursEnrichis = sejours.map(s => {
                 const personne = personnesParId[s.personne_id] || { nom: 'Inconnu', prenom: '' };
-                const pres = presencesParSejour[s.id] || [];
-                const compteRepas = { petit_dej: 0, dejeuner: 0, diner: 0 };
-                pres.forEach(p => {
-                    if (p.present && compteRepas[p.repas] !== undefined) {
-                        compteRepas[p.repas]++;
-                    }
-                });
-                const totalRepas = compteRepas.petit_dej + compteRepas.dejeuner + compteRepas.diner;
 
+                // Tranche bornée par la période sélectionnée
+                const tranche = calculerTranche(s, dateDebut, dateFin);
+
+                // Toutes les ventes du séjour (pour info dans le pop-up)
                 const ventesS = ventesParSejour[s.id] || [];
-                const ventesActives = ventesS.filter(v => !v.annulee);
-                const totalVentes = ventesActives.reduce((sum, v) => sum + parseFloat(v.total || 0), 0);
+
+                // Ventes filtrées sur la tranche
+                const ventesDansTranche = ventesS.filter(v =>
+                    venteDansTranche(v, tranche.trancheDebut, tranche.trancheFin)
+                );
+                const ventesActivesTranche = ventesDansTranche.filter(v => !v.annulee);
+                const totalVentesTranche = ventesActivesTranche.reduce(
+                    (sum, v) => sum + parseFloat(v.total || 0), 0
+                );
 
                 return {
                     sejour: s,
                     personne: personne,
-                    compteRepas: compteRepas,
-                    totalRepas: totalRepas,
-                    ventes: ventesS,           // toutes les ventes (annulées comprises pour info)
-                    ventesActives: ventesActives,
-                    totalVentes: totalVentes,
+                    tranche: tranche,
+                    journeesFacturables: tranche.nbJournees,
+                    ventes: ventesDansTranche,           // ventes de la tranche
+                    ventesActives: ventesActivesTranche,
+                    totalVentes: totalVentesTranche,
                     produitsParId: produitsParId
                 };
             });
@@ -530,10 +591,13 @@
             }
 
             const totalSejours = sejours.length;
-            const totalRepasGlobal = sejours.reduce((s, x) => s + x.totalRepas, 0);
+            const totalJourneesGlobal = sejours.reduce((s, x) => s + x.journeesFacturables, 0);
             const totalVentesGlobal = sejours.reduce((s, x) => s + x.totalVentes, 0);
 
             let html = '<h3 style="margin-top:0;">Période : ' + periodeTxt + '</h3>';
+            html += '<p style="font-size:12px;color:#666;margin-top:-6px;">'
+                  + 'Tous les décomptes sont bornés à la période sélectionnée — '
+                  + 'idéal pour facturer un séjour à cheval sur deux mois.</p>';
             html += '<div class="stats-cards">'
                   +   '<div class="stat-card">'
                   +     '<div class="label">Séjours</div>'
@@ -541,14 +605,14 @@
                   +     '<div class="sub">' + (inclureEnCours ? 'terminés + en cours' : 'terminés') + '</div>'
                   +   '</div>'
                   +   '<div class="stat-card">'
-                  +     '<div class="label">Repas pris</div>'
-                  +     '<div class="valeur">' + totalRepasGlobal + '</div>'
-                  +     '<div class="sub">tous repas confondus</div>'
+                  +     '<div class="label">Journées facturables</div>'
+                  +     '<div class="valeur">' + totalJourneesGlobal + '</div>'
+                  +     '<div class="sub">sur la période</div>'
                   +   '</div>'
                   +   '<div class="stat-card">'
-                  +     '<div class="label">Ventes compl.</div>'
+                  +     '<div class="label">Prestations compl.</div>'
                   +     '<div class="valeur">' + totalVentesGlobal.toFixed(2) + '</div>'
-                  +     '<div class="sub">CHF, total facturable</div>'
+                  +     '<div class="sub">CHF, sur la période</div>'
                   +   '</div>'
                   + '</div>';
 
@@ -557,12 +621,10 @@
                   + '<th>Chambre</th>'
                   + '<th>Arrivée</th>'
                   + '<th>Départ</th>'
-                  + '<th>Nuits</th>'
                   + '<th>Statut</th>'
-                  + '<th>P-déj</th>'
-                  + '<th>Déj.</th>'
-                  + '<th>Dîner</th>'
-                  + '<th>Total ventes (CHF)</th>'
+                  + '<th>Tranche facturée</th>'
+                  + '<th style="text-align:center;">Journées</th>'
+                  + '<th style="text-align:right;">Prestations compl. (CHF)</th>'
                   + '<th></th>'
                   + '</tr></thead><tbody>';
 
@@ -570,17 +632,18 @@
                 const nomComplet = row.personne.nom + ' ' + row.personne.prenom;
                 const cls = 'badge-mini badge-' + row.sejour.statut;
                 const libStatut = row.sejour.statut === 'termine' ? 'Terminé' : 'En cours';
+                const trancheTxt = row.tranche.nbJournees > 0
+                    ? dateFrR(row.tranche.trancheDebut) + ' → ' + dateFrR(row.tranche.trancheFin)
+                    : '<span style="color:#aaa;">—</span>';
 
                 html += '<tr>'
                       + '<td><strong>' + echapper(nomComplet) + '</strong></td>'
                       + '<td>Chambre ' + row.sejour.numero_chambre + '</td>'
                       + '<td>' + dateFrR(row.sejour.date_arrivee) + '</td>'
                       + '<td>' + dateFrR(row.sejour.date_depart) + '</td>'
-                      + '<td class="col-num">' + nbNuits(row.sejour.date_arrivee, row.sejour.date_depart) + '</td>'
                       + '<td><span class="' + cls + '">' + libStatut + '</span></td>'
-                      + '<td class="col-num">' + row.compteRepas.petit_dej + '</td>'
-                      + '<td class="col-num">' + row.compteRepas.dejeuner + '</td>'
-                      + '<td class="col-num">' + row.compteRepas.diner + '</td>'
+                      + '<td style="font-size:12px;">' + trancheTxt + '</td>'
+                      + '<td class="col-journees">' + row.journeesFacturables + '</td>'
                       + '<td class="col-total">' + row.totalVentes.toFixed(2) + '</td>'
                       + '<td><button type="button" class="btn-print btn-small" onclick="ouvrirDetail(' + index + ')">Détail</button></td>'
                       + '</tr>';
@@ -588,9 +651,7 @@
 
             html += '<tr class="ligne-total">'
                   + '<td colspan="6">TOTAL</td>'
-                  + '<td class="col-num">' + sejours.reduce((s, x) => s + x.compteRepas.petit_dej, 0) + '</td>'
-                  + '<td class="col-num">' + sejours.reduce((s, x) => s + x.compteRepas.dejeuner, 0) + '</td>'
-                  + '<td class="col-num">' + sejours.reduce((s, x) => s + x.compteRepas.diner, 0) + '</td>'
+                  + '<td class="col-journees">' + totalJourneesGlobal + '</td>'
                   + '<td class="col-total">' + totalVentesGlobal.toFixed(2) + '</td>'
                   + '<td></td>'
                   + '</tr>';
@@ -617,11 +678,37 @@
             const s = row.sejour;
             const p = row.personne;
             const nomComplet = p.nom + ' ' + p.prenom;
-            const periodeTxt = dateFrR(s.date_arrivee) + ' → ' + dateFrR(s.date_depart);
+            const sejourComplet = dateFrR(s.date_arrivee) + ' → ' + dateFrR(s.date_depart);
+            const libStatut = s.statut === 'termine' ? 'Séjour terminé' : 'Séjour en cours';
+
+            const aSejourComplet =
+                row.tranche.trancheDebut === s.date_arrivee &&
+                (row.tranche.trancheFin === s.date_depart ||
+                 (s.statut === 'en_cours' && row.tranche.trancheFin === aujourdhuiIso()));
+
+            const trancheTxt = row.tranche.nbJournees > 0
+                ? dateFrR(row.tranche.trancheDebut) + ' → ' + dateFrR(row.tranche.trancheFin)
+                : 'Aucune journée sur la période';
+
+            // Note explicative selon la situation
+            let noteEnHaut = '';
+            if (row.tranche.nbJournees === 0) {
+                noteEnHaut = '<div style="background:#fce4e4;border-left:3px solid #c0392b;padding:8px 12px;margin:12px 0;font-size:11px;color:#922b21;">'
+                  + 'Ce séjour ne couvre aucune journée dans la période sélectionnée.'
+                  + '</div>';
+            } else if (!aSejourComplet) {
+                noteEnHaut = '<div style="background:#e3f2fd;border-left:3px solid #1976d2;padding:8px 12px;margin:12px 0;font-size:11px;color:#0d47a1;">'
+                  + 'Facturation partielle — ce justificatif couvre uniquement la tranche '
+                  + echapper(trancheTxt) + ', sur un séjour total du ' + echapper(sejourComplet) + '.'
+                  + '</div>';
+            } else if (s.statut === 'en_cours') {
+                noteEnHaut = '<div style="background:#fff3cd;border-left:3px solid #f0ad4e;padding:8px 12px;margin:12px 0;font-size:11px;color:#6b3500;">'
+                  + 'Séjour en cours — décompte arrêté au ' + echapper(dateFrLong(aujourdhuiIso())) + '.'
+                  + '</div>';
+            }
 
             let html = '<div class="justif">';
 
-            // En-tête
             html += '<div class="justif-entete">'
                   +   '<div class="justif-entete-gauche">'
                   +     '<img src="' + RESIDENCE_LOGO + '" alt="Logo" class="justif-logo" onerror="this.style.display=\'none\'">'
@@ -632,59 +719,40 @@
                   +   '</div>'
                   +   '<div class="justif-entete-droite">'
                   +     '<div class="justif-type">Récapitulatif Appartement Corgémont</div>'
-                  +     '<div class="justif-periode">' + echapper(periodeTxt) + '</div>'
+                  +     '<div class="justif-periode">' + echapper(trancheTxt) + '</div>'
                   +   '</div>'
                   + '</div>';
 
-            // Bénéficiaire
             html += '<div>'
                   +   '<div class="justif-benef-intitule">Bénéficiaire du séjour</div>'
                   +   '<div class="justif-benef-nom">' + echapper(nomComplet) + '</div>'
                   +   '<div class="justif-benef-info">'
-                  +     'Chambre ' + s.numero_chambre + ' · '
-                  +     nbNuits(s.date_arrivee, s.date_depart) + ' nuit(s)'
+                  +     'Chambre ' + s.numero_chambre + ' · ' + libStatut
+                  +     ' · Séjour : ' + echapper(sejourComplet)
                   +   '</div>'
                   + '</div>';
 
-            // Chiffres clés
+            html += noteEnHaut;
+
             html += '<div class="justif-chiffres">'
                   +   '<div class="justif-chiffre">'
-                  +     '<div class="justif-chiffre-nombre">' + row.compteRepas.petit_dej + '</div>'
-                  +     '<div class="justif-chiffre-label">Petits-déj</div>'
-                  +   '</div>'
-                  +   '<div class="justif-chiffre">'
-                  +     '<div class="justif-chiffre-nombre">' + row.compteRepas.dejeuner + '</div>'
-                  +     '<div class="justif-chiffre-label">Déjeuners</div>'
-                  +   '</div>'
-                  +   '<div class="justif-chiffre">'
-                  +     '<div class="justif-chiffre-nombre">' + row.compteRepas.diner + '</div>'
-                  +     '<div class="justif-chiffre-label">Dîners</div>'
+                  +     '<div class="justif-chiffre-nombre">' + row.journeesFacturables + '</div>'
+                  +     '<div class="justif-chiffre-label">Journées facturables</div>'
                   +   '</div>'
                   +   '<div class="justif-chiffre">'
                   +     '<div class="justif-chiffre-nombre">' + row.ventesActives.length + '</div>'
                   +     '<div class="justif-chiffre-label">Paniers de vente</div>'
                   +   '</div>'
+                  +   '<div class="justif-chiffre">'
+                  +     '<div class="justif-chiffre-nombre">' + row.totalVentes.toFixed(2) + '</div>'
+                  +     '<div class="justif-chiffre-label">Total prestations (CHF)</div>'
+                  +   '</div>'
                   + '</div>';
 
-            // Décompte des repas (sans prix, à titre informatif)
-            html += '<div class="justif-section-titre">Décompte des repas</div>';
-            html += '<table class="t-repas"><thead><tr>'
-                  + '<th>Repas</th><th style="text-align:right;">Nombre pris</th>'
-                  + '</tr></thead><tbody>'
-                  + '<tr><td>🥐 Petit-déjeuner</td><td class="num">' + row.compteRepas.petit_dej + '</td></tr>'
-                  + '<tr><td>🍽️ Déjeuner</td><td class="num">' + row.compteRepas.dejeuner + '</td></tr>'
-                  + '<tr><td>🌙 Dîner</td><td class="num">' + row.compteRepas.diner + '</td></tr>'
-                  + '<tr style="border-top:2px solid #1976d2;font-weight:bold;color:#1976d2;">'
-                  + '<td style="padding-top:8px;">TOTAL</td>'
-                  + '<td class="num" style="padding-top:8px;">' + row.totalRepas + '</td>'
-                  + '</tr>'
-                  + '</tbody></table>';
-
-            // Détail des ventes complémentaires
-            html += '<div class="justif-section-titre">Ventes complémentaires</div>';
+            html += '<div class="justif-section-titre">Prestations complémentaires consommées</div>';
 
             if (row.ventes.length === 0) {
-                html += '<p style="color:#aaa;font-style:italic;font-size:12.5px;">Aucune vente complémentaire enregistrée pour ce séjour.</p>';
+                html += '<p style="color:#aaa;font-style:italic;font-size:12.5px;">Aucune prestation complémentaire dans cette tranche.</p>';
             } else {
                 row.ventes.forEach(v => {
                     const clsBloc = v.annulee ? 'panier-bloc annulee' : 'panier-bloc';
@@ -729,10 +797,22 @@
                 });
             }
 
-            // Total final
-            html += '<div class="justif-total-final">'
-                  +   '<span>Total à facturer (ventes complémentaires)</span>'
-                  +   '<span class="montant">' + row.totalVentes.toFixed(2) + ' CHF</span>'
+            html += '<div class="justif-section-titre">Éléments à facturer</div>';
+            html += '<div class="lignes-facture">'
+                  +   '<div class="ligne-facture">'
+                  +     '<div>'
+                  +       '<div class="ligne-facture-titre">Séjour</div>'
+                  +       '<div class="ligne-facture-sous">Hébergement, repas, vie collective</div>'
+                  +     '</div>'
+                  +     '<div class="ligne-facture-valeur">' + row.journeesFacturables + ' journée' + (row.journeesFacturables > 1 ? 's' : '') + '</div>'
+                  +   '</div>'
+                  +   '<div class="ligne-facture">'
+                  +     '<div>'
+                  +       '<div class="ligne-facture-titre">Prestations complémentaires</div>'
+                  +       '<div class="ligne-facture-sous">Consommations personnelles à la caisse</div>'
+                  +     '</div>'
+                  +     '<div class="ligne-facture-valeur">' + row.totalVentes.toFixed(2) + ' CHF</div>'
+                  +   '</div>'
                   + '</div>';
 
             html += '<div class="justif-pied">'
@@ -755,28 +835,30 @@
             const { sejours, periode } = donneesCache;
             const periodeTxt = dateFrLong(periode.debut) + ' au ' + dateFrLong(periode.fin);
 
-            const totalRepasGlobal = sejours.reduce((s, x) => s + x.totalRepas, 0);
+            const totalJourneesGlobal = sejours.reduce((s, x) => s + x.journeesFacturables, 0);
             const totalVentesGlobal = sejours.reduce((s, x) => s + x.totalVentes, 0);
 
             let lignesHtml = '';
             sejours.forEach(row => {
                 const nomComplet = row.personne.nom + ' ' + row.personne.prenom;
+                const libStatut = row.sejour.statut === 'termine' ? 'Terminé' : 'En cours';
+                const trancheTxt = row.tranche.nbJournees > 0
+                    ? dateFrR(row.tranche.trancheDebut) + ' → ' + dateFrR(row.tranche.trancheFin)
+                    : '—';
                 lignesHtml += '<tr>'
                             + '<td><strong>' + echapper(nomComplet) + '</strong></td>'
                             + '<td>Ch. ' + row.sejour.numero_chambre + '</td>'
                             + '<td>' + dateFrR(row.sejour.date_arrivee) + '</td>'
                             + '<td>' + dateFrR(row.sejour.date_depart) + '</td>'
-                            + '<td style="text-align:center;">' + row.compteRepas.petit_dej + '</td>'
-                            + '<td style="text-align:center;">' + row.compteRepas.dejeuner + '</td>'
-                            + '<td style="text-align:center;">' + row.compteRepas.diner + '</td>'
+                            + '<td>' + libStatut + '</td>'
+                            + '<td>' + echapper(trancheTxt) + '</td>'
+                            + '<td style="text-align:center;font-weight:bold;color:#1976d2;font-size:15px;">' + row.journeesFacturables + '</td>'
                             + '<td style="text-align:right;font-weight:bold;color:#2c5530;">' + row.totalVentes.toFixed(2) + '</td>'
                             + '</tr>';
             });
             lignesHtml += '<tr style="background:#f0f8f0;font-weight:bold;">'
-                        + '<td colspan="4" style="text-align:right;padding:10px 12px;">TOTAL</td>'
-                        + '<td style="text-align:center;padding:10px 12px;">' + sejours.reduce((s,x)=>s+x.compteRepas.petit_dej,0) + '</td>'
-                        + '<td style="text-align:center;padding:10px 12px;">' + sejours.reduce((s,x)=>s+x.compteRepas.dejeuner,0) + '</td>'
-                        + '<td style="text-align:center;padding:10px 12px;">' + sejours.reduce((s,x)=>s+x.compteRepas.diner,0) + '</td>'
+                        + '<td colspan="6" style="text-align:right;padding:10px 12px;">TOTAL</td>'
+                        + '<td style="text-align:center;padding:10px 12px;color:#1976d2;font-size:15px;">' + totalJourneesGlobal + '</td>'
                         + '<td style="text-align:right;padding:10px 12px;color:#2c5530;font-size:15px;">' + totalVentesGlobal.toFixed(2) + '</td>'
                         + '</tr>';
 
@@ -817,8 +899,8 @@
                 + '</div>'
                 + '<div class="stats">'
                 +   '<div class="stat"><div class="stat-valeur">' + sejours.length + '</div><div class="stat-label">Séjours sur la période</div></div>'
-                +   '<div class="stat"><div class="stat-valeur">' + totalRepasGlobal + '</div><div class="stat-label">Repas pris (total)</div></div>'
-                +   '<div class="stat"><div class="stat-valeur">' + totalVentesGlobal.toFixed(2) + '</div><div class="stat-label">Ventes complémentaires (CHF)</div></div>'
+                +   '<div class="stat"><div class="stat-valeur">' + totalJourneesGlobal + '</div><div class="stat-label">Journées facturables (bornées)</div></div>'
+                +   '<div class="stat"><div class="stat-valeur">' + totalVentesGlobal.toFixed(2) + '</div><div class="stat-label">Prestations compl. (CHF, bornées)</div></div>'
                 + '</div>'
                 + '<table>'
                 +   '<thead><tr>'
@@ -826,10 +908,10 @@
                 +     '<th>Chambre</th>'
                 +     '<th>Arrivée</th>'
                 +     '<th>Départ</th>'
-                +     '<th style="text-align:center;">P-déj</th>'
-                +     '<th style="text-align:center;">Déj.</th>'
-                +     '<th style="text-align:center;">Dîner</th>'
-                +     '<th style="text-align:right;">Total ventes (CHF)</th>'
+                +     '<th>Statut</th>'
+                +     '<th>Tranche facturée</th>'
+                +     '<th style="text-align:center;">Journées</th>'
+                +     '<th style="text-align:right;">Prestations (CHF)</th>'
                 +   '</tr></thead>'
                 +   '<tbody>' + lignesHtml + '</tbody>'
                 + '</table>'
@@ -864,22 +946,26 @@
                 + '.justif-benef-nom { font-size: 18px; font-weight: bold; color: #222; }'
                 + '.justif-benef-info { font-size: 12px; color: #666; margin-top: 3px; }'
                 + '.justif-chiffres { display: flex; border: 1px solid #e0e0e0; border-radius: 4px; overflow: hidden; margin: 18px 0; flex-wrap: wrap; }'
-                + '.justif-chiffre { flex: 1; min-width: 110px; padding: 12px 14px; text-align: center; border-right: 1px solid #e0e0e0; }'
+                + '.justif-chiffre { flex: 1; min-width: 140px; padding: 14px 16px; text-align: center; border-right: 1px solid #e0e0e0; }'
                 + '.justif-chiffre:last-child { border-right: none; }'
-                + '.justif-chiffre-nombre { font-size: 22px; font-weight: bold; color: #1976d2; line-height: 1; }'
+                + '.justif-chiffre-nombre { font-size: 26px; font-weight: bold; color: #1976d2; line-height: 1; }'
                 + '.justif-chiffre-label { font-size: 10px; color: #888; text-transform: uppercase; letter-spacing: 0.5px; margin-top: 4px; }'
                 + '.justif-section-titre { font-size: 11px; color: #888; text-transform: uppercase; letter-spacing: 0.5px; margin: 20px 0 6px 0; padding-bottom: 4px; border-bottom: 1.5px solid #1976d2; }'
-                + 'table.t-repas, table.t-ventes { width: 100%; border-collapse: collapse; font-size: 12.5px; }'
-                + 'table.t-repas th, table.t-ventes th { color: #1976d2; font-size: 10px; text-transform: uppercase; letter-spacing: 0.5px; padding: 5px 6px; text-align: left; border-bottom: 1px solid #e0e0e0; }'
-                + 'table.t-repas td, table.t-ventes td { padding: 5px 6px; border-bottom: 1px solid #f0f0f0; }'
-                + 'table.t-repas td.num, table.t-ventes td.num { text-align: right; font-weight: bold; }'
+                + 'table.t-ventes { width: 100%; border-collapse: collapse; font-size: 12.5px; }'
+                + 'table.t-ventes th { color: #1976d2; font-size: 10px; text-transform: uppercase; letter-spacing: 0.5px; padding: 5px 6px; text-align: left; border-bottom: 1px solid #e0e0e0; }'
+                + 'table.t-ventes td { padding: 5px 6px; border-bottom: 1px solid #f0f0f0; }'
+                + 'table.t-ventes td.num { text-align: right; font-weight: bold; }'
                 + '.panier-bloc { margin: 10px 0 14px 0; border: 1px solid #e0e0e0; border-radius: 4px; overflow: hidden; }'
                 + '.panier-entete { background: #f5f5f5; padding: 6px 10px; font-size: 11px; color: #555; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 8px; }'
                 + '.panier-entete .ref { font-weight: bold; color: #1976d2; }'
                 + '.panier-bloc.annulee { opacity: 0.6; background: #fce4e4; }'
                 + '.panier-bloc.annulee .panier-entete { background: #fce4e4; color: #922b21; }'
-                + '.justif-total-final { margin-top: 18px; padding: 14px 16px; background: #1976d2; color: white; border-radius: 6px; display: flex; justify-content: space-between; align-items: center; }'
-                + '.justif-total-final .montant { font-size: 24px; font-weight: bold; }'
+                + '.lignes-facture { margin-top: 18px; border: 1px solid #e0e0e0; border-radius: 6px; overflow: hidden; }'
+                + '.ligne-facture { display: flex; justify-content: space-between; align-items: center; padding: 14px 16px; border-bottom: 1px solid #e0e0e0; }'
+                + '.ligne-facture:last-child { border-bottom: none; }'
+                + '.ligne-facture-titre { font-size: 14px; font-weight: bold; color: #222; }'
+                + '.ligne-facture-sous { font-size: 11px; color: #888; margin-top: 2px; }'
+                + '.ligne-facture-valeur { font-size: 18px; font-weight: bold; color: #1976d2; }'
                 + '.justif-pied { margin-top: 20px; padding-top: 10px; border-top: 1px solid #e0e0e0; font-size: 10px; color: #999; text-align: center; }';
 
             let corps = '';
@@ -891,9 +977,6 @@
             ouvrirFenetreImpression('Justificatifs compilés — ' + periodeTxt, cssJustif, corps);
         }
 
-        // ================================================
-        // OUVRE UNE FENÊTRE D'IMPRESSION PROPRE
-        // ================================================
         function ouvrirFenetreImpression(titre, css, corpsHtml) {
             const fenetre = window.open('', '_blank');
             if (!fenetre) {
@@ -928,15 +1011,11 @@
                 .replace(/"/g, '&quot;');
         }
 
-        // ================================================
-        // DÉMARRAGE
-        // ================================================
         (async () => {
             const auth = await verifierAuthEtRole(['admin']);
             if (!auth) return;
             afficherMenuComplet('recap-appartement', auth.user.email, auth.profil.role, auth.profil.nom_affiche);
 
-            // Période par défaut = mois courant
             const now = new Date();
             const premierJourMois = new Date(now.getFullYear(), now.getMonth(), 1);
             const dernierJourMois = new Date(now.getFullYear(), now.getMonth() + 1, 0);
