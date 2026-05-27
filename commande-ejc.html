@@ -1,4 +1,4 @@
- <!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="fr">
 <head>
     <meta charset="UTF-8">
@@ -36,6 +36,43 @@
             font-size: 12px;
             font-weight: bold;
         }
+
+        /* Bandeau "note de session" admin */
+        .note-session {
+            background: #f3edff;
+            border: 2px solid #5b3fa6;
+            border-radius: 8px;
+            padding: 10px 16px;
+            margin: 10px 0;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            flex-wrap: wrap;
+            font-size: 14px;
+        }
+        .note-session-libelle {
+            font-weight: bold;
+            color: #5b3fa6;
+        }
+        .note-session-valeur {
+            flex: 1;
+            font-style: italic;
+            color: #333;
+        }
+        .note-session-valeur.vide {
+            color: #888;
+            font-style: italic;
+        }
+        .note-session button {
+            background: #5b3fa6;
+            color: white;
+            border: none;
+            padding: 5px 12px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 13px;
+        }
+
         .semaine-nav {
             display: flex;
             justify-content: space-between;
@@ -145,6 +182,16 @@
             color: #888;
             box-shadow: 0 2px 4px rgba(0,0,0,0.06);
         }
+        .pied-page-client {
+            margin-top: 40px;
+            padding: 14px 18px;
+            background: #f5f5f5;
+            border-radius: 6px;
+            font-size: 12px;
+            color: #666;
+            text-align: center;
+            line-height: 1.6;
+        }
     </style>
 </head>
 <body>
@@ -154,6 +201,9 @@
 
     <!-- Sélecteur de client (visible uniquement pour admin) -->
     <div id="zone-selecteur-client" style="display:none;"></div>
+
+    <!-- Bandeau "note de session" (admin uniquement) -->
+    <div id="zone-note-session" style="display:none;"></div>
 
     <div id="info-banner"></div>
 
@@ -172,6 +222,9 @@
         <p class="loading">⏳ Chargement...</p>
     </div>
 
+    <!-- Pied de page client (mention LPD) -->
+    <div id="pied-page-client-zone"></div>
+
     <div class="save-status" id="save-status"></div>
 
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
@@ -180,12 +233,18 @@
         // ===== ÉTAT GLOBAL DE LA PAGE =====
         let monProfil = null;
         let isAdmin = false;
-        let clientActif = null;        // Le client dont on consulte/saisit les commandes
-        let tousLesClients = [];       // Pour le sélecteur admin
+        let clientActif = null;
+        let tousLesClients = [];
         let lundiCourant = lundiDeLaSemaine(new Date());
-        lundiCourant = decalerJoursIso(lundiCourant, 7); // semaine prochaine par défaut
+        lundiCourant = decalerJoursIso(lundiCourant, 7);
         let mode = 'commande';
         let categoriesActives = [];
+        let utilisateurConnecte = null;
+
+        // ===== NOTE DE SESSION ADMIN =====
+        // Liée au contexte d'UN client précis.
+        // Doit être ressaisie à chaque changement de client.
+        let noteSessionAdmin = '';
 
         function decalerJoursIso(iso, nbJours) {
             const d = new Date(iso + 'T00:00:00');
@@ -208,12 +267,16 @@
             charger();
         }
 
-        // ===== SÉLECTEUR DE CLIENT (admin uniquement) =====
         function changerClient(clientId) {
             clientActif = tousLesClients.find(c => c.id === clientId);
             if (clientActif) {
                 document.getElementById('titre-page').textContent = `🍴 ${clientActif.nom} — Saisie des repas`;
             }
+            // Changement de client = on vide le cache des règles ET la note de session
+            // (la note doit toujours être liée au contexte d'UN client précis)
+            viderCacheReglesClient();
+            noteSessionAdmin = '';
+            afficherBandeauNoteSession();
             charger();
         }
 
@@ -236,7 +299,53 @@
             zone.innerHTML = html;
         }
 
-        // Affiche un message dans le bandeau flottant en haut à droite
+        // ===== BANDEAU NOTE DE SESSION (admin uniquement) =====
+        function afficherBandeauNoteSession() {
+            const zone = document.getElementById('zone-note-session');
+            if (!isAdmin) {
+                zone.style.display = 'none';
+                return;
+            }
+            zone.style.display = 'flex';
+            let valeurHtml = noteSessionAdmin
+                ? `<span class="note-session-valeur">« ${echapper(noteSessionAdmin)} »</span>`
+                : `<span class="note-session-valeur vide">(aucune — sera demandée à votre première modification)</span>`;
+            zone.innerHTML = `<div class="note-session">
+                <span class="note-session-libelle">📝 Note de session :</span>
+                ${valeurHtml}
+                <button onclick="changerNoteSession()">${noteSessionAdmin ? 'Changer' : 'Saisir'}</button>
+            </div>`;
+        }
+
+        function changerNoteSession() {
+            const actuelle = noteSessionAdmin || '';
+            const saisie = prompt(
+                'Note de session pour vos modifications.\n\n' +
+                'Cette note sera enregistrée avec chaque commande/annulation que vous allez modifier.\n' +
+                'Conseil : référencez le mail client (ex : "demande Péry mail du 27.05.2026").\n\n' +
+                'Note :',
+                actuelle
+            );
+            if (saisie === null) return;
+            const txt = saisie.trim();
+            if (!txt) {
+                afficherStatus('warning', '⚠️ Note vide — non enregistrée.', 2000);
+                return;
+            }
+            noteSessionAdmin = txt;
+            afficherBandeauNoteSession();
+            afficherStatus('success', '✓ Note de session mise à jour', 1500);
+        }
+
+        function echapper(texte) {
+            if (texte === null || texte === undefined) return '';
+            return String(texte)
+                .replace(/&/g, '&amp;')
+                .replace(/</g, '&lt;')
+                .replace(/>/g, '&gt;')
+                .replace(/"/g, '&quot;');
+        }
+
         function afficherStatus(type, message, dureeMs = 1500) {
             const status = document.getElementById('save-status');
             status.className = 'save-status ' + type;
@@ -248,7 +357,6 @@
             const contenu = document.getElementById('contenu');
             contenu.innerHTML = '<p class="loading">⏳ Chargement...</p>';
 
-            // Sécurité : on a forcément un clientActif à ce stade (sauf bug)
             if (!clientActif) {
                 contenu.innerHTML = `<div class="empty-cats">
                     <div style="font-size:48px;">⚠️</div>
@@ -258,18 +366,36 @@
                 return;
             }
 
-            // Charger les catégories du client actif uniquement
             categoriesActives = await chargerCategoriesEjc(true, clientActif.id);
 
             const jours = joursOuvres(lundiCourant);
             const titre = `Semaine du ${dateFr(jours[0])} au ${dateFr(jours[4])}`;
             document.getElementById('titre-semaine').textContent = titre;
 
-            // Règles métier dynamiques pour le client actif
-            const regles = getReglesClient(clientActif);
-            const cmdOuverte = commandeOuverteClient(lundiCourant, clientActif);
+            const regles = await getReglesClient(clientActif, lundiCourant);
+
+            if (!regles) {
+                document.getElementById('info-banner').innerHTML = '';
+                contenu.innerHTML = `<div class="empty-cats">
+                    <div style="font-size:48px;">⛔</div>
+                    <p><strong>Aucune règle contractuelle n'est définie pour ${clientActif.nom} sur cette période.</strong></p>
+                    <p>Impossible de saisir ou modifier des commandes/annulations.</p>
+                    <p style="margin-top:14px;color:#555;">
+                        ${isAdmin
+                            ? 'Va sur l\'onglet ⚙️ Paramètres pour définir les règles applicables à ce client.'
+                            : 'Contacte l\'administrateur pour résoudre ce problème.'}
+                    </p>
+                </div>`;
+                return;
+            }
+
+            const cmdOuverte = await commandeOuverteClient(lundiCourant, clientActif);
 
             const banner = document.getElementById('info-banner');
+            const deadlineMin = String(regles.deadlineMinute).padStart(2, '0');
+            const deadlineAnnHeure = String(regles.deadlineAnnulationHeure).padStart(2, '0');
+            const deadlineAnnMin = String(regles.deadlineAnnulationMinute).padStart(2, '0');
+
             if (mode === 'commande') {
                 if (cmdOuverte || isAdmin) {
                     banner.innerHTML = `<div class="info-banner">
@@ -278,16 +404,16 @@
                     </div>`;
                 } else {
                     banner.innerHTML = `<div class="info-banner">
-                        🔒 <strong>Saisie verrouillée</strong> — la limite était <strong>${regles.deadlineJourLibelle} ${regles.deadlineHeure}h</strong>.
+                        🔒 <strong>Saisie verrouillée</strong> — la limite était <strong>${regles.deadlineJourLibelle} ${regles.deadlineHeure}h${deadlineMin}</strong>.
                         Pour annuler des repas commandés, utilise le <strong>mode Annulation</strong> (facturé ${regles.pctAnnulationJourJ}%).
                         <span class="badge badge-ferme">Lecture seule</span>
                     </div>`;
                 }
             } else {
                 banner.innerHTML = `<div class="info-banner">
-                    ⚠️ <strong>Mode Annulation tardive</strong> : utilise ce mode après la limite de <strong>${regles.deadlineJourLibelle} ${regles.deadlineHeure}h</strong>.
+                    ⚠️ <strong>Mode Annulation tardive</strong> : utilise ce mode après la limite de <strong>${regles.deadlineJourLibelle} ${regles.deadlineHeure}h${deadlineMin}</strong>.
                     Les annulations sont facturées <strong>à ${regles.pctAnnulationJourJ}% du prix initial</strong>.
-                    Possible jusqu'à <strong>${String(regles.deadlineAnnulationHeure).padStart(2,'0')}h00 le jour même</strong>.
+                    Possible jusqu'à <strong>${deadlineAnnHeure}h${deadlineAnnMin} le jour même</strong>.
                     <span class="badge badge-annulation">Facturation ${regles.pctAnnulationJourJ}%</span>
                 </div>`;
             }
@@ -301,7 +427,6 @@
                 return;
             }
 
-            // Charger commandes & annulations DU CLIENT ACTIF uniquement
             const { data: commandes } = await supaClient
                 .from(TABLE_COMMANDES_EJC).select('*')
                 .eq('client_id', clientActif.id)
@@ -345,7 +470,11 @@
                         editable = isAdmin || cmdOuverte;
                     } else {
                         valeur = annMap[`${j}_${cat.id}`] || 0;
-                        editable = isAdmin || annulationOuverteClient(j, clientActif);
+                        if (isAdmin) {
+                            editable = true;
+                        } else {
+                            editable = await annulationOuverteClient(j, clientActif);
+                        }
                     }
                     totalLigne += valeur;
                     html += `<td>
@@ -379,13 +508,39 @@
             contenu.innerHTML = html;
         }
 
+        // ============================================================
+        // ENREGISTREMENT D'UNE SAISIE + écriture journal d'audit
+        // ============================================================
         async function enregistrer(input) {
             const date = input.dataset.date;
             const categorieId = parseInt(input.dataset.cat);
             const valeur = parseInt(input.value, 10) || 0;
             const ancienneValeur = parseInt(input.dataset.ancienneValeur, 10) || 0;
 
-            // 🛡️ VALIDATION : annulations ≤ commandes pour cette date + catégorie + client
+            // Admin sans note de session => on la demande maintenant
+            if (isAdmin && !noteSessionAdmin) {
+                const saisie = prompt(
+                    'Vous allez modifier une commande/annulation client.\n\n' +
+                    'Merci d\'indiquer la raison (cette note sera enregistrée dans le journal d\'audit) :\n\n' +
+                    'Conseil : référencez le mail du client (ex : "demande Péry mail du 27.05.2026").',
+                    ''
+                );
+                if (saisie === null) {
+                    input.value = ancienneValeur;
+                    afficherStatus('warning', '⚠️ Modification annulée.', 2000);
+                    return;
+                }
+                const txt = saisie.trim();
+                if (!txt) {
+                    input.value = ancienneValeur;
+                    afficherStatus('error', '❌ Note obligatoire — modification annulée.', 3000);
+                    return;
+                }
+                noteSessionAdmin = txt;
+                afficherBandeauNoteSession();
+            }
+
+            // 🛡️ Validation cohérence commandes/annulations
             const { data: cmdRow } = await supaClient
                 .from(TABLE_COMMANDES_EJC).select('quantite')
                 .eq('client_id', clientActif.id)
@@ -415,6 +570,7 @@
             }
 
             const table = (mode === 'commande') ? TABLE_COMMANDES_EJC : TABLE_ANNULATIONS_EJC;
+            const typeAction = mode;
 
             const { data: existant } = await supaClient
                 .from(table).select('id')
@@ -440,10 +596,63 @@
                 input.value = ancienneValeur;
                 afficherStatus('error', '❌ Erreur : ' + res.error.message, 3000);
                 console.error(res.error);
-            } else {
-                input.dataset.ancienneValeur = valeur;
-                afficherStatus('success', '✓ Enregistré');
-                recalculerTotaux();
+                return;
+            }
+
+            // ✅ Journal d'audit
+            await ecrireDansJournalAudit({
+                typeAction,
+                dateRepas: date,
+                categorieId,
+                ancienneQuantite: ancienneValeur,
+                nouvelleQuantite: valeur
+            });
+
+            input.dataset.ancienneValeur = valeur;
+            afficherStatus('success', '✓ Enregistré');
+            recalculerTotaux();
+        }
+
+        async function ecrireDansJournalAudit(info) {
+            try {
+                if (isAdmin) {
+                    const { error } = await supaClient
+                        .from('journal_actions_admin')
+                        .insert({
+                            admin_user_id: utilisateurConnecte.user.id,
+                            admin_email: utilisateurConnecte.user.email,
+                            admin_nom_affiche: monProfil.nom_affiche || null,
+                            client_id: clientActif.id,
+                            date_repas: info.dateRepas,
+                            categorie_id: info.categorieId,
+                            type_action: info.typeAction,
+                            ancienne_quantite: info.ancienneQuantite,
+                            nouvelle_quantite: info.nouvelleQuantite,
+                            note: noteSessionAdmin
+                        });
+                    if (error) {
+                        console.error('Erreur écriture journal_actions_admin :', error);
+                        afficherStatus('warning', '⚠️ Modif enregistrée mais journal d\'audit non écrit. Vérifie avec l\'admin.', 4000);
+                    }
+                } else {
+                    const { error } = await supaClient
+                        .from('journal_actions_client')
+                        .insert({
+                            client_user_id: utilisateurConnecte.user.id,
+                            client_email: utilisateurConnecte.user.email,
+                            client_id: clientActif.id,
+                            date_repas: info.dateRepas,
+                            categorie_id: info.categorieId,
+                            type_action: info.typeAction,
+                            ancienne_quantite: info.ancienneQuantite,
+                            nouvelle_quantite: info.nouvelleQuantite
+                        });
+                    if (error) {
+                        console.error('Erreur écriture journal_actions_client :', error);
+                    }
+                }
+            } catch (e) {
+                console.error('Exception journal d\'audit :', e);
             }
         }
 
@@ -472,17 +681,29 @@
             if (elSem) elSem.textContent = totalSem;
         }
 
+        function afficherPiedPageClient() {
+            const zone = document.getElementById('pied-page-client-zone');
+            if (isAdmin) {
+                zone.innerHTML = '';
+                return;
+            }
+            zone.innerHTML = `<div class="pied-page-client">
+                Toutes les saisies effectuées sur ce portail sont historisées à des fins de traçabilité et de gestion des litiges.<br>
+                Pour consulter le journal de vos modifications, contactez l'administrateur.
+            </div>`;
+        }
+
         // ===== Démarrage =====
         (async () => {
             const ctx = await chargerContexteClient(['client_ejc', 'admin']);
             if (!ctx) return;
             monProfil = ctx.profil;
             isAdmin = (ctx.profil.role === 'admin');
+            utilisateurConnecte = ctx;
 
             afficherMenuComplet('commande-ejc', ctx.user.email, ctx.profil.role, ctx.profil.nom_affiche);
 
             if (isAdmin) {
-                // Admin : on charge tous les clients et on choisit le 1er par défaut
                 tousLesClients = await chargerTousLesClients(true);
                 if (!tousLesClients.length) {
                     document.getElementById('contenu').innerHTML = `<div class="empty-cats">
@@ -495,8 +716,8 @@
                 clientActif = tousLesClients[0];
                 document.getElementById('titre-page').textContent = `🍴 ${clientActif.nom} — Saisie des repas`;
                 afficherSelecteurClient();
+                afficherBandeauNoteSession();
             } else {
-                // Client EJC : son client est déjà dans le contexte
                 if (!ctx.client) {
                     document.getElementById('contenu').innerHTML = `<div class="empty-cats">
                         <div style="font-size:48px;">⚠️</div>
@@ -509,6 +730,7 @@
                 document.getElementById('titre-page').textContent = `🍴 ${clientActif.nom} — Saisie des repas`;
             }
 
+            afficherPiedPageClient();
             charger();
         })();
     </script>

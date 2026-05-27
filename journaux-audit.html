@@ -1,0 +1,543 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Journaux d'audit - Restauration Les Bouleaux</title>
+    <link rel="stylesheet" href="shared.css">
+    <style>
+        .filtres {
+            background: #fff8e1;
+            border: 2px solid #ffc107;
+            padding: 12px 18px;
+            border-radius: 8px;
+            margin: 15px 0;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            flex-wrap: wrap;
+        }
+        .filtres label { font-weight: bold; color: #856404; }
+        .filtres input[type="date"],
+        .filtres select {
+            padding: 6px 10px;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+            font-size: 14px;
+        }
+        .filtres select { min-width: 180px; }
+
+        .resume-bandeau {
+            background: white;
+            padding: 12px 18px;
+            border-radius: 8px;
+            margin: 10px 0 15px 0;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.08);
+            font-size: 14px;
+        }
+        .resume-bandeau strong { color: #2c5530; }
+
+        table.journal {
+            width: 100%;
+            border-collapse: collapse;
+            background: white;
+            border-radius: 8px;
+            overflow: hidden;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            font-size: 13.5px;
+        }
+        table.journal th, table.journal td {
+            padding: 8px 10px;
+            border-bottom: 1px solid #eee;
+            vertical-align: top;
+        }
+        table.journal th {
+            background: #2c5530;
+            color: white;
+            text-align: left;
+            font-size: 12px;
+            text-transform: uppercase;
+            letter-spacing: 0.4px;
+        }
+        table.journal tbody tr:hover { background: #fafafa; }
+
+        .badge-source {
+            display: inline-block;
+            padding: 3px 9px;
+            border-radius: 11px;
+            font-size: 11px;
+            font-weight: bold;
+            text-transform: uppercase;
+            letter-spacing: 0.4px;
+            white-space: nowrap;
+        }
+        .badge-source.admin { background: #f3edff; color: #5b3fa6; }
+        .badge-source.client { background: #e3f2fd; color: #1976d2; }
+
+        .badge-type {
+            display: inline-block;
+            padding: 2px 8px;
+            border-radius: 10px;
+            font-size: 11px;
+            font-weight: bold;
+            text-transform: uppercase;
+        }
+        .badge-type.commande   { background: #d4edda; color: #155724; }
+        .badge-type.annulation { background: #fff3cd; color: #856404; }
+
+        .col-evolution { white-space: nowrap; font-weight: bold; color: #2c5530; }
+        .col-evolution .ancien { color: #999; font-weight: normal; text-decoration: line-through; }
+        .col-evolution .fleche { color: #888; padding: 0 4px; }
+
+        .col-note {
+            max-width: 260px;
+            font-style: italic;
+            color: #5b3fa6;
+            font-size: 12.5px;
+        }
+        .col-note.vide { color: #ccc; font-style: italic; }
+
+        .col-date { white-space: nowrap; font-family: 'Courier New', monospace; font-size: 12.5px; color: #444; }
+
+        .empty-state {
+            background: white;
+            padding: 40px;
+            border-radius: 8px;
+            text-align: center;
+            color: #888;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.06);
+        }
+        .empty-state .icone { font-size: 48px; }
+    </style>
+</head>
+<body>
+    <div id="app-header"></div>
+    <h1>🍽️ Restauration Les Bouleaux</h1>
+    <div id="menu"></div>
+
+    <h2>📋 Journaux d'audit — Traçabilité des modifications EJC</h2>
+
+    <p style="font-size:13px;color:#666;background:#f5f5f5;padding:10px 14px;border-radius:6px;border-left:3px solid #5b3fa6;">
+        Ce journal liste, pour un client donné, toutes les modifications faites <strong>par toi (admin)</strong>
+        ainsi que toutes les saisies/modifications faites <strong>par le client lui-même</strong> sur son portail.
+        Les lignes sont mélangées chronologiquement pour reconstruire l'historique complet.
+    </p>
+
+    <div class="filtres no-print">
+        <span style="background:#856404;color:white;padding:3px 10px;border-radius:12px;font-size:12px;font-weight:bold;">👑 ADMIN</span>
+        <label for="filtre-client">Client :</label>
+        <select id="filtre-client" onchange="charger()">
+            <option value="">— Choisir un client —</option>
+        </select>
+        <label for="date-debut">Du :</label>
+        <input type="date" id="date-debut" onchange="charger()">
+        <label for="date-fin">au :</label>
+        <input type="date" id="date-fin" onchange="charger()">
+        <label for="filtre-type">Type :</label>
+        <select id="filtre-type" onchange="charger()">
+            <option value="">Tous</option>
+            <option value="commande">Commandes</option>
+            <option value="annulation">Annulations</option>
+        </select>
+        <button class="btn-primary" onclick="charger()">🔄 Actualiser</button>
+        <button class="btn-print" onclick="imprimerPDF()">📄 PDF</button>
+    </div>
+
+    <div id="contenu">
+        <div class="empty-state">
+            <div class="icone">👈</div>
+            <p>Choisis un client en haut pour afficher son journal d'audit.</p>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="shared.js"></script>
+    <script>
+        // ================================================
+        // JOURNAUX D'AUDIT — Page admin
+        // Vue chronologique fusionnée admin + client,
+        // toujours filtrée sur UN client spécifique.
+        // ================================================
+
+        const RESIDENCE_NOM = 'Résidence Les Bouleaux';
+        const RESIDENCE_ADRESSE = 'Sur le Crêt 12 — 2606 Corgémont';
+        const RESIDENCE_LOGO = 'images/logo.png';
+
+        const NOMS_MOIS = ['janvier','février','mars','avril','mai','juin',
+                           'juillet','août','septembre','octobre','novembre','décembre'];
+
+        let donneesCache = null;
+        let tousLesClients = [];
+        let categoriesParId = {};   // pour résoudre les noms des catégories
+
+        // ================================================
+        // UTILITAIRES
+        // ================================================
+        function dateFrR(isoDate) {
+            if (!isoDate) return '';
+            const [a, m, j] = isoDate.split('-').map(Number);
+            return String(j).padStart(2,'0') + '.' + String(m).padStart(2,'0') + '.' + a;
+        }
+
+        function dateFrLong(isoDate) {
+            if (!isoDate) return '';
+            const [a, m, j] = isoDate.split('-').map(Number);
+            return j + ' ' + NOMS_MOIS[m - 1] + ' ' + a;
+        }
+
+        function formatDateHeureSeconde(isoTimestamp) {
+            if (!isoTimestamp) return '';
+            const d = new Date(isoTimestamp);
+            const j = String(d.getDate()).padStart(2, '0');
+            const m = String(d.getMonth() + 1).padStart(2, '0');
+            const a = d.getFullYear();
+            const h = String(d.getHours()).padStart(2, '0');
+            const mi = String(d.getMinutes()).padStart(2, '0');
+            const s = String(d.getSeconds()).padStart(2, '0');
+            return `${j}.${m}.${a} ${h}:${mi}:${s}`;
+        }
+
+        function dateDuJourLisible() {
+            const d = new Date();
+            return d.getDate() + ' ' + NOMS_MOIS[d.getMonth()] + ' ' + d.getFullYear();
+        }
+
+        function echapper(texte) {
+            if (texte === null || texte === undefined) return '';
+            return String(texte)
+                .replace(/&/g, '&amp;')
+                .replace(/</g, '&lt;')
+                .replace(/>/g, '&gt;')
+                .replace(/"/g, '&quot;');
+        }
+
+        function nomCategorie(catId) {
+            const cat = categoriesParId[catId];
+            return cat ? cat.nom : '(cat. #' + catId + ')';
+        }
+
+        // ================================================
+        // CHARGEMENT
+        // ================================================
+        async function chargerListeClients() {
+            tousLesClients = await chargerTousLesClients(true);
+            const sel = document.getElementById('filtre-client');
+            for (const c of tousLesClients) {
+                sel.innerHTML += `<option value="${c.id}">${echapper(c.nom)}</option>`;
+            }
+        }
+
+        async function chargerCategoriesGlobales() {
+            // On charge TOUTES les catégories (de tous les clients) en une fois
+            // pour résoudre les noms dans le tableau.
+            const { data } = await supaClient
+                .from(TABLE_CATEGORIES_EJC)
+                .select('id, nom, client_id');
+            categoriesParId = {};
+            (data || []).forEach(c => { categoriesParId[c.id] = c; });
+        }
+
+        async function charger() {
+            const contenu = document.getElementById('contenu');
+            const clientId = document.getElementById('filtre-client').value;
+            const dateDebut = document.getElementById('date-debut').value;
+            const dateFin = document.getElementById('date-fin').value;
+            const typeAction = document.getElementById('filtre-type').value;
+
+            if (!clientId) {
+                contenu.innerHTML = `<div class="empty-state">
+                    <div class="icone">👈</div>
+                    <p>Choisis un client en haut pour afficher son journal d'audit.</p>
+                </div>`;
+                donneesCache = null;
+                return;
+            }
+
+            if (!dateDebut || !dateFin) {
+                contenu.innerHTML = '<div class="info-msg">Choisis une période de dates.</div>';
+                return;
+            }
+            if (dateFin < dateDebut) {
+                contenu.innerHTML = '<div class="erreur-msg">La date de fin doit être après la date de début.</div>';
+                return;
+            }
+
+            contenu.innerHTML = '<p class="loading">⏳ Chargement...</p>';
+
+            // Bornes timestamp pour le filtre cree_le
+            const debutTs = dateDebut + 'T00:00:00';
+            const finTs = dateFin + 'T23:59:59.999';
+
+            // Requête journal_actions_admin
+            let qAdmin = supaClient
+                .from('journal_actions_admin')
+                .select('*')
+                .eq('client_id', clientId)
+                .gte('cree_le', debutTs)
+                .lte('cree_le', finTs);
+            if (typeAction) qAdmin = qAdmin.eq('type_action', typeAction);
+            const { data: lignesAdmin, error: errA } = await qAdmin;
+            if (errA) {
+                contenu.innerHTML = '<div class="erreur-msg">Erreur admin : ' + errA.message + '</div>';
+                return;
+            }
+
+            // Requête journal_actions_client
+            let qClient = supaClient
+                .from('journal_actions_client')
+                .select('*')
+                .eq('client_id', clientId)
+                .gte('cree_le', debutTs)
+                .lte('cree_le', finTs);
+            if (typeAction) qClient = qClient.eq('type_action', typeAction);
+            const { data: lignesClient, error: errC } = await qClient;
+            if (errC) {
+                contenu.innerHTML = '<div class="erreur-msg">Erreur client : ' + errC.message + '</div>';
+                return;
+            }
+
+            // Fusion + tri chronologique (le plus récent en haut)
+            const lignes = [];
+            (lignesAdmin || []).forEach(l => lignes.push({
+                source: 'admin',
+                cree_le: l.cree_le,
+                utilisateur: l.admin_nom_affiche || l.admin_email || '(admin)',
+                date_repas: l.date_repas,
+                categorie_id: l.categorie_id,
+                type_action: l.type_action,
+                ancienne_quantite: l.ancienne_quantite,
+                nouvelle_quantite: l.nouvelle_quantite,
+                note: l.note
+            }));
+            (lignesClient || []).forEach(l => lignes.push({
+                source: 'client',
+                cree_le: l.cree_le,
+                utilisateur: l.client_email || '(client)',
+                date_repas: l.date_repas,
+                categorie_id: l.categorie_id,
+                type_action: l.type_action,
+                ancienne_quantite: l.ancienne_quantite,
+                nouvelle_quantite: l.nouvelle_quantite,
+                note: null
+            }));
+
+            lignes.sort((a, b) => b.cree_le.localeCompare(a.cree_le));
+
+            const client = tousLesClients.find(c => c.id === clientId);
+            donneesCache = {
+                client: client,
+                periode: { debut: dateDebut, fin: dateFin },
+                typeAction: typeAction,
+                lignes: lignes,
+                nbAdmin: (lignesAdmin || []).length,
+                nbClient: (lignesClient || []).length
+            };
+
+            afficher();
+        }
+
+        // ================================================
+        // AFFICHAGE
+        // ================================================
+        function afficher() {
+            const contenu = document.getElementById('contenu');
+            if (!donneesCache) return;
+
+            const { client, periode, lignes, nbAdmin, nbClient } = donneesCache;
+            const periodeTxt = dateFrLong(periode.debut) + ' au ' + dateFrLong(periode.fin);
+
+            if (lignes.length === 0) {
+                contenu.innerHTML = `
+                    <div class="resume-bandeau">
+                        Journal de <strong>${echapper(client.nom)}</strong> · Période : <strong>${periodeTxt}</strong>
+                    </div>
+                    <div class="empty-state">
+                        <div class="icone">📭</div>
+                        <p>Aucune modification enregistrée pour ce client sur cette période.</p>
+                    </div>`;
+                return;
+            }
+
+            let html = `
+                <div class="resume-bandeau">
+                    Journal de <strong>${echapper(client.nom)}</strong> ·
+                    Période : <strong>${periodeTxt}</strong> ·
+                    <strong>${lignes.length}</strong> ligne(s)
+                    (<strong>${nbAdmin}</strong> admin / <strong>${nbClient}</strong> client)
+                </div>`;
+
+            html += `<table class="journal"><thead><tr>
+                <th>Date/heure modif</th>
+                <th>Source</th>
+                <th>Utilisateur</th>
+                <th>Date repas</th>
+                <th>Catégorie</th>
+                <th>Type</th>
+                <th>Évolution</th>
+                <th>Note (admin)</th>
+            </tr></thead><tbody>`;
+
+            lignes.forEach(l => {
+                const badgeSource = l.source === 'admin'
+                    ? '<span class="badge-source admin">👑 Admin</span>'
+                    : '<span class="badge-source client">👤 Client</span>';
+                const badgeType = l.type_action === 'commande'
+                    ? '<span class="badge-type commande">Commande</span>'
+                    : '<span class="badge-type annulation">Annulation</span>';
+
+                const evolution = `<span class="ancien">${l.ancienne_quantite ?? 0}</span>`
+                    + `<span class="fleche">→</span>`
+                    + `<span>${l.nouvelle_quantite}</span>`;
+
+                const noteHtml = l.note
+                    ? `<span>${echapper(l.note)}</span>`
+                    : `<span class="vide">—</span>`;
+
+                html += `<tr>
+                    <td class="col-date">${formatDateHeureSeconde(l.cree_le)}</td>
+                    <td>${badgeSource}</td>
+                    <td>${echapper(l.utilisateur)}</td>
+                    <td>${dateFrR(l.date_repas)}</td>
+                    <td>${echapper(nomCategorie(l.categorie_id))}</td>
+                    <td>${badgeType}</td>
+                    <td class="col-evolution">${evolution}</td>
+                    <td class="col-note ${l.note ? '' : 'vide'}">${noteHtml}</td>
+                </tr>`;
+            });
+
+            html += '</tbody></table>';
+            contenu.innerHTML = html;
+        }
+
+        // ================================================
+        // EXPORT PDF
+        // ================================================
+        function imprimerPDF() {
+            if (!donneesCache || donneesCache.lignes.length === 0) {
+                alert('Aucune donnée à imprimer. Choisis un client et une période, puis clique Actualiser.');
+                return;
+            }
+            const { client, periode, lignes, nbAdmin, nbClient, typeAction } = donneesCache;
+            const periodeTxt = dateFrLong(periode.debut) + ' au ' + dateFrLong(periode.fin);
+            const typeTxt = typeAction
+                ? (typeAction === 'commande' ? 'Commandes uniquement' : 'Annulations uniquement')
+                : 'Commandes et annulations';
+
+            let lignesHtml = '';
+            lignes.forEach(l => {
+                const source = l.source === 'admin' ? 'Admin' : 'Client';
+                const evolution = (l.ancienne_quantite ?? 0) + ' → ' + l.nouvelle_quantite;
+                lignesHtml += `<tr>
+                    <td>${formatDateHeureSeconde(l.cree_le)}</td>
+                    <td><strong>${source}</strong></td>
+                    <td>${echapper(l.utilisateur)}</td>
+                    <td>${dateFrR(l.date_repas)}</td>
+                    <td>${echapper(nomCategorie(l.categorie_id))}</td>
+                    <td>${l.type_action === 'commande' ? 'Commande' : 'Annulation'}</td>
+                    <td>${evolution}</td>
+                    <td>${l.note ? echapper(l.note) : '—'}</td>
+                </tr>`;
+            });
+
+            const css = ''
+                + '@page { size: A4 landscape; margin: 10mm; }'
+                + 'body { font-family: Arial, Helvetica, sans-serif; color: #222; margin: 0; padding: 0; }'
+                + '.entete { display: flex; justify-content: space-between; align-items: flex-start; border-bottom: 3px solid #5b3fa6; padding-bottom: 12px; margin-bottom: 16px; }'
+                + '.entete-gauche { display: flex; align-items: center; gap: 12px; }'
+                + '.logo { width: 50px; height: 50px; object-fit: contain; }'
+                + '.nom-residence { font-size: 15px; font-weight: bold; color: #5b3fa6; }'
+                + '.adresse-residence { font-size: 10px; color: #888; margin-top: 2px; }'
+                + '.entete-droite { text-align: right; }'
+                + '.type-doc { font-size: 10px; color: #888; text-transform: uppercase; letter-spacing: 0.5px; }'
+                + '.client-nom { font-size: 14px; font-weight: bold; color: #5b3fa6; margin-top: 2px; }'
+                + '.periode { font-size: 12px; color: #555; margin-top: 2px; }'
+                + '.resume { font-size: 11px; color: #666; margin: 6px 0 12px 0; padding: 8px 12px; background: #f5f5f5; border-radius: 4px; }'
+                + 'table { width: 100%; border-collapse: collapse; font-size: 10.5px; }'
+                + 'thead tr { background: #5b3fa6; color: white; }'
+                + 'th { padding: 6px 8px; text-align: left; font-size: 9.5px; text-transform: uppercase; }'
+                + 'td { padding: 5px 8px; border-bottom: 1px solid #eee; vertical-align: top; }'
+                + '.pied { margin-top: 16px; padding-top: 10px; border-top: 1px solid #e0e0e0; font-size: 9.5px; color: #999; text-align: center; }';
+
+            const corps = ''
+                + '<div class="entete">'
+                +   '<div class="entete-gauche">'
+                +     '<img src="' + RESIDENCE_LOGO + '" alt="Logo" class="logo" onerror="this.style.display=\'none\'">'
+                +     '<div>'
+                +       '<div class="nom-residence">' + echapper(RESIDENCE_NOM) + '</div>'
+                +       '<div class="adresse-residence">' + echapper(RESIDENCE_ADRESSE) + '</div>'
+                +     '</div>'
+                +   '</div>'
+                +   '<div class="entete-droite">'
+                +     '<div class="type-doc">Journal d\'audit EJC</div>'
+                +     '<div class="client-nom">' + echapper(client.nom) + '</div>'
+                +     '<div class="periode">' + echapper(periodeTxt) + '</div>'
+                +   '</div>'
+                + '</div>'
+                + '<div class="resume">'
+                +   '<strong>' + lignes.length + '</strong> ligne(s) — '
+                +   '<strong>' + nbAdmin + '</strong> modif(s) admin · '
+                +   '<strong>' + nbClient + '</strong> saisie(s) client · '
+                +   typeTxt
+                + '</div>'
+                + '<table>'
+                +   '<thead><tr>'
+                +     '<th>Date/heure</th>'
+                +     '<th>Source</th>'
+                +     '<th>Utilisateur</th>'
+                +     '<th>Date repas</th>'
+                +     '<th>Catégorie</th>'
+                +     '<th>Type</th>'
+                +     '<th>Évolution</th>'
+                +     '<th>Note (admin)</th>'
+                +   '</tr></thead>'
+                +   '<tbody>' + lignesHtml + '</tbody>'
+                + '</table>'
+                + '<div class="pied">Document établi le ' + echapper(dateDuJourLisible())
+                + ' — ' + echapper(RESIDENCE_NOM) + ', service restauration</div>';
+
+            const fenetre = window.open('', '_blank');
+            if (!fenetre) {
+                alert('Le navigateur a bloqué l\'ouverture de la fenêtre. Autorise les pop-ups pour ce site.');
+                return;
+            }
+            const doc = fenetre.document;
+            doc.title = 'Journal audit — ' + client.nom + ' — ' + periodeTxt;
+
+            const meta = doc.createElement('meta');
+            meta.setAttribute('charset', 'UTF-8');
+            doc.head.appendChild(meta);
+
+            const styleEl = doc.createElement('style');
+            styleEl.textContent = css;
+            doc.head.appendChild(styleEl);
+
+            doc.body.innerHTML = corps;
+
+            fenetre.setTimeout(function() {
+                fenetre.focus();
+                fenetre.print();
+            }, 500);
+        }
+
+        // ================================================
+        // DÉMARRAGE
+        // ================================================
+        (async () => {
+            const auth = await verifierAuthEtRole(['admin']);
+            if (!auth) return;
+            afficherMenuComplet('journaux-audit', auth.user.email, auth.profil.role, auth.profil.nom_affiche);
+
+            await chargerListeClients();
+            await chargerCategoriesGlobales();
+
+            // Période par défaut = mois courant
+            const now = new Date();
+            const premierJourMois = new Date(now.getFullYear(), now.getMonth(), 1);
+            const dernierJourMois = new Date(now.getFullYear(), now.getMonth() + 1, 0);
+            const fmt = d => d.getFullYear() + '-' + String(d.getMonth()+1).padStart(2,'0') + '-' + String(d.getDate()).padStart(2,'0');
+            document.getElementById('date-debut').value = fmt(premierJourMois);
+            document.getElementById('date-fin').value = fmt(dernierJourMois);
+        })();
+    </script>
+</body>
+</html>

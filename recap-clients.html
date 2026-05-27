@@ -17,10 +17,7 @@
             gap: 12px;
             flex-wrap: wrap;
         }
-        .selecteur-client label {
-            font-weight: bold;
-            color: #856404;
-        }
+        .selecteur-client label { font-weight: bold; color: #856404; }
         .selecteur-client select {
             padding: 6px 10px;
             border: 1px solid #ccc;
@@ -85,10 +82,10 @@
             color: #888;
             font-size: 12px;
         }
-        .stat-card.commande { border-top-color: #2c5530; }
-        .stat-card.annulation { border-top-color: #f0ad4e; }
-        .stat-card.net { border-top-color: #3498db; }
-        .stat-card.facturation { border-top-color: #28a745; }
+        .stat-card.livres   { border-top-color: #28a745; }
+        .stat-card.gratuit  { border-top-color: #3498db; }
+        .stat-card.demitarif { border-top-color: #f0ad4e; }
+        .stat-card.facturable { border-top-color: #2c5530; }
 
         table.recap {
             width: 100%;
@@ -119,15 +116,36 @@
             background: #f0f8f0;
             font-weight: bold;
         }
-        .num-cmd { color: #2c5530; }
-        .num-ann { color: #c0392b; }
-        .num-net { color: #2980b9; font-weight: bold; }
+        .num-liv  { color: #28a745; font-weight: bold; }
+        .num-grat { color: #3498db; font-weight: bold; }
+        .num-demi { color: #f0ad4e; font-weight: bold; }
         .empty-cats {
             background: white;
             padding: 40px;
             border-radius: 8px;
             text-align: center;
             color: #888;
+        }
+
+        .info-contrat {
+            background: #f3edff;
+            border-left: 3px solid #5b3fa6;
+            padding: 10px 14px;
+            margin: 10px 0;
+            font-size: 13px;
+            color: #444;
+            border-radius: 4px;
+        }
+        .info-contrat strong { color: #5b3fa6; }
+
+        .alerte-incoherence {
+            background: #fce4e4;
+            border-left: 3px solid #c0392b;
+            padding: 10px 14px;
+            margin: 10px 0;
+            font-size: 13px;
+            color: #922b21;
+            border-radius: 4px;
         }
     </style>
 </head>
@@ -172,6 +190,16 @@
     <script src="https://cdn.sheetjs.com/xlsx-0.18.5/package/dist/xlsx.full.min.js"></script>
     <script src="shared.js"></script>
     <script>
+        // ================================================
+        // RÉCAP CLIENTS EJC — Export compta 3 catégories
+        // - Livrés (100%)
+        // - Annulés gratuits (0%) — uniquement ancien contrat
+        // - Annulés demi-tarif (50%)
+        //
+        // Classification basée sur updated_at de chaque annulation
+        // et les règles contractuelles applicables à la date du repas.
+        // ================================================
+
         let vueActuelle = 'semaine';
         let lundiCourant = lundiDeLaSemaine(new Date());
         let categoriesAll = [];
@@ -193,6 +221,7 @@
             if (clientActif) {
                 document.getElementById('titre-h2').textContent = `📊 Récapitulatif — ${clientActif.nom}`;
             }
+            viderCacheReglesClient();
             charger();
         }
 
@@ -234,6 +263,41 @@
             return v || `${new Date().getFullYear()}-${String(new Date().getMonth()+1).padStart(2,'0')}`;
         }
 
+        // ================================================
+        // CLASSIFICATION D'UNE ANNULATION
+        //
+        // Pour une annulation donnée :
+        //   - On lit les règles applicables à la DATE DU REPAS
+        //   - On regarde updated_at (moment de saisie/modif)
+        //   - On classe en 'gratuit' (0%) ou 'demi' (50%)
+        //
+        // Renvoie 'gratuit' ou 'demi'.
+        // ================================================
+        async function classifierUneAnnulation(annulation, regles) {
+            if (!regles) return 'demi'; // Sécurité : sans règles on classe en demi (plus prudent)
+
+            const dateRepas = annulation.date;
+            const instantSaisie = new Date(annulation.updated_at || annulation.created_at);
+
+            // Heure limite "24h avant" : 11h30 la veille du repas
+            const deadline24h = new Date(dateRepas + 'T00:00:00');
+            deadline24h.setDate(deadline24h.getDate() - 1);
+            deadline24h.setHours(11, 30, 0, 0);
+
+            // Heure limite tardive : 8h00 ou 8h30 le jour J
+            const deadlineTardive = new Date(dateRepas + 'T00:00:00');
+            deadlineTardive.setHours(regles.deadlineAnnulationHeure, regles.deadlineAnnulationMinute, 0, 0);
+
+            if (regles.annulation24hActive) {
+                // Ancien contrat : fenêtre 24h gratuite existe
+                if (instantSaisie < deadline24h) return 'gratuit';
+                return 'demi';
+            } else {
+                // Nouveau contrat : pas de fenêtre 24h, tout est demi-tarif
+                return 'demi';
+            }
+        }
+
         async function charger() {
             const contenu = document.getElementById('contenu');
             contenu.innerHTML = '<p class="loading">⏳ Chargement...</p>';
@@ -271,6 +335,18 @@
                 }
             }
 
+            // ⚠️ Règles dynamiques : on prend les règles applicables au début de la période
+            const regles = await getReglesClient(clientActif, dateDebut);
+
+            if (!regles) {
+                contenu.innerHTML = `<div class="empty-cats">
+                    <div style="font-size:48px;">⛔</div>
+                    <p><strong>Aucune règle contractuelle n'est définie pour ${clientActif.nom} sur cette période.</strong></p>
+                    <p>Va sur l'onglet ⚙️ Paramètres pour définir les règles applicables à ce client.</p>
+                </div>`;
+                return;
+            }
+
             const { data: cmds } = await supaClient
                 .from(TABLE_COMMANDES_EJC).select('*')
                 .eq('client_id', clientActif.id)
@@ -280,19 +356,27 @@
                 .eq('client_id', clientActif.id)
                 .gte('date', dateDebut).lte('date', dateFin);
 
+            // Classifier chaque annulation
+            const annulationsAvecClasse = [];
+            for (const a of (anns || [])) {
+                const classe = await classifierUneAnnulation(a, regles);
+                annulationsAvecClasse.push({ ...a, classe });
+            }
+
             donneesCache = {
-                jours, cmds: cmds || [], anns: anns || [],
-                dateDebut, dateFin
+                jours,
+                cmds: cmds || [],
+                anns: annulationsAvecClasse,
+                dateDebut,
+                dateFin,
+                regles
             };
             afficher();
         }
 
         function afficher() {
-            const { jours, cmds, anns, dateDebut, dateFin } = donneesCache;
+            const { jours, cmds, anns, dateDebut, dateFin, regles } = donneesCache;
             const contenu = document.getElementById('contenu');
-            const regles = getReglesClient(clientActif);
-            const pctAnn = regles.pctAnnulationJourJ;
-            const ratioAnn = pctAnn / 100;
 
             const idsAvecData = new Set();
             for (const c of cmds) idsAvecData.add(c.categorie_id);
@@ -303,60 +387,86 @@
                 contenu.innerHTML = `<div class="empty-cats">
                     <div style="font-size:48px;">🏷️</div>
                     <p><strong>Aucune catégorie configurée pour ${clientActif.nom}.</strong></p>
-                    <p>Va dans l'onglet "Catégories clients" pour en créer.</p>
                 </div>`;
                 return;
             }
 
+            // Maps : commandés, annulés gratuits, annulés demi
             const cmdMap = {};
             for (const c of cmds) cmdMap[`${c.date}_${c.categorie_id}`] = c.quantite;
-            const annMap = {};
-            for (const a of anns) annMap[`${a.date}_${a.categorie_id}`] = a.quantite;
 
-            let totalCmd = 0, totalAnn = 0;
+            const annGratMap = {};
+            const annDemiMap = {};
+            for (const a of anns) {
+                const key = `${a.date}_${a.categorie_id}`;
+                if (a.classe === 'gratuit') {
+                    annGratMap[key] = (annGratMap[key] || 0) + a.quantite;
+                } else {
+                    annDemiMap[key] = (annDemiMap[key] || 0) + a.quantite;
+                }
+            }
+
+            // Totaux
+            let totalCmd = 0;
             for (const c of cmds) totalCmd += c.quantite;
-            for (const a of anns) totalAnn += a.quantite;
-            const totalNet = totalCmd - totalAnn;
-            const equivFact = totalCmd - (totalAnn * (1 - ratioAnn));
+            let totalGrat = 0, totalDemi = 0;
+            for (const a of anns) {
+                if (a.classe === 'gratuit') totalGrat += a.quantite;
+                else totalDemi += a.quantite;
+            }
+            const totalLivres = totalCmd - totalGrat - totalDemi;
+            const facturable = totalLivres + (totalDemi * 0.5);
+
+            // Bandeau d'info sur le contrat appliqué
+            const contratTxt = regles.libelle_contrat || '(non précisé)';
+            const fenetre24hTxt = regles.annulation24hActive
+                ? `Fenêtre 24h gratuite active (limite ${regles.annulation24hPlafondPct}% max)`
+                : `Pas de fenêtre 24h gratuite — toute annulation tardive à ${regles.pctAnnulationJourJ}%`;
+            const deadlineAnnTxt = `${String(regles.deadlineAnnulationHeure).padStart(2,'0')}h${String(regles.deadlineAnnulationMinute).padStart(2,'0')}`;
 
             let html = `
                 <h3 style="margin-top:0;">${clientActif.nom} —
                     ${vueActuelle === 'semaine'
                         ? `Semaine du ${dateFr(dateDebut)} au ${dateFr(dateFin)}`
                         : `Mois : ${dateFr(dateDebut)} → ${dateFr(dateFin)}`}</h3>
+                <div class="info-contrat">
+                    <strong>Contrat applicable :</strong> ${contratTxt} ·
+                    Deadline annulation tardive : <strong>${deadlineAnnTxt}</strong> ·
+                    ${fenetre24hTxt}
+                </div>
                 <div class="stats-cards">
-                    <div class="stat-card commande">
-                        <div class="label">Commandés</div>
-                        <div class="valeur">${totalCmd}</div>
-                        <div class="sub">100% facturé</div>
+                    <div class="stat-card livres">
+                        <div class="label">Livrés</div>
+                        <div class="valeur">${totalLivres}</div>
+                        <div class="sub">facturés 100%</div>
                     </div>
-                    <div class="stat-card annulation">
-                        <div class="label">Annulés</div>
-                        <div class="valeur">${totalAnn}</div>
-                        <div class="sub">${pctAnn}% facturé</div>
+                    <div class="stat-card gratuit">
+                        <div class="label">Annulés gratuits</div>
+                        <div class="valeur">${totalGrat}</div>
+                        <div class="sub">facturés 0%</div>
                     </div>
-                    <div class="stat-card net">
-                        <div class="label">Net servi</div>
-                        <div class="valeur">${totalNet}</div>
-                        <div class="sub">commandés − annulés</div>
+                    <div class="stat-card demitarif">
+                        <div class="label">Annulés demi-tarif</div>
+                        <div class="valeur">${totalDemi}</div>
+                        <div class="sub">facturés 50%</div>
                     </div>
-                    <div class="stat-card facturation">
-                        <div class="label">Équivalent facturation</div>
-                        <div class="valeur">${equivFact.toFixed(1)}</div>
-                        <div class="sub">cmd − (ann × ${(1 - ratioAnn).toFixed(2)})</div>
+                    <div class="stat-card facturable">
+                        <div class="label">Équiv. facturable</div>
+                        <div class="valeur">${facturable.toFixed(1)}</div>
+                        <div class="sub">livrés + (demi × 0.5)</div>
                     </div>
                 </div>`;
 
             if (vueActuelle === 'semaine') {
-                html += renduTableauSemaine(jours, catsAffichees, cmdMap, annMap);
+                html += renduTableauSemaine(jours, catsAffichees, cmdMap, annGratMap, annDemiMap);
             } else {
-                html += renduTableauMois(jours, catsAffichees, cmdMap, annMap, ratioAnn);
+                html += renduTableauMois(jours, catsAffichees, cmdMap, annGratMap, annDemiMap);
             }
 
             contenu.innerHTML = html;
         }
 
-        function renduTableauSemaine(jours, cats, cmdMap, annMap) {
+        function renduTableauSemaine(jours, cats, cmdMap, annGratMap, annDemiMap) {
             let html = '<table class="recap"><thead><tr><th>Catégorie</th>';
             for (const j of jours) {
                 const d = new Date(j + 'T00:00:00');
@@ -365,72 +475,76 @@
             html += '<th>Total</th></tr></thead><tbody>';
 
             for (const cat of cats) {
-                let totalCmd = 0, totalAnn = 0;
-                let lCmd = `<tr><td>${cat.nom}<br><small style="color:#888;">Commandés</small></td>`;
-                let lAnn = `<tr><td><small style="color:#888;">Annulés</small></td>`;
-                let lNet = `<tr><td><small style="color:#888;font-weight:bold;">Net</small></td>`;
+                let tLiv = 0, tGrat = 0, tDemi = 0;
+                let lLiv  = `<tr><td>${cat.nom}<br><small style="color:#888;">Livrés</small></td>`;
+                let lGrat = `<tr><td><small style="color:#888;">Annulés 0%</small></td>`;
+                let lDemi = `<tr><td><small style="color:#888;">Annulés 50%</small></td>`;
                 for (const j of jours) {
                     const c = cmdMap[`${j}_${cat.id}`] || 0;
-                    const a = annMap[`${j}_${cat.id}`] || 0;
-                    const n = c - a;
-                    totalCmd += c; totalAnn += a;
-                    lCmd += `<td class="num-cmd">${c || ''}</td>`;
-                    lAnn += `<td class="num-ann">${a || ''}</td>`;
-                    lNet += `<td class="num-net">${n || ''}</td>`;
+                    const g = annGratMap[`${j}_${cat.id}`] || 0;
+                    const d = annDemiMap[`${j}_${cat.id}`] || 0;
+                    const livres = c - g - d;
+                    tLiv += livres; tGrat += g; tDemi += d;
+                    lLiv  += `<td class="num-liv">${livres || ''}</td>`;
+                    lGrat += `<td class="num-grat">${g || ''}</td>`;
+                    lDemi += `<td class="num-demi">${d || ''}</td>`;
                 }
-                lCmd += `<td class="num-cmd"><strong>${totalCmd}</strong></td></tr>`;
-                lAnn += `<td class="num-ann"><strong>${totalAnn}</strong></td></tr>`;
-                lNet += `<td class="num-net"><strong>${totalCmd - totalAnn}</strong></td></tr>`;
-                html += lCmd + lAnn + lNet;
+                lLiv  += `<td class="num-liv"><strong>${tLiv}</strong></td></tr>`;
+                lGrat += `<td class="num-grat"><strong>${tGrat}</strong></td></tr>`;
+                lDemi += `<td class="num-demi"><strong>${tDemi}</strong></td></tr>`;
+                if (tLiv || tGrat || tDemi) html += lLiv + lGrat + lDemi;
             }
 
-            html += '<tr class="ligne-total"><td>TOTAL JOURNÉE (net)</td>';
-            let grandTotalNet = 0;
+            html += '<tr class="ligne-total"><td>TOTAL LIVRÉS (jour)</td>';
+            let grandTotalLiv = 0;
             for (const j of jours) {
-                let tNet = 0;
+                let tJ = 0;
                 for (const cat of cats) {
-                    tNet += (cmdMap[`${j}_${cat.id}`] || 0) - (annMap[`${j}_${cat.id}`] || 0);
+                    const c = cmdMap[`${j}_${cat.id}`] || 0;
+                    const g = annGratMap[`${j}_${cat.id}`] || 0;
+                    const d = annDemiMap[`${j}_${cat.id}`] || 0;
+                    tJ += (c - g - d);
                 }
-                grandTotalNet += tNet;
-                html += `<td>${tNet}</td>`;
+                grandTotalLiv += tJ;
+                html += `<td>${tJ}</td>`;
             }
-            html += `<td>${grandTotalNet}</td></tr>`;
+            html += `<td>${grandTotalLiv}</td></tr>`;
             html += '</tbody></table>';
             return html;
         }
 
-        function renduTableauMois(jours, cats, cmdMap, annMap, ratioAnn) {
+        function renduTableauMois(jours, cats, cmdMap, annGratMap, annDemiMap) {
             let html = '<table class="recap"><thead><tr><th>Catégorie</th>';
-            html += '<th>Commandés</th><th>Annulés</th><th>Net servi</th><th>Équiv. facturation</th>';
+            html += '<th>Livrés (100%)</th><th>Annulés 0%</th><th>Annulés 50%</th><th>Équiv. facturable</th>';
             html += '</tr></thead><tbody>';
 
-            let gtCmd = 0, gtAnn = 0;
+            let gtLiv = 0, gtGrat = 0, gtDemi = 0;
             for (const cat of cats) {
-                let cCmd = 0, cAnn = 0;
+                let cCmd = 0, cGrat = 0, cDemi = 0;
                 for (const j of jours) {
-                    cCmd += cmdMap[`${j}_${cat.id}`] || 0;
-                    cAnn += annMap[`${j}_${cat.id}`] || 0;
+                    cCmd  += cmdMap[`${j}_${cat.id}`] || 0;
+                    cGrat += annGratMap[`${j}_${cat.id}`] || 0;
+                    cDemi += annDemiMap[`${j}_${cat.id}`] || 0;
                 }
-                if (cCmd === 0 && cAnn === 0) continue;
-                gtCmd += cCmd; gtAnn += cAnn;
-                const cNet = cCmd - cAnn;
-                const cEq = cCmd - (cAnn * (1 - ratioAnn));
+                const cLiv = cCmd - cGrat - cDemi;
+                if (cCmd === 0 && cGrat === 0 && cDemi === 0) continue;
+                gtLiv += cLiv; gtGrat += cGrat; gtDemi += cDemi;
+                const cEq = cLiv + (cDemi * 0.5);
                 html += `<tr>
                     <td>${cat.nom}${cat.actif ? '' : ' <small style="color:#999;">(inactif)</small>'}</td>
-                    <td class="num-cmd">${cCmd}</td>
-                    <td class="num-ann">${cAnn}</td>
-                    <td class="num-net">${cNet}</td>
+                    <td class="num-liv">${cLiv}</td>
+                    <td class="num-grat">${cGrat}</td>
+                    <td class="num-demi">${cDemi}</td>
                     <td><strong>${cEq.toFixed(1)}</strong></td>
                 </tr>`;
             }
 
-            const gtNet = gtCmd - gtAnn;
-            const gtEq = gtCmd - (gtAnn * (1 - ratioAnn));
+            const gtEq = gtLiv + (gtDemi * 0.5);
             html += `<tr class="ligne-total">
                 <td>TOTAL</td>
-                <td>${gtCmd}</td>
-                <td>${gtAnn}</td>
-                <td>${gtNet}</td>
+                <td>${gtLiv}</td>
+                <td>${gtGrat}</td>
+                <td>${gtDemi}</td>
                 <td>${gtEq.toFixed(1)}</td>
             </tr>`;
             html += '</tbody></table>';
@@ -442,72 +556,95 @@
             return `${donneesCache.dateDebut}_${donneesCache.dateFin}`;
         }
 
+        function codeClient() {
+            return (clientActif.code || clientActif.id.substring(0,8));
+        }
+
         function exporterCSV() {
             if (!donneesCache || !clientActif) return;
             const { jours, cmds, anns } = donneesCache;
-            const cmdMap = {}, annMap = {};
+            const cmdMap = {}, annGratMap = {}, annDemiMap = {};
             for (const c of cmds) cmdMap[`${c.date}_${c.categorie_id}`] = c.quantite;
-            for (const a of anns) annMap[`${a.date}_${a.categorie_id}`] = a.quantite;
+            for (const a of anns) {
+                const key = `${a.date}_${a.categorie_id}`;
+                if (a.classe === 'gratuit') annGratMap[key] = (annGratMap[key] || 0) + a.quantite;
+                else annDemiMap[key] = (annDemiMap[key] || 0) + a.quantite;
+            }
 
             const cats = categoriesAll;
             let csv = `Client externe;${clientActif.nom}\n`;
-            csv += `Période;${donneesCache.dateDebut};au;${donneesCache.dateFin}\n\n`;
+            csv += `Période;${donneesCache.dateDebut};au;${donneesCache.dateFin}\n`;
+            csv += `Contrat;${donneesCache.regles.libelle_contrat || ''}\n\n`;
             csv += 'Catégorie;Type;' + jours.join(';') + ';Total\n';
             for (const cat of cats) {
-                let tCmd = 0, tAnn = 0;
-                let lCmd = `${cat.nom};Commandés`;
-                let lAnn = `${cat.nom};Annulés`;
+                let tLiv = 0, tGrat = 0, tDemi = 0;
+                let lLiv  = `${cat.nom};Livrés (100%)`;
+                let lGrat = `${cat.nom};Annulés 0%`;
+                let lDemi = `${cat.nom};Annulés 50%`;
                 for (const j of jours) {
                     const c = cmdMap[`${j}_${cat.id}`] || 0;
-                    const a = annMap[`${j}_${cat.id}`] || 0;
-                    tCmd += c; tAnn += a;
-                    lCmd += `;${c}`;
-                    lAnn += `;${a}`;
+                    const g = annGratMap[`${j}_${cat.id}`] || 0;
+                    const d = annDemiMap[`${j}_${cat.id}`] || 0;
+                    const liv = c - g - d;
+                    tLiv += liv; tGrat += g; tDemi += d;
+                    lLiv  += `;${liv}`;
+                    lGrat += `;${g}`;
+                    lDemi += `;${d}`;
                 }
-                lCmd += `;${tCmd}\n`;
-                lAnn += `;${tAnn}\n`;
-                if (tCmd > 0 || tAnn > 0) csv += lCmd + lAnn;
+                lLiv  += `;${tLiv}\n`;
+                lGrat += `;${tGrat}\n`;
+                lDemi += `;${tDemi}\n`;
+                if (tLiv > 0 || tGrat > 0 || tDemi > 0) csv += lLiv + lGrat + lDemi;
             }
-            const nomFichier = `recap-${clientActif.code}-${suffixePeriode()}.csv`;
+            const nomFichier = `recap-${codeClient()}-${suffixePeriode()}.csv`;
             telecharger(csv, nomFichier, 'text/csv;charset=utf-8;');
         }
 
         function exporterExcel() {
             if (!donneesCache || !clientActif) return;
             const { jours, cmds, anns } = donneesCache;
-            const cmdMap = {}, annMap = {};
+            const cmdMap = {}, annGratMap = {}, annDemiMap = {};
             for (const c of cmds) cmdMap[`${c.date}_${c.categorie_id}`] = c.quantite;
-            for (const a of anns) annMap[`${a.date}_${a.categorie_id}`] = a.quantite;
+            for (const a of anns) {
+                const key = `${a.date}_${a.categorie_id}`;
+                if (a.classe === 'gratuit') annGratMap[key] = (annGratMap[key] || 0) + a.quantite;
+                else annDemiMap[key] = (annDemiMap[key] || 0) + a.quantite;
+            }
 
             const cats = categoriesAll;
             const rows = [
                 ['Client externe', clientActif.nom],
                 ['Période', donneesCache.dateDebut, 'au', donneesCache.dateFin],
+                ['Contrat', donneesCache.regles.libelle_contrat || ''],
                 [],
                 ['Catégorie', 'Type', ...jours, 'Total']
             ];
             for (const cat of cats) {
-                let tCmd = 0, tAnn = 0;
-                const rowCmd = [cat.nom, 'Commandés'];
-                const rowAnn = [cat.nom, 'Annulés'];
+                let tLiv = 0, tGrat = 0, tDemi = 0;
+                const rowLiv  = [cat.nom, 'Livrés (100%)'];
+                const rowGrat = [cat.nom, 'Annulés 0%'];
+                const rowDemi = [cat.nom, 'Annulés 50%'];
                 for (const j of jours) {
                     const c = cmdMap[`${j}_${cat.id}`] || 0;
-                    const a = annMap[`${j}_${cat.id}`] || 0;
-                    tCmd += c; tAnn += a;
-                    rowCmd.push(c);
-                    rowAnn.push(a);
+                    const g = annGratMap[`${j}_${cat.id}`] || 0;
+                    const d = annDemiMap[`${j}_${cat.id}`] || 0;
+                    const liv = c - g - d;
+                    tLiv += liv; tGrat += g; tDemi += d;
+                    rowLiv.push(liv);
+                    rowGrat.push(g);
+                    rowDemi.push(d);
                 }
-                rowCmd.push(tCmd);
-                rowAnn.push(tAnn);
-                if (tCmd > 0 || tAnn > 0) {
-                    rows.push(rowCmd);
-                    rows.push(rowAnn);
+                rowLiv.push(tLiv);
+                rowGrat.push(tGrat);
+                rowDemi.push(tDemi);
+                if (tLiv > 0 || tGrat > 0 || tDemi > 0) {
+                    rows.push(rowLiv, rowGrat, rowDemi);
                 }
             }
             const ws = XLSX.utils.aoa_to_sheet(rows);
             const wb = XLSX.utils.book_new();
-            XLSX.utils.book_append_sheet(wb, ws, `Récap ${clientActif.code}`);
-            const nomFichier = `recap-${clientActif.code}-${suffixePeriode()}.xlsx`;
+            XLSX.utils.book_append_sheet(wb, ws, `Récap ${codeClient()}`);
+            const nomFichier = `recap-${codeClient()}-${suffixePeriode()}.xlsx`;
             XLSX.writeFile(wb, nomFichier);
         }
 

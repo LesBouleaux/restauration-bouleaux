@@ -94,43 +94,156 @@ function annulationOuverte(dateIso) {
 
 // ============================================================
 // SEMAINE EJC - VERSIONS PARAMÉTRABLES PAR CLIENT
+// Les règles sont désormais lues dynamiquement depuis la table
+// regles_client_periode selon la date concernée.
+//
+// ⚠️ Ces fonctions sont ASYNCHRONES (async/await).
+//    Les pages appelantes doivent utiliser "await".
 // ============================================================
 
-function calculerDeadlineCommande(lundiSemaineConcernee, client) {
-    const dlJour = client?.deadline_jour ?? 2;
-    const dlHeure = client?.deadline_heure ?? 12;
+// Cache mémoire des règles déjà chargées, pour éviter de
+// retaper la base à chaque appel sur la même page.
+// Clé : `${client_id}::${dateRepasIso}` → règles
+const _cacheReglesClient = {};
+
+// Récupère la règle applicable pour un client à une date donnée.
+// Renvoie un objet règles, ou null si aucune règle n'est définie
+// pour ce client à cette date (cas d'erreur : il faut alerter).
+async function getReglesClient(client, dateRepasIso) {
+    if (!client || !client.id) return null;
+    if (!dateRepasIso) {
+        console.warn('getReglesClient : dateRepasIso manquante');
+        return null;
+    }
+
+    const cacheKey = `${client.id}::${dateRepasIso}`;
+    if (_cacheReglesClient[cacheKey]) return _cacheReglesClient[cacheKey];
+
+    const { data, error } = await supaClient
+        .from('regles_client_periode')
+        .select('*')
+        .eq('client_id', client.id)
+        .lte('date_debut', dateRepasIso)
+        .or(`date_fin.is.null,date_fin.gte.${dateRepasIso}`)
+        .order('date_debut', { ascending: false })
+        .limit(1)
+        .maybeSingle();
+
+    if (error) {
+        console.error('Erreur lecture regles_client_periode :', error);
+        return null;
+    }
+    if (!data) {
+        console.warn(`Aucune règle définie pour client ${client.id} à la date ${dateRepasIso}`);
+        return null;
+    }
+
+    // Format de retour homogène (compatible avec l'ancien getReglesClient)
+    const jours = ['dimanche','lundi','mardi','mercredi','jeudi','vendredi','samedi'];
+    const regles = {
+        // Identité de la règle
+        id: data.id,
+        libelle_contrat: data.libelle_contrat,
+        date_debut: data.date_debut,
+        date_fin: data.date_fin,
+
+        // Deadline de commande
+        deadlineJour: data.deadline_jour,
+        deadlineJourLibelle: jours[data.deadline_jour],
+        deadlineHeure: data.deadline_heure,
+        deadlineMinute: data.deadline_minute,
+
+        // Annulation à 24h (gratuite)
+        annulation24hActive: data.annulation_24h_active,
+        annulation24hPlafondPct: data.annulation_24h_plafond_pct,
+
+        // Annulation tardive (jour J)
+        deadlineAnnulationHeure: data.deadline_annulation_heure,
+        deadlineAnnulationMinute: data.deadline_annulation_minute,
+        pctAnnulationJourJ: data.pct_annulation_jour_j
+    };
+
+    _cacheReglesClient[cacheKey] = regles;
+    return regles;
+}
+
+// Vide le cache (utile après modif des règles, ou changement de client)
+function viderCacheReglesClient() {
+    for (const k in _cacheReglesClient) delete _cacheReglesClient[k];
+}
+
+// Calcule le moment limite (Date JS) pour commander la semaine
+// du lundi donné, selon les règles du client à cette date.
+async function calculerDeadlineCommande(lundiSemaineConcernee, client) {
+    const regles = await getReglesClient(client, lundiSemaineConcernee);
+    if (!regles) return null;
+
     const lundi = new Date(lundiSemaineConcernee + 'T00:00:00');
     const lundiSemPrecedente = new Date(lundi);
     lundiSemPrecedente.setDate(lundi.getDate() - 7);
     const deadline = new Date(lundiSemPrecedente);
-    const decalage = (dlJour - 1 + 7) % 7;
+    const decalage = (regles.deadlineJour - 1 + 7) % 7;
     deadline.setDate(lundiSemPrecedente.getDate() + decalage);
-    deadline.setHours(dlHeure, 0, 0, 0);
+    deadline.setHours(regles.deadlineHeure, regles.deadlineMinute, 0, 0);
     return deadline;
 }
 
-function commandeOuverteClient(lundiSemaineConcernee, client) {
-    return new Date() < calculerDeadlineCommande(lundiSemaineConcernee, client);
+// La saisie de commande est-elle encore ouverte pour cette semaine ?
+async function commandeOuverteClient(lundiSemaineConcernee, client) {
+    const deadline = await calculerDeadlineCommande(lundiSemaineConcernee, client);
+    if (!deadline) return false;
+    return new Date() < deadline;
 }
 
-function annulationOuverteClient(dateIso, client) {
-    const heureLimite = client?.deadline_annulation_heure ?? 8;
-    const d = new Date(dateIso + 'T00:00:00');
-    d.setHours(heureLimite, 0, 0, 0);
+// L'annulation tardive est-elle encore possible pour cette date ?
+async function annulationOuverteClient(dateRepasIso, client) {
+    const regles = await getReglesClient(client, dateRepasIso);
+    if (!regles) return false;
+
+    const d = new Date(dateRepasIso + 'T00:00:00');
+    d.setHours(regles.deadlineAnnulationHeure, regles.deadlineAnnulationMinute, 0, 0);
     return new Date() < d;
 }
 
-function getReglesClient(client) {
-    const jours = ['dimanche', 'lundi', 'mardi', 'mercredi', 'jeudi', 'vendredi', 'samedi'];
-    return {
-        deadlineJour: client?.deadline_jour ?? 2,
-        deadlineJourLibelle: jours[client?.deadline_jour ?? 2],
-        deadlineHeure: client?.deadline_heure ?? 12,
-        deadlineAnnulationHeure: client?.deadline_annulation_heure ?? 8,
-        pctAnnulationJourJ: client?.pct_annulation_jour_j ?? 50
-    };
-}
+// Classifie une annulation selon la règle applicable et l'instant de saisie.
+// Renvoie l'une des chaînes :
+//   'gratuite'        — annulation à 24h+ sous l'ancien contrat
+//   'tardive_50pct'   — annulation le jour J avant la deadline d'annulation
+//   'refusee'         — annulation après la deadline d'annulation
+//   'plafond_depasse' — annulation à 24h+ qui dépasserait le plafond (ancien contrat uniquement)
+//   'erreur_pas_de_regle'  — aucune règle définie (bloquant)
+// Cette fonction NE FAIT QUE classer, elle ne décide pas d'autoriser ou non.
+async function classifierAnnulation(client, dateRepasIso, instantSaisie) {
+    const regles = await getReglesClient(client, dateRepasIso);
+    if (!regles) return 'erreur_pas_de_regle';
 
+    const dateRepas = new Date(dateRepasIso + 'T00:00:00');
+    const deadlineTardive = new Date(dateRepasIso + 'T00:00:00');
+    deadlineTardive.setHours(regles.deadlineAnnulationHeure, regles.deadlineAnnulationMinute, 0, 0);
+
+    // 24h avant l'heure de livraison (on prend 11h30 comme heure de livraison standard)
+    const deadline24h = new Date(dateRepas);
+    deadline24h.setDate(deadline24h.getDate() - 1);
+    deadline24h.setHours(11, 30, 0, 0);
+
+    const t = instantSaisie || new Date();
+
+    // Cas 1 : on est encore à plus de 24h
+    if (t < deadline24h) {
+        if (regles.annulation24hActive) return 'gratuite';
+        // Le nouveau contrat n'a pas de fenêtre 24h explicite, donc dans la veille
+        // c'est traité comme une saisie normale = gratuite tant que dans la journée.
+        return 'gratuite';
+    }
+
+    // Cas 2 : on est dans la fenêtre tardive (entre 24h avant et la deadline du jour J)
+    if (t < deadlineTardive) {
+        return 'tardive_' + regles.pctAnnulationJourJ + 'pct';
+    }
+
+    // Cas 3 : trop tard
+    return 'refusee';
+}
 // ============================================================
 // AUTH - Vérification connexion + rôle
 // ============================================================
@@ -165,7 +278,6 @@ async function verifierAuthEtRole(rolesAutorises) {
 
     return { user: session.user, profil };
 }
-
 // ============================================================
 // CONTEXTE CLIENT - chargement enrichi (multi-clients)
 // ============================================================
@@ -280,14 +392,15 @@ const GROUPES_MENU_ADMIN = [
         ]
     },
     {
-        id: 'ejc',
-        titre: '📝 Clients externes',
-        type: 'groupe',
-        onglets: [
-            { id: 'commande-ejc',       titre: '📝 Commandes externes', url: 'commande-ejc.html' },
-            { id: 'categories-clients', titre: '🏷️ Catégories clients', url: 'categories-clients.html' }
-        ]
-    },
+    id: 'ejc',
+    titre: '📝 Clients externes',
+    type: 'groupe',
+    onglets: [
+        { id: 'commande-ejc',       titre: '📝 Commandes externes', url: 'commande-ejc.html' },
+        { id: 'categories-clients', titre: '🏷️ Catégories clients', url: 'categories-clients.html' },
+        { id: 'journaux-audit',     titre: '📋 Journaux d\'audit',  url: 'journaux-audit.html' }
+    ]
+},
     {
         id: 'domicile',
         titre: '🏠 Repas à domicile',
