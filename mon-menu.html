@@ -1,0 +1,495 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Mon menu - Restauration Les Bouleaux</title>
+    <link rel="stylesheet" href="shared.css">
+    <style>
+        .menu-en-cours {
+            background: white;
+            border: 2px solid #2c5530;
+            border-radius: 10px;
+            padding: 22px 26px;
+            margin: 20px 0;
+            box-shadow: 0 2px 6px rgba(0,0,0,0.08);
+        }
+        .menu-en-cours .badge-actuel {
+            display: inline-block;
+            background: #2c5530;
+            color: white;
+            padding: 4px 12px;
+            border-radius: 14px;
+            font-size: 12px;
+            font-weight: bold;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            margin-bottom: 12px;
+        }
+        .menu-en-cours h3 {
+            margin: 0 0 6px 0;
+            color: #2c5530;
+            font-size: 22px;
+        }
+        .menu-en-cours .periode {
+            color: #555;
+            font-size: 14px;
+            margin-bottom: 16px;
+        }
+        .menu-en-cours .fichier-info {
+            background: #f0f8f0;
+            padding: 10px 14px;
+            border-radius: 6px;
+            font-size: 13px;
+            color: #2c5530;
+            margin-bottom: 14px;
+        }
+        .menu-en-cours .actions {
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+        }
+        .menu-en-cours button {
+            background: #2c5530;
+            color: white;
+            border: none;
+            padding: 10px 22px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-weight: bold;
+            font-size: 14px;
+        }
+        .menu-en-cours button.secondaire {
+            background: #1976d2;
+        }
+
+        .section-historique {
+            margin-top: 30px;
+        }
+        .section-historique h3 {
+            color: #2c5530;
+            border-bottom: 2px solid #2c5530;
+            padding-bottom: 6px;
+            margin-bottom: 14px;
+        }
+
+        table.menus {
+            width: 100%;
+            border-collapse: collapse;
+            background: white;
+            border-radius: 8px;
+            overflow: hidden;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            margin: 10px 0;
+            font-size: 13.5px;
+        }
+        table.menus th, table.menus td {
+            padding: 10px 12px;
+            border-bottom: 1px solid #eee;
+            text-align: left;
+        }
+        table.menus th {
+            background: #2c5530;
+            color: white;
+            font-size: 12px;
+            text-transform: uppercase;
+            letter-spacing: 0.4px;
+        }
+        table.menus tbody tr:hover { background: #fafafa; }
+        table.menus .semaine-libelle {
+            font-weight: bold;
+            color: #2c5530;
+        }
+        table.menus .meta {
+            font-size: 11.5px;
+            color: #888;
+            margin-top: 2px;
+        }
+        table.menus .badge-periode {
+            display: inline-block;
+            padding: 2px 8px;
+            border-radius: 10px;
+            font-size: 11px;
+            font-weight: bold;
+            text-transform: uppercase;
+        }
+        .badge-futur  { background: #cfe2ff; color: #0d47a1; }
+        .badge-actuel-sm { background: #d4edda; color: #155724; }
+        .badge-passe  { background: #f5f5f5; color: #555; }
+        .btn-mini {
+            font-size: 12px;
+            padding: 5px 12px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-weight: bold;
+            background: #1976d2;
+            color: white;
+        }
+
+        .empty-state {
+            background: white;
+            padding: 40px;
+            border-radius: 8px;
+            text-align: center;
+            color: #888;
+        }
+
+        .pied-page-client {
+            margin-top: 40px;
+            padding: 14px 18px;
+            background: #f5f5f5;
+            border-radius: 6px;
+            font-size: 12px;
+            color: #666;
+            text-align: center;
+            line-height: 1.6;
+        }
+
+        .save-status {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            padding: 10px 18px;
+            border-radius: 6px;
+            color: white;
+            font-weight: bold;
+            display: none;
+            z-index: 2000;
+            max-width: 400px;
+        }
+        .save-status.error   { background: #dc3545; display: block; }
+        .save-status.success { background: #28a745; display: block; }
+        .save-status.warning { background: #ffc107; color: #333; display: block; }
+    </style>
+</head>
+<body>
+    <div id="app-header"></div>
+    <h1>🍽️ Restauration Les Bouleaux</h1>
+    <div id="menu"></div>
+
+    <h2 id="titre-h2">📄 Mon menu</h2>
+
+    <p style="font-size:13px;color:#666;background:#f5f5f5;padding:10px 14px;border-radius:6px;border-left:3px solid #2c5530;">
+        Consultez ici les menus hebdomadaires qui vous sont adressés. Le menu de la semaine
+        en cours est mis en avant, et vous pouvez consulter les semaines à venir ainsi que
+        l'historique.
+    </p>
+
+    <div id="contenu">
+        <p class="loading">⏳ Chargement...</p>
+    </div>
+
+    <div class="pied-page-client">
+        Les menus sont téléversés par l'équipe restauration de la Résidence Les Bouleaux.<br>
+        En cas de question sur le contenu d'un menu, contactez directement le service restauration.
+    </div>
+
+    <div class="save-status" id="save-status"></div>
+
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="shared.js"></script>
+    <script>
+        let clientActif = null;
+        let utilisateurConnecte = null;
+        let monProfil = null;
+        let mesMenus = [];
+
+        const BUCKET = 'menus-ejc';
+
+        function echapper(t) {
+            if (t === null || t === undefined) return '';
+            return String(t)
+                .replace(/&/g, '&amp;')
+                .replace(/</g, '&lt;')
+                .replace(/>/g, '&gt;')
+                .replace(/"/g, '&quot;');
+        }
+
+        function afficherStatus(type, message, dureeMs = 2000) {
+            const status = document.getElementById('save-status');
+            status.className = 'save-status ' + type;
+            status.textContent = message;
+            setTimeout(() => status.style.display = 'none', dureeMs);
+        }
+
+        function formatDate(iso) {
+            if (!iso) return '';
+            const [a, m, j] = iso.split('-');
+            return `${j}.${m}.${a}`;
+        }
+
+        function formatDateHeure(iso) {
+            if (!iso) return '';
+            const d = new Date(iso);
+            return String(d.getDate()).padStart(2,'0') + '.'
+                 + String(d.getMonth()+1).padStart(2,'0') + '.'
+                 + d.getFullYear() + ' '
+                 + String(d.getHours()).padStart(2,'0') + ':'
+                 + String(d.getMinutes()).padStart(2,'0');
+        }
+
+        function formatTaille(o) {
+            if (!o) return '';
+            if (o < 1024) return o + ' o';
+            if (o < 1024*1024) return (o/1024).toFixed(1) + ' Ko';
+            return (o/(1024*1024)).toFixed(1) + ' Mo';
+        }
+
+        function libelleSemaine(lundiIso) {
+            // Manipulation par string pour éviter les bugs de timezone
+            const [a, m, j] = lundiIso.split('-').map(n => parseInt(n));
+            const dDim = new Date(a, m - 1, j + 6);
+            const yyyyFin = dDim.getFullYear();
+            const mmFin = String(dDim.getMonth() + 1).padStart(2, '0');
+            const jjFin = String(dDim.getDate()).padStart(2, '0');
+            const dimancheIso = `${yyyyFin}-${mmFin}-${jjFin}`;
+
+            // Numéro de semaine ISO
+            const target = new Date(Date.UTC(a, m - 1, j));
+            const dayNum = target.getUTCDay() || 7;
+            target.setUTCDate(target.getUTCDate() + 4 - dayNum);
+            const yearStart = new Date(Date.UTC(target.getUTCFullYear(), 0, 1));
+            const noSem = Math.ceil((((target - yearStart) / 86400000) + 1) / 7);
+
+            return {
+                noSemaine: noSem,
+                libelleCourt: `Semaine ${noSem}`,
+                libelleComplet: `Semaine ${noSem} (${formatDate(lundiIso)} → ${formatDate(dimancheIso)})`,
+                debut: lundiIso,
+                fin: dimancheIso
+            };
+        }
+
+        function aujourdhuiIso() {
+            const d = new Date();
+            return d.getFullYear() + '-'
+                 + String(d.getMonth()+1).padStart(2,'0') + '-'
+                 + String(d.getDate()).padStart(2,'0');
+        }
+
+        function lundiDeAujourdhui() {
+            const d = new Date();
+            const jour = d.getDay();
+            const diff = jour === 0 ? -6 : 1 - jour;
+            d.setDate(d.getDate() + diff);
+            return d.getFullYear() + '-'
+                + String(d.getMonth()+1).padStart(2,'0') + '-'
+                + String(d.getDate()).padStart(2,'0');
+        }
+
+        function statutSemaine(lundiIso) {
+            const lundiAuj = lundiDeAujourdhui();
+            if (lundiIso === lundiAuj) return 'actuelle';
+            if (lundiIso > lundiAuj) return 'future';
+            return 'passee';
+        }
+
+        // ============================================
+        // GÉNÉRATION D'UNE URL SIGNÉE TEMPORAIRE
+        // ============================================
+        async function ouvrirMenu(menuId, telecharger = false) {
+            const m = mesMenus.find(x => x.id === menuId);
+            if (!m) return;
+            const { data, error } = await supaClient
+                .storage.from(BUCKET)
+                .createSignedUrl(m.chemin_storage, 600); // 10 min
+            if (error || !data) {
+                afficherStatus('error', '❌ Impossible d\'ouvrir le menu. Contactez l\'administrateur.', 4500);
+                return;
+            }
+            if (telecharger) {
+                // Forcer le téléchargement avec le nom original
+                const a = document.createElement('a');
+                a.href = data.signedUrl;
+                a.download = m.nom_fichier_origine;
+                document.body.appendChild(a);
+                a.click();
+                document.body.removeChild(a);
+            } else {
+                window.open(data.signedUrl, '_blank');
+            }
+        }
+
+        // ============================================
+        // CHARGEMENT DES MENUS DU CLIENT CONNECTÉ
+        // ============================================
+        async function chargerMesMenus() {
+            const contenu = document.getElementById('contenu');
+            contenu.innerHTML = '<p class="loading">⏳ Chargement...</p>';
+
+            // La policy RLS filtre déjà sur le client_id du profil connecté
+            // mais on ajoute le filtre explicite pour la lisibilité
+            const { data, error } = await supaClient
+                .from('menus_ejc')
+                .select('*')
+                .eq('client_id', clientActif.id)
+                .eq('actif', true)
+                .order('lundi_semaine', { ascending: false });
+
+            if (error) {
+                contenu.innerHTML = `<div class="empty-state">
+                    <div style="font-size:48px;">⚠️</div>
+                    <p><strong>Erreur de chargement.</strong></p>
+                    <p>Contactez l'administrateur.</p>
+                </div>`;
+                return;
+            }
+
+            mesMenus = data || [];
+            afficherMenus();
+        }
+
+        function afficherMenus() {
+            const contenu = document.getElementById('contenu');
+
+            if (mesMenus.length === 0) {
+                contenu.innerHTML = `<div class="empty-state">
+                    <div style="font-size:64px;">📄</div>
+                    <p><strong>Aucun menu disponible pour le moment.</strong></p>
+                    <p style="color:#888;font-size:14px;">Les menus apparaîtront ici dès qu'ils auront été téléversés par l'équipe restauration.</p>
+                </div>`;
+                return;
+            }
+
+            const lundiAuj = lundiDeAujourdhui();
+
+            // Identifier le menu de la semaine actuelle (s'il existe)
+            const menuActuel = mesMenus.find(m => m.lundi_semaine === lundiAuj);
+
+            // Menus à venir (lundi futur, hors actuel)
+            const menusFuturs = mesMenus
+                .filter(m => m.lundi_semaine > lundiAuj)
+                .sort((a, b) => a.lundi_semaine.localeCompare(b.lundi_semaine));
+
+            // Menus passés
+            const menusPasses = mesMenus
+                .filter(m => m.lundi_semaine < lundiAuj)
+                .sort((a, b) => b.lundi_semaine.localeCompare(a.lundi_semaine));
+
+            let html = '';
+
+            // === MENU DE LA SEMAINE EN COURS ===
+            if (menuActuel) {
+                const lib = libelleSemaine(menuActuel.lundi_semaine);
+                html += `<div class="menu-en-cours">
+                    <div class="badge-actuel">📅 Cette semaine</div>
+                    <h3>${lib.libelleCourt}</h3>
+                    <div class="periode">Du ${formatDate(lib.debut)} au ${formatDate(lib.fin)}</div>
+                    <div class="fichier-info">
+                        📎 ${echapper(menuActuel.nom_fichier_origine)}
+                        <span style="color:#888;">· ${formatTaille(menuActuel.taille_octets)}</span>
+                    </div>
+                    <div class="actions">
+                        <button onclick="ouvrirMenu(${menuActuel.id}, false)">👁️ Consulter</button>
+                        <button class="secondaire" onclick="ouvrirMenu(${menuActuel.id}, true)">⬇️ Télécharger</button>
+                    </div>
+                </div>`;
+            } else {
+                const libAct = libelleSemaine(lundiAuj);
+                html += `<div class="menu-en-cours" style="border-color:#f0ad4e;background:#fff8e1;">
+                    <div class="badge-actuel" style="background:#f0ad4e;">📅 Cette semaine</div>
+                    <h3 style="color:#856404;">${libAct.libelleCourt}</h3>
+                    <div class="periode">Du ${formatDate(libAct.debut)} au ${formatDate(libAct.fin)}</div>
+                    <div style="background:white;padding:12px;border-radius:6px;color:#666;font-size:13.5px;">
+                        ℹ️ <strong>Le menu de cette semaine n'a pas encore été téléversé.</strong><br>
+                        Il sera disponible dès qu'il aura été préparé par l'équipe restauration.
+                    </div>
+                </div>`;
+            }
+
+            // === MENUS À VENIR ===
+            if (menusFuturs.length > 0) {
+                html += `<div class="section-historique">
+                    <h3>📅 Semaines à venir (${menusFuturs.length})</h3>
+                    <table class="menus"><thead><tr>
+                        <th>Semaine</th>
+                        <th>Fichier</th>
+                        <th>Téléversé le</th>
+                        <th>Action</th>
+                    </tr></thead><tbody>`;
+                for (const m of menusFuturs) {
+                    const lib = libelleSemaine(m.lundi_semaine);
+                    html += `<tr>
+                        <td>
+                            <div class="semaine-libelle">${lib.libelleCourt}</div>
+                            <div class="meta">${formatDate(lib.debut)} → ${formatDate(lib.fin)}</div>
+                        </td>
+                        <td>
+                            <div>${echapper(m.nom_fichier_origine)}</div>
+                            <div class="meta">${formatTaille(m.taille_octets)}</div>
+                        </td>
+                        <td>
+                            <div class="meta">${formatDateHeure(m.cree_le)}</div>
+                        </td>
+                        <td>
+                            <button class="btn-mini" onclick="ouvrirMenu(${m.id}, false)">👁️ Voir</button>
+                        </td>
+                    </tr>`;
+                }
+                html += '</tbody></table></div>';
+            }
+
+            // === HISTORIQUE ===
+            if (menusPasses.length > 0) {
+                html += `<div class="section-historique">
+                    <h3>📚 Historique des semaines passées (${menusPasses.length})</h3>
+                    <table class="menus"><thead><tr>
+                        <th>Semaine</th>
+                        <th>Fichier</th>
+                        <th>Téléversé le</th>
+                        <th>Action</th>
+                    </tr></thead><tbody>`;
+                for (const m of menusPasses) {
+                    const lib = libelleSemaine(m.lundi_semaine);
+                    html += `<tr>
+                        <td>
+                            <div class="semaine-libelle" style="color:#555;">${lib.libelleCourt}</div>
+                            <div class="meta">${formatDate(lib.debut)} → ${formatDate(lib.fin)}</div>
+                        </td>
+                        <td>
+                            <div>${echapper(m.nom_fichier_origine)}</div>
+                            <div class="meta">${formatTaille(m.taille_octets)}</div>
+                        </td>
+                        <td>
+                            <div class="meta">${formatDateHeure(m.cree_le)}</div>
+                        </td>
+                        <td>
+                            <button class="btn-mini" onclick="ouvrirMenu(${m.id}, false)">👁️ Voir</button>
+                        </td>
+                    </tr>`;
+                }
+                html += '</tbody></table></div>';
+            }
+
+            contenu.innerHTML = html;
+        }
+
+        // ============================================
+        // DÉMARRAGE
+        // ============================================
+        (async () => {
+            // ⚠️ Cette page est UNIQUEMENT pour les clients EJC
+            const ctx = await chargerContexteClient(['client_ejc']);
+            if (!ctx) return;
+            utilisateurConnecte = ctx;
+            monProfil = ctx.profil;
+
+            afficherMenuComplet('mon-menu', ctx.user.email, ctx.profil.role, ctx.profil.nom_affiche);
+
+            if (!ctx.client) {
+                document.getElementById('contenu').innerHTML = `<div class="empty-state">
+                    <div style="font-size:48px;">⚠️</div>
+                    <p><strong>Votre compte n'est rattaché à aucun client.</strong></p>
+                    <p>Contactez l'administrateur.</p>
+                </div>`;
+                return;
+            }
+
+            clientActif = ctx.client;
+            document.getElementById('titre-h2').textContent = `📄 Mon menu — ${clientActif.nom}`;
+            chargerMesMenus();
+        })();
+    </script>
+</body>
+</html>

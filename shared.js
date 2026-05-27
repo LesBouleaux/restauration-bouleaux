@@ -366,6 +366,7 @@ const GROUPES_MENU_ADMIN = [
         type: 'groupe',
         onglets: [
             { id: 'commande-ejc',       titre: '📝 Commandes externes', url: 'commande-ejc.html' },
+            { id: 'menus-admin',        titre: '📄 Menus',              url: 'menus-admin.html' },
             { id: 'categories-clients', titre: '🏷️ Catégories clients', url: 'categories-clients.html' },
             { id: 'journaux-audit',     titre: '📋 Journaux d\'audit',  url: 'journaux-audit.html' },
             { id: 'parametres-ejc',     titre: '⚙️ Paramètres',         url: 'parametres-ejc.html' }
@@ -430,6 +431,7 @@ function genererMenuOnglets(pageActive, role) {
         const ongletsEjc = [
             { id: 'dashboard',    titre: '🏠 Accueil',      url: 'dashboard.html' },
             { id: 'commande-ejc', titre: '🍽️ Saisie repas', url: 'commande-ejc.html' },
+            { id: 'mon-menu',     titre: '📄 Mon menu',     url: 'mon-menu.html' },
             { id: 'mon-recap',    titre: '📊 Mon récap',    url: 'mon-recap.html' },
             { id: 'factures-ejc', titre: '🧾 Mes factures', url: 'factures-ejc.html' }
         ];

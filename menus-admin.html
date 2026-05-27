@@ -1,0 +1,919 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Menus EJC - Restauration Les Bouleaux</title>
+    <link rel="stylesheet" href="shared.css">
+    <style>
+        .selecteur-client {
+            background: #fff8e1;
+            border: 2px solid #ffc107;
+            padding: 12px 18px;
+            border-radius: 8px;
+            margin: 15px 0;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            flex-wrap: wrap;
+        }
+        .selecteur-client label { font-weight: bold; color: #856404; }
+        .selecteur-client select {
+            padding: 6px 10px;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+            font-size: 15px;
+            min-width: 280px;
+        }
+
+        .vue-toggle {
+            display: inline-flex;
+            border: 2px solid #2c5530;
+            border-radius: 6px;
+            overflow: hidden;
+            margin: 10px 0;
+        }
+        .vue-toggle button {
+            background: white;
+            color: #2c5530;
+            border: none;
+            padding: 8px 18px;
+            cursor: pointer;
+            font-size: 14px;
+            font-weight: bold;
+        }
+        .vue-toggle button.active {
+            background: #2c5530;
+            color: white;
+        }
+        .vue-toggle .compteur {
+            background: rgba(255,255,255,0.3);
+            padding: 1px 8px;
+            border-radius: 10px;
+            margin-left: 6px;
+            font-size: 12px;
+        }
+        .vue-toggle button:not(.active) .compteur {
+            background: #e0e0e0;
+            color: #555;
+        }
+
+        .zone-upload {
+            background: #f0f8f0;
+            border: 2px dashed #2c5530;
+            border-radius: 8px;
+            padding: 18px 22px;
+            margin: 10px 0;
+            display: flex;
+            align-items: center;
+            gap: 14px;
+            flex-wrap: wrap;
+        }
+        .zone-upload label { font-weight: bold; color: #2c5530; }
+        .zone-upload input[type="date"],
+        .zone-upload input[type="file"] {
+            padding: 6px 10px;
+            border: 1px solid #aaa;
+            border-radius: 4px;
+            font-size: 14px;
+            background: white;
+        }
+        .zone-upload input[type="text"] {
+            flex: 1;
+            min-width: 220px;
+            padding: 6px 10px;
+            border: 1px solid #aaa;
+            border-radius: 4px;
+            font-size: 14px;
+        }
+        .zone-upload button {
+            background: #2c5530;
+            color: white;
+            border: none;
+            padding: 9px 20px;
+            border-radius: 5px;
+            cursor: pointer;
+            font-weight: bold;
+            font-size: 14px;
+        }
+        .zone-upload button:disabled {
+            background: #aaa;
+            cursor: not-allowed;
+        }
+
+        table.menus {
+            width: 100%;
+            border-collapse: collapse;
+            background: white;
+            border-radius: 8px;
+            overflow: hidden;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            margin: 15px 0;
+            font-size: 13.5px;
+        }
+        table.menus th, table.menus td {
+            padding: 9px 11px;
+            border-bottom: 1px solid #eee;
+            text-align: left;
+            vertical-align: top;
+        }
+        table.menus th {
+            background: #2c5530;
+            color: white;
+            font-size: 12px;
+            text-transform: uppercase;
+            letter-spacing: 0.4px;
+        }
+        table.menus tbody tr:hover { background: #fafafa; }
+        table.menus tbody tr.archivee {
+            background: #fafafa;
+            color: #888;
+        }
+
+        .semaine-libelle { font-weight: bold; color: #2c5530; }
+        tr.archivee .semaine-libelle { color: #555; text-decoration: line-through; }
+
+        .meta {
+            font-size: 11.5px;
+            color: #888;
+            margin-top: 3px;
+        }
+        .archivee-motif {
+            background: #fff3cd;
+            border-left: 3px solid #f0ad4e;
+            padding: 5px 9px;
+            margin-top: 5px;
+            font-size: 11.5px;
+            color: #6b4d00;
+            border-radius: 3px;
+        }
+
+        .actions-cell { white-space: nowrap; }
+        .btn-mini {
+            font-size: 12px;
+            padding: 5px 10px;
+            margin-right: 4px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-weight: bold;
+        }
+        .btn-mini.voir   { background: #1976d2; color: white; }
+        .btn-mini.suppr  { background: #c0392b; color: white; }
+        .btn-mini.restaurer { background: #28a745; color: white; }
+
+        .empty-state {
+            background: white;
+            padding: 40px;
+            border-radius: 8px;
+            text-align: center;
+            color: #888;
+        }
+
+        .modal-overlay {
+            display: none;
+            position: fixed; top: 0; left: 0; right: 0; bottom: 0;
+            background: rgba(0,0,0,0.5);
+            z-index: 1000;
+            align-items: flex-start;
+            justify-content: center;
+            padding: 40px 20px;
+            overflow-y: auto;
+        }
+        .modal-overlay.active { display: flex; }
+        .modal {
+            background: white;
+            border-radius: 10px;
+            padding: 26px 28px;
+            max-width: 560px;
+            width: 100%;
+            box-shadow: 0 8px 32px rgba(0,0,0,0.25);
+        }
+        .modal h3 {
+            margin-top: 0;
+            color: #c0392b;
+            border-bottom: 2px solid #c0392b;
+            padding-bottom: 8px;
+        }
+        .modal.mode-restaurer h3 { color: #28a745; border-bottom-color: #28a745; }
+        .modal.mode-remplace h3 { color: #f0ad4e; border-bottom-color: #f0ad4e; }
+        .form-actions {
+            display: flex;
+            justify-content: flex-end;
+            gap: 10px;
+            margin-top: 20px;
+            padding-top: 14px;
+            border-top: 1px solid #eee;
+        }
+        .form-actions button {
+            padding: 9px 18px;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            font-weight: bold;
+            font-size: 14px;
+        }
+        .btn-annuler { background: #6c757d; color: white; }
+        .btn-valider { background: #c0392b; color: white; }
+        .btn-valider.restaurer { background: #28a745; }
+        .btn-valider.remplace { background: #f0ad4e; }
+
+        .avertissement {
+            background: #fce4e4;
+            border-left: 4px solid #c0392b;
+            padding: 10px 14px;
+            font-size: 13px;
+            color: #922b21;
+            border-radius: 4px;
+            margin: 10px 0;
+        }
+        .avertissement.warn {
+            background: #fff3cd;
+            border-left-color: #f0ad4e;
+            color: #856404;
+        }
+        .avertissement.success {
+            background: #d4edda;
+            border-left-color: #28a745;
+            color: #155724;
+        }
+
+        .save-status {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            padding: 10px 18px;
+            border-radius: 6px;
+            color: white;
+            font-weight: bold;
+            display: none;
+            z-index: 2000;
+            max-width: 400px;
+        }
+        .save-status.success { background: #28a745; display: block; }
+        .save-status.error   { background: #dc3545; display: block; }
+        .save-status.warning { background: #ffc107; color: #333; display: block; }
+
+        .progress-upload {
+            width: 100%;
+            background: #f0f0f0;
+            border-radius: 4px;
+            height: 8px;
+            margin-top: 8px;
+            overflow: hidden;
+        }
+        .progress-upload-bar {
+            height: 100%;
+            background: #2c5530;
+            width: 0%;
+            transition: width 0.2s;
+        }
+    </style>
+</head>
+<body>
+    <div id="app-header"></div>
+    <h1>🍽️ Restauration Les Bouleaux</h1>
+    <div id="menu"></div>
+
+    <h2>📄 Menus EJC — Gestion des PDFs</h2>
+
+    <p style="font-size:13px;color:#666;background:#f5f5f5;padding:10px 14px;border-radius:6px;border-left:3px solid #2c5530;">
+        Téléverse ici les menus hebdomadaires en PDF pour chaque client externe.
+        Chaque client ne verra que ses propres menus. Le sélecteur de semaine correspond
+        au <strong>lundi</strong> de la semaine concernée.
+    </p>
+
+    <div id="zone-selecteur-client"></div>
+
+    <div id="zone-toggle" style="display:none;">
+        <div class="vue-toggle">
+            <button id="btn-vue-actifs" class="active" onclick="changerVue('actifs')">
+                📄 Menus actifs <span class="compteur" id="cpt-actifs">0</span>
+            </button>
+            <button id="btn-vue-archives" onclick="changerVue('archives')">
+                🗑️ Archivés <span class="compteur" id="cpt-archives">0</span>
+            </button>
+        </div>
+    </div>
+
+    <div id="zone-upload-bloc" style="display:none;">
+        <div class="zone-upload">
+            <label>📅 Lundi de la semaine :</label>
+            <input type="date" id="upload-lundi">
+            <label>📎 PDF :</label>
+            <input type="file" id="upload-file" accept="application/pdf">
+            <input type="text" id="upload-note" placeholder="Note (optionnelle)">
+            <button id="btn-upload" onclick="lancerUpload()">⬆️ Téléverser</button>
+        </div>
+        <div class="progress-upload" id="zone-progress" style="display:none;">
+            <div class="progress-upload-bar" id="progress-bar"></div>
+        </div>
+    </div>
+
+    <div id="contenu">
+        <div class="empty-state">
+            <div style="font-size:48px;">👈</div>
+            <p>Choisis un client externe pour gérer ses menus.</p>
+        </div>
+    </div>
+
+    <!-- MODAL : remplacer un menu existant pour la même semaine -->
+    <div id="modal-remplace" class="modal-overlay">
+        <div class="modal mode-remplace">
+            <h3>⚠️ Un menu existe déjà pour cette semaine</h3>
+            <div class="avertissement warn">
+                Un menu actif est déjà téléversé pour ce client à cette semaine.
+                Si tu continues, l'ancien sera <strong>archivé</strong>
+                (avec motif "Remplacé par un nouveau téléversement")
+                et le nouveau prendra sa place.
+            </div>
+            <div id="remplace-recap" style="background:#f5f5f5;padding:12px;border-radius:6px;margin:10px 0;font-size:13px;"></div>
+            <div class="form-actions">
+                <button class="btn-annuler" onclick="fermerModal('modal-remplace')">Annuler</button>
+                <button class="btn-valider remplace" onclick="confirmerRemplacement()">⬆️ Remplacer et téléverser</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- MODAL : archiver un menu -->
+    <div id="modal-suppr" class="modal-overlay">
+        <div class="modal">
+            <h3>🗑️ Archiver un menu</h3>
+            <div class="avertissement">
+                Le menu ne sera plus visible par le client. Il restera consultable via
+                le toggle <strong>🗑️ Archivés</strong> et pourra être restauré.
+                Le fichier PDF lui-même n'est pas supprimé du stockage.
+            </div>
+            <div id="suppr-recap" style="background:#f5f5f5;padding:12px;border-radius:6px;margin:10px 0;font-size:13px;"></div>
+            <div style="margin:12px 0;">
+                <label style="font-size:12px;color:#666;text-transform:uppercase;letter-spacing:0.3px;">
+                    Motif de l'archivage * (obligatoire)
+                </label>
+                <input type="text" id="suppr-motif" style="width:100%;padding:7px 10px;border:1px solid #ccc;border-radius:4px;font-size:14px;box-sizing:border-box;margin-top:4px;" placeholder="ex: Erreur de fichier, doublon, ancienne version">
+            </div>
+            <div style="margin:6px 0;">
+                <label><input type="checkbox" id="suppr-confirm-1"> Je confirme avoir vérifié le menu archivé</label>
+            </div>
+            <div style="margin:6px 0;">
+                <label><input type="checkbox" id="suppr-confirm-2"> Je confirme vouloir archiver</label>
+            </div>
+            <div class="form-actions">
+                <button class="btn-annuler" onclick="fermerModal('modal-suppr')">Annuler</button>
+                <button class="btn-valider" onclick="validerSuppr()">🗑️ Archiver</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- MODAL : restaurer un menu archivé -->
+    <div id="modal-restaurer" class="modal-overlay">
+        <div class="modal mode-restaurer">
+            <h3>♻️ Restaurer un menu archivé</h3>
+            <div class="avertissement success">
+                Ce menu redeviendra visible par le client. ⚠️ S'il existe déjà un menu actif
+                pour la même semaine, la restauration sera refusée — il faut d'abord archiver l'autre.
+            </div>
+            <div id="restaurer-recap" style="background:#f5f5f5;padding:12px;border-radius:6px;margin:10px 0;font-size:13px;"></div>
+            <div style="margin:12px 0;">
+                <label style="font-size:12px;color:#666;text-transform:uppercase;letter-spacing:0.3px;">
+                    Motif de la restauration * (obligatoire)
+                </label>
+                <input type="text" id="restaurer-motif" style="width:100%;padding:7px 10px;border:1px solid #ccc;border-radius:4px;font-size:14px;box-sizing:border-box;margin-top:4px;">
+            </div>
+            <div style="margin:6px 0;">
+                <label><input type="checkbox" id="restaurer-confirm-1"> Je confirme vouloir restaurer</label>
+            </div>
+            <div class="form-actions">
+                <button class="btn-annuler" onclick="fermerModal('modal-restaurer')">Annuler</button>
+                <button class="btn-valider restaurer" onclick="validerRestaurer()">♻️ Restaurer</button>
+            </div>
+        </div>
+    </div>
+
+    <div class="save-status" id="save-status"></div>
+
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="shared.js"></script>
+    <script>
+        let tousLesClients = [];
+        let clientActif = null;
+        let utilisateurConnecte = null;
+        let monProfil = null;
+        let tousLesMenus = []; // actifs + archivés du client
+        let vueActuelle = 'actifs';
+        let menuEnCours = null;
+
+        // Pour le upload en attente quand on doit remplacer
+        let uploadEnAttente = null;
+
+        const BUCKET = 'menus-ejc';
+        const TAILLE_MAX_MO = 6;
+
+        function echapper(t) {
+            if (t === null || t === undefined) return '';
+            return String(t)
+                .replace(/&/g, '&amp;')
+                .replace(/</g, '&lt;')
+                .replace(/>/g, '&gt;')
+                .replace(/"/g, '&quot;');
+        }
+
+        function afficherStatus(type, message, dureeMs = 2000) {
+            const status = document.getElementById('save-status');
+            status.className = 'save-status ' + type;
+            status.textContent = message;
+            setTimeout(() => status.style.display = 'none', dureeMs);
+        }
+
+        function formatDate(iso) {
+            if (!iso) return '';
+            const [a, m, j] = iso.split('-');
+            return `${j}.${m}.${a}`;
+        }
+
+        function formatDateHeure(iso) {
+            if (!iso) return '';
+            const d = new Date(iso);
+            return String(d.getDate()).padStart(2,'0') + '.'
+                 + String(d.getMonth()+1).padStart(2,'0') + '.'
+                 + d.getFullYear() + ' '
+                 + String(d.getHours()).padStart(2,'0') + ':'
+                 + String(d.getMinutes()).padStart(2,'0');
+        }
+
+        function formatTaille(o) {
+            if (!o) return '';
+            if (o < 1024) return o + ' o';
+            if (o < 1024*1024) return (o/1024).toFixed(1) + ' Ko';
+            return (o/(1024*1024)).toFixed(1) + ' Mo';
+        }
+
+    function libelleSemaine(lundiIso) {
+            // lundiIso est une date au format YYYY-MM-DD (sans heure)
+            // On manipule directement la string pour éviter tout problème de timezone
+            const [a, m, j] = lundiIso.split('-').map(n => parseInt(n));
+            
+            // Calculer le dimanche (lundi + 6 jours)
+            const dDim = new Date(a, m - 1, j + 6); // mois en JS = 0-indexé
+            const yyyyFin = dDim.getFullYear();
+            const mmFin = String(dDim.getMonth() + 1).padStart(2, '0');
+            const jjFin = String(dDim.getDate()).padStart(2, '0');
+            const dimancheIso = `${yyyyFin}-${mmFin}-${jjFin}`;
+            
+            // Numéro de semaine ISO
+            const target = new Date(Date.UTC(a, m - 1, j));
+            const dayNum = target.getUTCDay() || 7;
+            target.setUTCDate(target.getUTCDate() + 4 - dayNum);
+            const yearStart = new Date(Date.UTC(target.getUTCFullYear(), 0, 1));
+            const noSem = Math.ceil((((target - yearStart) / 86400000) + 1) / 7);
+            
+            return `Semaine ${noSem} (${formatDate(lundiIso)} → ${formatDate(dimancheIso)})`;
+        }
+
+        function lundiDeLaSemaineLocal(date) {
+            const d = new Date(date);
+            const jour = d.getDay();
+            const diff = jour === 0 ? -6 : 1 - jour;
+            d.setDate(d.getDate() + diff);
+            return d.getFullYear() + '-'
+                + String(d.getMonth()+1).padStart(2,'0') + '-'
+                + String(d.getDate()).padStart(2,'0');
+        }
+
+        // ============================================
+        // SÉLECTEUR DE CLIENT
+        // ============================================
+        async function chargerListeClients() {
+            tousLesClients = await chargerTousLesClients(true);
+            const zone = document.getElementById('zone-selecteur-client');
+            let html = `<div class="selecteur-client">
+                <span style="background:#856404;color:white;padding:3px 10px;border-radius:12px;font-size:12px;font-weight:bold;">👑 ADMIN</span>
+                <label for="select-client">Client externe :</label>
+                <select id="select-client" onchange="changerClient(this.value)">
+                    <option value="">— Choisir un client —</option>`;
+            for (const c of tousLesClients) {
+                html += `<option value="${c.id}">${echapper(c.nom)}</option>`;
+            }
+            html += `</select></div>`;
+            zone.innerHTML = html;
+        }
+
+        function changerClient(clientId) {
+            vueActuelle = 'actifs';
+            if (!clientId) {
+                clientActif = null;
+                document.getElementById('zone-toggle').style.display = 'none';
+                document.getElementById('zone-upload-bloc').style.display = 'none';
+                document.getElementById('contenu').innerHTML = `<div class="empty-state">
+                    <div style="font-size:48px;">👈</div>
+                    <p>Choisis un client externe pour gérer ses menus.</p>
+                </div>`;
+                return;
+            }
+            clientActif = tousLesClients.find(c => c.id === clientId);
+            // Préremplir le lundi prochain par défaut
+            const auj = new Date();
+            const lundiProchain = new Date(auj);
+            lundiProchain.setDate(auj.getDate() + (8 - auj.getDay()) % 7);
+            if (auj.getDay() === 1) lundiProchain.setDate(auj.getDate() + 7);
+            document.getElementById('upload-lundi').value = lundiDeLaSemaineLocal(lundiProchain);
+            document.getElementById('upload-file').value = '';
+            document.getElementById('upload-note').value = '';
+            document.getElementById('zone-upload-bloc').style.display = 'block';
+            chargerMenus();
+        }
+
+        // ============================================
+        // CHARGEMENT DES MENUS
+        // ============================================
+        async function chargerMenus() {
+            if (!clientActif) return;
+            document.getElementById('contenu').innerHTML = '<p class="loading">⏳ Chargement...</p>';
+
+            const { data, error } = await supaClient
+                .from('menus_ejc')
+                .select('*')
+                .eq('client_id', clientActif.id)
+                .order('lundi_semaine', { ascending: false });
+
+            if (error) {
+                document.getElementById('contenu').innerHTML =
+                    '<div class="erreur-msg">Erreur : ' + error.message + '</div>';
+                return;
+            }
+            tousLesMenus = data || [];
+            afficherToggle();
+            afficherTableau();
+        }
+
+        function afficherToggle() {
+            const nbA = tousLesMenus.filter(m => m.actif).length;
+            const nbAr = tousLesMenus.filter(m => !m.actif).length;
+            document.getElementById('cpt-actifs').textContent = nbA;
+            document.getElementById('cpt-archives').textContent = nbAr;
+            document.getElementById('btn-vue-actifs').classList.toggle('active', vueActuelle === 'actifs');
+            document.getElementById('btn-vue-archives').classList.toggle('active', vueActuelle === 'archives');
+            document.getElementById('zone-toggle').style.display = 'block';
+        }
+
+        function changerVue(v) {
+            vueActuelle = v;
+            afficherToggle();
+            afficherTableau();
+        }
+
+        function afficherTableau() {
+            const c = document.getElementById('contenu');
+            const lignes = tousLesMenus.filter(m =>
+                vueActuelle === 'actifs' ? m.actif : !m.actif
+            );
+
+            if (lignes.length === 0) {
+                const msg = vueActuelle === 'actifs'
+                    ? `<p><strong>Aucun menu actif pour ${echapper(clientActif.nom)}.</strong></p>
+                       <p>Utilise le formulaire ci-dessus pour téléverser le premier menu.</p>`
+                    : `<p><strong>Aucun menu archivé pour ${echapper(clientActif.nom)}.</strong></p>`;
+                c.innerHTML = `<div class="empty-state">
+                    <div style="font-size:48px;">${vueActuelle === 'actifs' ? '📄' : '🗑️'}</div>
+                    ${msg}
+                </div>`;
+                return;
+            }
+
+            let html;
+            if (vueActuelle === 'actifs') {
+                html = `<table class="menus"><thead><tr>
+                    <th>Semaine</th>
+                    <th>Fichier</th>
+                    <th>Téléversé le</th>
+                    <th>Note</th>
+                    <th>Actions</th>
+                </tr></thead><tbody>`;
+            } else {
+                html = `<table class="menus"><thead><tr>
+                    <th>Semaine</th>
+                    <th>Fichier</th>
+                    <th>Archivé le</th>
+                    <th>Motif</th>
+                    <th>Actions</th>
+                </tr></thead><tbody>`;
+            }
+
+            lignes.forEach(m => {
+                if (vueActuelle === 'actifs') {
+                    html += `<tr>
+                        <td>
+                            <div class="semaine-libelle">${libelleSemaine(m.lundi_semaine)}</div>
+                        </td>
+                        <td>
+                            <div>${echapper(m.nom_fichier_origine)}</div>
+                            <div class="meta">${formatTaille(m.taille_octets)}</div>
+                        </td>
+                        <td>
+                            <div>${formatDateHeure(m.cree_le)}</div>
+                            <div class="meta">par ${echapper(m.cree_par_email || '?')}</div>
+                        </td>
+                        <td>${echapper(m.note_admin || '')}</td>
+                        <td class="actions-cell">
+                            <button class="btn-mini voir" onclick="voirMenu(${m.id})">👁️ Voir</button>
+                            <button class="btn-mini suppr" onclick="ouvrirSuppr(${m.id})">🗑️ Archiver</button>
+                        </td>
+                    </tr>`;
+                } else {
+                    html += `<tr class="archivee">
+                        <td>
+                            <div class="semaine-libelle">${libelleSemaine(m.lundi_semaine)}</div>
+                        </td>
+                        <td>
+                            <div>${echapper(m.nom_fichier_origine)}</div>
+                            <div class="meta">${formatTaille(m.taille_octets)}</div>
+                        </td>
+                        <td>
+                            <div>${formatDateHeure(m.supprime_le)}</div>
+                            <div class="meta">par ${echapper(m.supprime_par_email || '?')}</div>
+                        </td>
+                        <td>
+                            <div class="archivee-motif">${echapper(m.supprime_motif || '')}</div>
+                        </td>
+                        <td class="actions-cell">
+                            <button class="btn-mini voir" onclick="voirMenu(${m.id})">👁️ Voir</button>
+                            <button class="btn-mini restaurer" onclick="ouvrirRestaurer(${m.id})">♻️ Restaurer</button>
+                        </td>
+                    </tr>`;
+                }
+            });
+
+            html += '</tbody></table>';
+            c.innerHTML = html;
+        }
+
+        // ============================================
+        // VOIR UN MENU (URL signée temporaire)
+        // ============================================
+        async function voirMenu(menuId) {
+            const m = tousLesMenus.find(x => x.id === menuId);
+            if (!m) return;
+            const { data, error } = await supaClient
+                .storage.from(BUCKET)
+                .createSignedUrl(m.chemin_storage, 300); // 5 min
+            if (error || !data) {
+                afficherStatus('error', '❌ Impossible de générer l\'URL : ' + (error?.message || 'inconnu'), 4000);
+                return;
+            }
+            window.open(data.signedUrl, '_blank');
+        }
+
+        // ============================================
+        // UPLOAD
+        // ============================================
+        async function lancerUpload() {
+            if (!clientActif) return;
+
+            const lundi = document.getElementById('upload-lundi').value;
+            const fileInput = document.getElementById('upload-file');
+            const file = fileInput.files[0];
+            const note = document.getElementById('upload-note').value.trim();
+
+            if (!lundi) {
+                afficherStatus('error', '❌ Sélectionne le lundi de la semaine', 2500);
+                return;
+            }
+            // Forcer que ce soit un lundi
+            const lundiForce = lundiDeLaSemaineLocal(new Date(lundi + 'T00:00:00'));
+            if (lundiForce !== lundi) {
+                document.getElementById('upload-lundi').value = lundiForce;
+                afficherStatus('warning', '⚠️ Date corrigée sur le lundi de cette semaine', 2500);
+                return;
+            }
+            if (!file) {
+                afficherStatus('error', '❌ Sélectionne un fichier PDF', 2500);
+                return;
+            }
+            if (file.type !== 'application/pdf') {
+                afficherStatus('error', '❌ Seuls les fichiers PDF sont acceptés', 3000);
+                return;
+            }
+            if (file.size > TAILLE_MAX_MO * 1024 * 1024) {
+                afficherStatus('error', `❌ Fichier trop volumineux (max ${TAILLE_MAX_MO} Mo)`, 3500);
+                return;
+            }
+
+            // Vérifier s'il existe déjà un menu actif pour cette semaine
+            const existant = tousLesMenus.find(m =>
+                m.actif && m.lundi_semaine === lundi
+            );
+
+            if (existant) {
+                uploadEnAttente = { lundi, file, note, aArchiverId: existant.id };
+                document.getElementById('remplace-recap').innerHTML = `
+                    <strong>${libelleSemaine(existant.lundi_semaine)}</strong><br>
+                    Fichier actuel : ${echapper(existant.nom_fichier_origine)}<br>
+                    Téléversé le ${formatDateHeure(existant.cree_le)}
+                `;
+                document.getElementById('modal-remplace').classList.add('active');
+                return;
+            }
+
+            // Pas de conflit, on uploade direct
+            await executerUpload({ lundi, file, note, aArchiverId: null });
+        }
+
+        async function confirmerRemplacement() {
+            fermerModal('modal-remplace');
+            if (!uploadEnAttente) return;
+            await executerUpload(uploadEnAttente);
+            uploadEnAttente = null;
+        }
+
+        async function executerUpload({ lundi, file, note, aArchiverId }) {
+            document.getElementById('btn-upload').disabled = true;
+            document.getElementById('zone-progress').style.display = 'block';
+            document.getElementById('progress-bar').style.width = '10%';
+
+            // Construire le chemin : {client_id}/{lundi}-{timestamp}.pdf
+            const ts = Date.now();
+            const chemin = `${clientActif.id}/${lundi}-${ts}.pdf`;
+
+            // 1. Upload sur Storage
+            const { error: errUp } = await supaClient
+                .storage.from(BUCKET)
+                .upload(chemin, file, {
+                    contentType: 'application/pdf',
+                    upsert: false
+                });
+
+            if (errUp) {
+                afficherStatus('error', '❌ Upload échoué : ' + errUp.message, 4500);
+                document.getElementById('btn-upload').disabled = false;
+                document.getElementById('zone-progress').style.display = 'none';
+                return;
+            }
+            document.getElementById('progress-bar').style.width = '60%';
+
+            // 2. Si remplacement, archiver l'ancien D'ABORD
+            if (aArchiverId) {
+                const anc = tousLesMenus.find(x => x.id === aArchiverId);
+                const updAnc = {
+                    actif: false,
+                    supprime_le: new Date().toISOString(),
+                    supprime_par_user_id: utilisateurConnecte.user.id,
+                    supprime_par_email: utilisateurConnecte.user.email,
+                    supprime_motif: 'Remplacé par un nouveau téléversement'
+                };
+                const { error: errArch } = await supaClient
+                    .from('menus_ejc')
+                    .update(updAnc)
+                    .eq('id', aArchiverId);
+                if (errArch) {
+                    afficherStatus('error', '❌ PDF uploadé mais ancien non archivé : ' + errArch.message, 5000);
+                    // Le nouveau ne pourra pas être inséré (contrainte UNIQUE). On supprime le PDF orphelin.
+                    await supaClient.storage.from(BUCKET).remove([chemin]);
+                    document.getElementById('btn-upload').disabled = false;
+                    document.getElementById('zone-progress').style.display = 'none';
+                    return;
+                }
+            }
+            document.getElementById('progress-bar').style.width = '80%';
+
+            // 3. Insérer la métadonnée
+            const { error: errIns } = await supaClient
+                .from('menus_ejc')
+                .insert({
+                    cree_par_user_id: utilisateurConnecte.user.id,
+                    cree_par_email: utilisateurConnecte.user.email,
+                    client_id: clientActif.id,
+                    lundi_semaine: lundi,
+                    nom_fichier_origine: file.name,
+                    chemin_storage: chemin,
+                    taille_octets: file.size,
+                    note_admin: note || null
+                });
+
+            if (errIns) {
+                afficherStatus('error', '❌ Métadonnée non enregistrée : ' + errIns.message, 5000);
+                // Cleanup
+                await supaClient.storage.from(BUCKET).remove([chemin]);
+                document.getElementById('btn-upload').disabled = false;
+                document.getElementById('zone-progress').style.display = 'none';
+                return;
+            }
+
+            document.getElementById('progress-bar').style.width = '100%';
+            afficherStatus('success', '✓ Menu téléversé');
+            setTimeout(() => {
+                document.getElementById('zone-progress').style.display = 'none';
+                document.getElementById('progress-bar').style.width = '0%';
+                document.getElementById('upload-file').value = '';
+                document.getElementById('upload-note').value = '';
+                document.getElementById('btn-upload').disabled = false;
+            }, 800);
+            chargerMenus();
+        }
+
+        // ============================================
+        // ARCHIVER UN MENU
+        // ============================================
+        function ouvrirSuppr(menuId) {
+            const m = tousLesMenus.find(x => x.id === menuId);
+            if (!m) return;
+            menuEnCours = m;
+            document.getElementById('suppr-recap').innerHTML = `
+                <strong>${libelleSemaine(m.lundi_semaine)}</strong><br>
+                Fichier : ${echapper(m.nom_fichier_origine)}
+            `;
+            document.getElementById('suppr-motif').value = '';
+            document.getElementById('suppr-confirm-1').checked = false;
+            document.getElementById('suppr-confirm-2').checked = false;
+            document.getElementById('modal-suppr').classList.add('active');
+        }
+
+        async function validerSuppr() {
+            if (!menuEnCours) return;
+            const motif = document.getElementById('suppr-motif').value.trim();
+            const c1 = document.getElementById('suppr-confirm-1').checked;
+            const c2 = document.getElementById('suppr-confirm-2').checked;
+            if (!motif) { afficherStatus('error', '❌ Motif obligatoire', 2500); return; }
+            if (!c1 || !c2) { afficherStatus('error', '❌ Les deux confirmations sont obligatoires', 2500); return; }
+
+            const upd = {
+                actif: false,
+                supprime_le: new Date().toISOString(),
+                supprime_par_user_id: utilisateurConnecte.user.id,
+                supprime_par_email: utilisateurConnecte.user.email,
+                supprime_motif: motif
+            };
+            const { error } = await supaClient
+                .from('menus_ejc').update(upd).eq('id', menuEnCours.id);
+            if (error) { afficherStatus('error', '❌ ' + error.message, 4000); return; }
+            fermerModal('modal-suppr');
+            afficherStatus('success', '✓ Menu archivé');
+            chargerMenus();
+        }
+
+        // ============================================
+        // RESTAURER UN MENU
+        // ============================================
+        function ouvrirRestaurer(menuId) {
+            const m = tousLesMenus.find(x => x.id === menuId);
+            if (!m) return;
+            menuEnCours = m;
+            document.getElementById('restaurer-recap').innerHTML = `
+                <strong>${libelleSemaine(m.lundi_semaine)}</strong><br>
+                Fichier : ${echapper(m.nom_fichier_origine)}<br>
+                Archivé le ${formatDateHeure(m.supprime_le)}<br>
+                Motif : <em>${echapper(m.supprime_motif || '')}</em>
+            `;
+            document.getElementById('restaurer-motif').value = '';
+            document.getElementById('restaurer-confirm-1').checked = false;
+            document.getElementById('modal-restaurer').classList.add('active');
+        }
+
+        async function validerRestaurer() {
+            if (!menuEnCours) return;
+            const motif = document.getElementById('restaurer-motif').value.trim();
+            const c1 = document.getElementById('restaurer-confirm-1').checked;
+            if (!motif) { afficherStatus('error', '❌ Motif obligatoire', 2500); return; }
+            if (!c1) { afficherStatus('error', '❌ Confirmation requise', 2500); return; }
+
+            // Vérifier qu'il n'y a pas déjà un actif pour cette semaine
+            const conflit = tousLesMenus.find(m =>
+                m.actif && m.lundi_semaine === menuEnCours.lundi_semaine
+            );
+            if (conflit) {
+                afficherStatus('error', '❌ Un menu actif existe déjà pour cette semaine. Archive-le d\'abord.', 5000);
+                return;
+            }
+
+            const upd = {
+                actif: true,
+                supprime_le: null,
+                supprime_par_user_id: null,
+                supprime_par_email: null,
+                supprime_motif: null
+            };
+            const { error } = await supaClient
+                .from('menus_ejc').update(upd).eq('id', menuEnCours.id);
+            if (error) { afficherStatus('error', '❌ ' + error.message, 4000); return; }
+            fermerModal('modal-restaurer');
+            afficherStatus('success', '✓ Menu restauré');
+            vueActuelle = 'actifs';
+            chargerMenus();
+        }
+
+        function fermerModal(id) {
+            document.getElementById(id).classList.remove('active');
+        }
+
+        // ============================================
+        // DÉMARRAGE
+        // ============================================
+        (async () => {
+            const ctx = await chargerContexteClient(['admin']);
+            if (!ctx) return;
+            utilisateurConnecte = ctx;
+            monProfil = ctx.profil;
+            afficherMenuComplet('menus-admin', ctx.user.email, ctx.profil.role, ctx.profil.nom_affiche);
+            await chargerListeClients();
+        })();
+    </script>
+</body>
+</html>
