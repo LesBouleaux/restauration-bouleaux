@@ -1,0 +1,1203 @@
+ <!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Paramètres EJC - Restauration Les Bouleaux</title>
+    <link rel="stylesheet" href="shared.css">
+    <style>
+        .selecteur-client {
+            background: #fff8e1;
+            border: 2px solid #ffc107;
+            padding: 12px 18px;
+            border-radius: 8px;
+            margin: 15px 0;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            flex-wrap: wrap;
+        }
+        .selecteur-client label { font-weight: bold; color: #856404; }
+        .selecteur-client select {
+            padding: 6px 10px;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+            font-size: 15px;
+            min-width: 280px;
+        }
+
+        .note-session {
+            background: #f3edff;
+            border: 2px solid #5b3fa6;
+            border-radius: 8px;
+            padding: 10px 16px;
+            margin: 10px 0;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            flex-wrap: wrap;
+            font-size: 14px;
+        }
+        .note-session-libelle { font-weight: bold; color: #5b3fa6; }
+        .note-session-valeur { flex: 1; font-style: italic; color: #333; }
+        .note-session-valeur.vide { color: #888; }
+        .note-session button {
+            background: #5b3fa6;
+            color: white;
+            border: none;
+            padding: 5px 12px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 13px;
+        }
+
+        .vue-toggle {
+            display: inline-flex;
+            border: 2px solid #2c5530;
+            border-radius: 6px;
+            overflow: hidden;
+            margin: 10px 0;
+        }
+        .vue-toggle button {
+            background: white;
+            color: #2c5530;
+            border: none;
+            padding: 8px 18px;
+            cursor: pointer;
+            font-size: 14px;
+            font-weight: bold;
+        }
+        .vue-toggle button.active {
+            background: #2c5530;
+            color: white;
+        }
+        .vue-toggle .compteur {
+            background: rgba(255,255,255,0.3);
+            padding: 1px 8px;
+            border-radius: 10px;
+            margin-left: 6px;
+            font-size: 12px;
+        }
+        .vue-toggle button:not(.active) .compteur {
+            background: #e0e0e0;
+            color: #555;
+        }
+
+        table.periodes {
+            width: 100%;
+            border-collapse: collapse;
+            background: white;
+            border-radius: 8px;
+            overflow: hidden;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            margin: 15px 0;
+            font-size: 13.5px;
+        }
+        table.periodes th, table.periodes td {
+            padding: 9px 11px;
+            border-bottom: 1px solid #eee;
+            text-align: left;
+            vertical-align: top;
+        }
+        table.periodes th {
+            background: #2c5530;
+            color: white;
+            font-size: 12px;
+            text-transform: uppercase;
+            letter-spacing: 0.4px;
+        }
+        table.periodes tbody tr:hover { background: #fafafa; }
+        table.periodes tbody tr.archivee {
+            background: #fafafa;
+            color: #888;
+        }
+        table.periodes tbody tr.archivee:hover {
+            background: #f0f0f0;
+        }
+
+        .periode-libelle { font-weight: bold; color: #2c5530; }
+        tr.archivee .periode-libelle { color: #555; text-decoration: line-through; }
+
+        .periode-dates { white-space: nowrap; font-family: 'Courier New', monospace; }
+
+        .periode-statut {
+            display: inline-block;
+            padding: 3px 9px;
+            border-radius: 11px;
+            font-size: 11px;
+            font-weight: bold;
+            text-transform: uppercase;
+        }
+        .statut-actuelle { background: #d4edda; color: #155724; }
+        .statut-future   { background: #cfe2ff; color: #0d47a1; }
+        .statut-passee   { background: #f5f5f5; color: #555; }
+        .statut-archivee { background: #f5d3d3; color: #842029; }
+
+        .regle-resume {
+            font-size: 12.5px;
+            color: #555;
+            line-height: 1.5;
+        }
+        .regle-resume strong { color: #2c5530; }
+
+        .archivee-meta {
+            font-size: 12px;
+            color: #842029;
+            margin-top: 4px;
+            font-style: italic;
+        }
+        .archivee-motif {
+            background: #fff3cd;
+            border-left: 3px solid #f0ad4e;
+            padding: 6px 10px;
+            margin-top: 6px;
+            font-size: 12px;
+            color: #6b4d00;
+            border-radius: 3px;
+        }
+
+        .actions-cell { white-space: nowrap; }
+        .btn-mini {
+            font-size: 12px;
+            padding: 5px 10px;
+            margin-right: 4px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-weight: bold;
+        }
+        .btn-mini.modif { background: #f0ad4e; color: white; }
+        .btn-mini.suppr { background: #c0392b; color: white; }
+        .btn-mini.restaurer { background: #28a745; color: white; }
+
+        .empty-state {
+            background: white;
+            padding: 40px;
+            border-radius: 8px;
+            text-align: center;
+            color: #888;
+        }
+
+        .zone-ajout {
+            background: #f0f8f0;
+            border: 2px dashed #2c5530;
+            border-radius: 8px;
+            padding: 14px 18px;
+            margin: 10px 0;
+            text-align: center;
+        }
+        .zone-ajout button {
+            background: #2c5530;
+            color: white;
+            border: none;
+            padding: 8px 18px;
+            border-radius: 5px;
+            cursor: pointer;
+            font-weight: bold;
+            font-size: 14px;
+        }
+
+        /* ========== MODAL ========== */
+        .modal-overlay {
+            display: none;
+            position: fixed; top: 0; left: 0; right: 0; bottom: 0;
+            background: rgba(0,0,0,0.5);
+            z-index: 1000;
+            align-items: flex-start;
+            justify-content: center;
+            padding: 40px 20px;
+            overflow-y: auto;
+        }
+        .modal-overlay.active { display: flex; }
+        .modal {
+            background: white;
+            border-radius: 10px;
+            padding: 26px 28px;
+            max-width: 640px;
+            width: 100%;
+            box-shadow: 0 8px 32px rgba(0,0,0,0.25);
+        }
+        .modal h3 {
+            margin-top: 0;
+            color: #2c5530;
+            border-bottom: 2px solid #2c5530;
+            padding-bottom: 8px;
+        }
+        .modal.mode-modif h3 { color: #b35900; border-bottom-color: #b35900; }
+        .modal.mode-suppr h3 { color: #c0392b; border-bottom-color: #c0392b; }
+        .modal.mode-restaurer h3 { color: #28a745; border-bottom-color: #28a745; }
+
+        .form-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 12px 16px;
+            margin: 14px 0;
+        }
+        .form-grid .full { grid-column: 1 / -1; }
+        .form-grid label {
+            display: block;
+            font-size: 12px;
+            color: #666;
+            text-transform: uppercase;
+            letter-spacing: 0.3px;
+            margin-bottom: 4px;
+        }
+        .form-grid input, .form-grid select {
+            width: 100%;
+            padding: 7px 10px;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+            font-size: 14px;
+            box-sizing: border-box;
+        }
+        .form-grid .hint {
+            font-size: 11px;
+            color: #888;
+            margin-top: 3px;
+            font-style: italic;
+        }
+        .form-actions {
+            display: flex;
+            justify-content: flex-end;
+            gap: 10px;
+            margin-top: 20px;
+            padding-top: 14px;
+            border-top: 1px solid #eee;
+        }
+        .form-actions button {
+            padding: 9px 18px;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            font-weight: bold;
+            font-size: 14px;
+        }
+        .btn-valider { background: #2c5530; color: white; }
+        .btn-valider.modif { background: #b35900; }
+        .btn-valider.suppr { background: #c0392b; }
+        .btn-valider.restaurer { background: #28a745; }
+        .btn-annuler { background: #6c757d; color: white; }
+
+        .avertissement {
+            background: #fff3cd;
+            border-left: 4px solid #f0ad4e;
+            padding: 10px 14px;
+            font-size: 13px;
+            color: #856404;
+            border-radius: 4px;
+            margin: 10px 0;
+        }
+        .avertissement.danger {
+            background: #fce4e4;
+            border-left-color: #c0392b;
+            color: #922b21;
+        }
+        .avertissement.success {
+            background: #d4edda;
+            border-left-color: #28a745;
+            color: #155724;
+        }
+
+        .save-status {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            padding: 10px 18px;
+            border-radius: 6px;
+            color: white;
+            font-weight: bold;
+            display: none;
+            z-index: 2000;
+            max-width: 400px;
+        }
+        .save-status.success { background: #28a745; display: block; }
+        .save-status.error   { background: #dc3545; display: block; }
+        .save-status.warning { background: #ffc107; color: #333; display: block; }
+    </style>
+</head>
+<body>
+    <div id="app-header"></div>
+    <h1>🍽️ Restauration Les Bouleaux</h1>
+    <div id="menu"></div>
+
+    <h2>⚙️ Paramètres EJC — Règles contractuelles</h2>
+
+    <p style="font-size:13px;color:#666;background:#f5f5f5;padding:10px 14px;border-radius:6px;border-left:3px solid #2c5530;">
+        Gère ici les règles contractuelles applicables à chaque client externe : deadline de commande,
+        fenêtre d'annulation, taux de facturation. Chaque action est tracée dans le journal d'audit admin.
+    </p>
+
+    <div id="zone-selecteur-client"></div>
+    <div id="zone-note-session" style="display:none;"></div>
+
+    <!-- Toggle Actives / Archivées -->
+    <div id="zone-toggle" style="display:none;">
+        <div class="vue-toggle">
+            <button id="btn-vue-actives" class="active" onclick="changerVue('actives')">
+                📋 Actives <span class="compteur" id="cpt-actives">0</span>
+            </button>
+            <button id="btn-vue-archivees" onclick="changerVue('archivees')">
+                🗑️ Archivées <span class="compteur" id="cpt-archivees">0</span>
+            </button>
+        </div>
+    </div>
+
+    <div id="zone-ajout-bouton"></div>
+
+    <div id="contenu">
+        <div class="empty-state">
+            <div style="font-size:48px;">👈</div>
+            <p>Choisis un client externe pour gérer ses règles.</p>
+        </div>
+    </div>
+
+    <!-- MODAL : AJOUTER -->
+    <div id="modal-ajout" class="modal-overlay">
+        <div class="modal">
+            <h3>➕ Ajouter une nouvelle période contractuelle</h3>
+            <p style="color:#666;font-size:13.5px;">
+                La période précédente sans date de fin sera automatiquement clôturée la veille de la date de début.
+            </p>
+            <div class="form-grid">
+                <div class="full">
+                    <label>Libellé du contrat *</label>
+                    <input type="text" id="ajout-libelle" placeholder="ex: Nouveau contrat (clause 6.1)">
+                </div>
+                <div>
+                    <label>Date de début *</label>
+                    <input type="date" id="ajout-date-debut">
+                </div>
+                <div>
+                    <label>Date de fin (optionnelle)</label>
+                    <input type="date" id="ajout-date-fin">
+                    <div class="hint">Vide = jusqu'à nouvel ordre</div>
+                </div>
+                <div>
+                    <label>Jour deadline commande *</label>
+                    <select id="ajout-deadline-jour">
+                        <option value="1">Lundi</option>
+                        <option value="2">Mardi</option>
+                        <option value="3" selected>Mercredi</option>
+                        <option value="4">Jeudi</option>
+                        <option value="5">Vendredi</option>
+                    </select>
+                </div>
+                <div>
+                    <label>Heure deadline commande *</label>
+                    <div style="display:flex;gap:6px;align-items:center;">
+                        <input type="number" id="ajout-deadline-heure" min="0" max="23" value="12" style="width:60px;">
+                        <span>h</span>
+                        <input type="number" id="ajout-deadline-minute" min="0" max="59" value="0" style="width:60px;">
+                    </div>
+                </div>
+                <div class="full">
+                    <label>
+                        <input type="checkbox" id="ajout-24h-active" style="width:auto;">
+                        Fenêtre d'annulation gratuite à 24h avant le repas
+                    </label>
+                    <div class="hint">Si coché : annulation gratuite jusqu'à 11h30 la veille (ancien contrat).</div>
+                </div>
+                <div>
+                    <label>Plafond annulation 24h (%)</label>
+                    <input type="number" id="ajout-24h-plafond" min="0" max="100" placeholder="ex: 50">
+                    <div class="hint">Vide = pas de plafond. Uniquement si fenêtre 24h active.</div>
+                </div>
+                <div></div>
+                <div>
+                    <label>Deadline annulation tardive *</label>
+                    <div style="display:flex;gap:6px;align-items:center;">
+                        <input type="number" id="ajout-deadline-ann-heure" min="0" max="23" value="8" style="width:60px;">
+                        <span>h</span>
+                        <input type="number" id="ajout-deadline-ann-minute" min="0" max="59" value="0" style="width:60px;">
+                    </div>
+                </div>
+                <div>
+                    <label>Pourcentage facturation tardive *</label>
+                    <input type="number" id="ajout-pct-tardive" min="0" max="100" value="50">
+                </div>
+            </div>
+            <div class="form-actions">
+                <button class="btn-annuler" onclick="fermerModal('modal-ajout')">Annuler</button>
+                <button class="btn-valider" onclick="validerAjout()">✓ Créer la période</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- MODAL : MODIFIER -->
+    <div id="modal-modif" class="modal-overlay">
+        <div class="modal mode-modif">
+            <h3>✏️ Modifier une période contractuelle</h3>
+            <div class="avertissement">
+                ⚠️ <strong>Attention :</strong> modifier une période existante peut affecter
+                la classification d'annulations déjà enregistrées. Cette action est tracée dans
+                le journal d'audit avec votre note de session.
+            </div>
+            <div class="form-grid">
+                <div class="full">
+                    <label>Libellé du contrat</label>
+                    <input type="text" id="modif-libelle">
+                </div>
+                <div>
+                    <label>Date de début</label>
+                    <input type="date" id="modif-date-debut">
+                </div>
+                <div>
+                    <label>Date de fin</label>
+                    <input type="date" id="modif-date-fin">
+                </div>
+                <div>
+                    <label>Jour deadline commande</label>
+                    <select id="modif-deadline-jour">
+                        <option value="1">Lundi</option>
+                        <option value="2">Mardi</option>
+                        <option value="3">Mercredi</option>
+                        <option value="4">Jeudi</option>
+                        <option value="5">Vendredi</option>
+                    </select>
+                </div>
+                <div>
+                    <label>Heure deadline commande</label>
+                    <div style="display:flex;gap:6px;align-items:center;">
+                        <input type="number" id="modif-deadline-heure" min="0" max="23" style="width:60px;">
+                        <span>h</span>
+                        <input type="number" id="modif-deadline-minute" min="0" max="59" style="width:60px;">
+                    </div>
+                </div>
+                <div class="full">
+                    <label>
+                        <input type="checkbox" id="modif-24h-active" style="width:auto;">
+                        Fenêtre d'annulation gratuite à 24h
+                    </label>
+                </div>
+                <div>
+                    <label>Plafond annulation 24h (%)</label>
+                    <input type="number" id="modif-24h-plafond" min="0" max="100">
+                </div>
+                <div></div>
+                <div>
+                    <label>Deadline annulation tardive</label>
+                    <div style="display:flex;gap:6px;align-items:center;">
+                        <input type="number" id="modif-deadline-ann-heure" min="0" max="23" style="width:60px;">
+                        <span>h</span>
+                        <input type="number" id="modif-deadline-ann-minute" min="0" max="59" style="width:60px;">
+                    </div>
+                </div>
+                <div>
+                    <label>Pourcentage facturation tardive</label>
+                    <input type="number" id="modif-pct-tardive" min="0" max="100">
+                </div>
+            </div>
+            <div class="form-actions">
+                <button class="btn-annuler" onclick="fermerModal('modal-modif')">Annuler</button>
+                <button class="btn-valider modif" onclick="validerModif()">✓ Enregistrer les modifications</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- MODAL : SUPPRIMER -->
+    <div id="modal-suppr" class="modal-overlay">
+        <div class="modal mode-suppr">
+            <h3>🗑️ Archiver une période contractuelle</h3>
+            <div class="avertissement danger">
+                ⚠️ <strong>Action critique :</strong> cette période ne sera plus appliquée pour
+                les calculs futurs. Les données restent archivées et consultables via le toggle
+                <strong>🗑️ Archivées</strong> en haut de cette page.
+            </div>
+            <div id="suppr-recap" style="background:#f5f5f5;padding:12px;border-radius:6px;margin:10px 0;font-size:13px;"></div>
+            <div class="form-grid">
+                <div class="full">
+                    <label>Motif de l'archivage * (obligatoire)</label>
+                    <input type="text" id="suppr-motif" placeholder="ex: Saisie erronée, à recréer correctement">
+                </div>
+                <div class="full">
+                    <label>
+                        <input type="checkbox" id="suppr-confirm-1" style="width:auto;">
+                        Je confirme avoir lu et compris les conséquences
+                    </label>
+                </div>
+                <div class="full">
+                    <label>
+                        <input type="checkbox" id="suppr-confirm-2" style="width:auto;">
+                        Je confirme vouloir archiver cette période
+                    </label>
+                </div>
+            </div>
+            <div class="form-actions">
+                <button class="btn-annuler" onclick="fermerModal('modal-suppr')">Annuler</button>
+                <button class="btn-valider suppr" onclick="validerSuppr()">🗑️ Confirmer l'archivage</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- MODAL : RESTAURER -->
+    <div id="modal-restaurer" class="modal-overlay">
+        <div class="modal mode-restaurer">
+            <h3>♻️ Restaurer une période archivée</h3>
+            <div class="avertissement success">
+                ✓ Cette période va redevenir active et s'appliquera à nouveau pour les calculs futurs.
+                L'archivage précédent (motif, date, auteur) reste tracé dans le journal d'audit.
+            </div>
+            <div id="restaurer-recap" style="background:#f5f5f5;padding:12px;border-radius:6px;margin:10px 0;font-size:13px;"></div>
+            <div class="form-grid">
+                <div class="full">
+                    <label>Motif de la restauration * (obligatoire)</label>
+                    <input type="text" id="restaurer-motif" placeholder="ex: Archivage erroné, période finalement valide">
+                </div>
+                <div class="full">
+                    <label>
+                        <input type="checkbox" id="restaurer-confirm-1" style="width:auto;">
+                        Je confirme avoir vérifié qu'aucune autre période active ne se chevauche
+                    </label>
+                </div>
+                <div class="full">
+                    <label>
+                        <input type="checkbox" id="restaurer-confirm-2" style="width:auto;">
+                        Je confirme vouloir restaurer cette période
+                    </label>
+                </div>
+            </div>
+            <div class="form-actions">
+                <button class="btn-annuler" onclick="fermerModal('modal-restaurer')">Annuler</button>
+                <button class="btn-valider restaurer" onclick="validerRestaurer()">♻️ Confirmer la restauration</button>
+            </div>
+        </div>
+    </div>
+
+    <div class="save-status" id="save-status"></div>
+
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="shared.js"></script>
+    <script>
+        let tousLesClients = [];
+        let clientActif = null;
+        let toutesRegles = [];   // toutes : actives + archivées
+        let vueActuelle = 'actives';
+        let utilisateurConnecte = null;
+        let monProfil = null;
+        let noteSessionAdmin = '';
+        let regleEnCours = null;
+
+        function echapper(t) {
+            if (t === null || t === undefined) return '';
+            return String(t)
+                .replace(/&/g, '&amp;')
+                .replace(/</g, '&lt;')
+                .replace(/>/g, '&gt;')
+                .replace(/"/g, '&quot;');
+        }
+
+        function afficherStatus(type, message, dureeMs = 1800) {
+            const status = document.getElementById('save-status');
+            status.className = 'save-status ' + type;
+            status.textContent = message;
+            setTimeout(() => status.style.display = 'none', dureeMs);
+        }
+
+        function aujourdhuiIso() {
+            const d = new Date();
+            return d.getFullYear() + '-'
+                 + String(d.getMonth()+1).padStart(2,'0') + '-'
+                 + String(d.getDate()).padStart(2,'0');
+        }
+
+        function formatDate(iso) {
+            if (!iso) return '';
+            const [a, m, j] = iso.split('-');
+            return `${j}.${m}.${a}`;
+        }
+
+        function formatDateHeure(iso) {
+            if (!iso) return '';
+            const d = new Date(iso);
+            const j = String(d.getDate()).padStart(2, '0');
+            const m = String(d.getMonth() + 1).padStart(2, '0');
+            const a = d.getFullYear();
+            const h = String(d.getHours()).padStart(2, '0');
+            const mi = String(d.getMinutes()).padStart(2, '0');
+            return `${j}.${m}.${a} ${h}:${mi}`;
+        }
+
+        function decalerJourIso(iso, delta) {
+            const d = new Date(iso + 'T00:00:00');
+            d.setDate(d.getDate() + delta);
+            return d.getFullYear() + '-'
+                + String(d.getMonth()+1).padStart(2,'0') + '-'
+                + String(d.getDate()).padStart(2,'0');
+        }
+
+        // ============================================
+        // NOTE DE SESSION ADMIN
+        // ============================================
+        function afficherBandeauNoteSession() {
+            const zone = document.getElementById('zone-note-session');
+            zone.style.display = 'flex';
+            const v = noteSessionAdmin
+                ? `<span class="note-session-valeur">« ${echapper(noteSessionAdmin)} »</span>`
+                : `<span class="note-session-valeur vide">(aucune — sera demandée à votre première action)</span>`;
+            zone.innerHTML = `<div class="note-session">
+                <span class="note-session-libelle">📝 Note de session :</span>
+                ${v}
+                <button onclick="changerNoteSession()">${noteSessionAdmin ? 'Changer' : 'Saisir'}</button>
+            </div>`;
+        }
+
+        function changerNoteSession() {
+            const s = prompt(
+                'Note de session pour vos actions dans Paramètres.\n\n' +
+                'Conseil : référencez la décision (ex : "bascule contrat Péry, mail direction du 12.06").\n\nNote :',
+                noteSessionAdmin || ''
+            );
+            if (s === null) return;
+            const t = s.trim();
+            if (!t) { afficherStatus('warning', '⚠️ Note vide — non enregistrée.'); return; }
+            noteSessionAdmin = t;
+            afficherBandeauNoteSession();
+            afficherStatus('success', '✓ Note de session mise à jour');
+        }
+
+        async function demanderNoteSiVide() {
+            if (noteSessionAdmin) return true;
+            const s = prompt(
+                'Vous allez modifier les règles contractuelles d\'un client.\n\n' +
+                'Merci d\'indiquer la raison (cette note sera enregistrée dans le journal d\'audit) :',
+                ''
+            );
+            if (s === null) return false;
+            const t = s.trim();
+            if (!t) { afficherStatus('error', '❌ Note obligatoire — action annulée.', 2500); return false; }
+            noteSessionAdmin = t;
+            afficherBandeauNoteSession();
+            return true;
+        }
+
+        // ============================================
+        // SÉLECTEUR DE CLIENT
+        // ============================================
+        async function chargerListeClients() {
+            tousLesClients = await chargerTousLesClients(true);
+            const zone = document.getElementById('zone-selecteur-client');
+            let html = `<div class="selecteur-client">
+                <span style="background:#856404;color:white;padding:3px 10px;border-radius:12px;font-size:12px;font-weight:bold;">👑 ADMIN</span>
+                <label for="select-client">Client externe :</label>
+                <select id="select-client" onchange="changerClient(this.value)">
+                    <option value="">— Choisir un client —</option>`;
+            for (const c of tousLesClients) {
+                html += `<option value="${c.id}">${echapper(c.nom)}</option>`;
+            }
+            html += `</select></div>`;
+            zone.innerHTML = html;
+        }
+
+        function changerClient(clientId) {
+            noteSessionAdmin = '';
+            afficherBandeauNoteSession();
+            vueActuelle = 'actives'; // reset à actives sur changement de client
+
+            if (!clientId) {
+                clientActif = null;
+                document.getElementById('zone-toggle').style.display = 'none';
+                document.getElementById('zone-ajout-bouton').innerHTML = '';
+                document.getElementById('contenu').innerHTML = `<div class="empty-state">
+                    <div style="font-size:48px;">👈</div>
+                    <p>Choisis un client externe pour gérer ses règles.</p>
+                </div>`;
+                return;
+            }
+            clientActif = tousLesClients.find(c => c.id === clientId);
+            chargerRegles();
+        }
+
+        // ============================================
+        // CHARGEMENT (toutes périodes : actives + archivées)
+        // ============================================
+        async function chargerRegles() {
+            if (!clientActif) return;
+            document.getElementById('contenu').innerHTML = '<p class="loading">⏳ Chargement...</p>';
+
+            const { data, error } = await supaClient
+                .from('regles_client_periode')
+                .select('*')
+                .eq('client_id', clientActif.id)
+                .order('date_debut', { ascending: false });
+
+            if (error) {
+                document.getElementById('contenu').innerHTML =
+                    '<div class="erreur-msg">Erreur : ' + error.message + '</div>';
+                return;
+            }
+            toutesRegles = data || [];
+            afficherToggle();
+            afficherTableau();
+            afficherBoutonAjouter();
+        }
+
+        function afficherToggle() {
+            const nbActives = toutesRegles.filter(r => r.actif).length;
+            const nbArchivees = toutesRegles.filter(r => !r.actif).length;
+            document.getElementById('cpt-actives').textContent = nbActives;
+            document.getElementById('cpt-archivees').textContent = nbArchivees;
+            document.getElementById('btn-vue-actives').classList.toggle('active', vueActuelle === 'actives');
+            document.getElementById('btn-vue-archivees').classList.toggle('active', vueActuelle === 'archivees');
+            document.getElementById('zone-toggle').style.display = 'block';
+        }
+
+        function changerVue(v) {
+            vueActuelle = v;
+            afficherToggle();
+            afficherTableau();
+            afficherBoutonAjouter();
+        }
+
+        function afficherBoutonAjouter() {
+            const zone = document.getElementById('zone-ajout-bouton');
+            // Le bouton "ajouter" ne sert qu'en vue actives
+            if (vueActuelle === 'actives') {
+                zone.innerHTML = `<div class="zone-ajout">
+                    <button onclick="ouvrirAjout()">➕ Ajouter une nouvelle période contractuelle</button>
+                </div>`;
+            } else {
+                zone.innerHTML = '';
+            }
+        }
+
+        function afficherTableau() {
+            const c = document.getElementById('contenu');
+            const lignes = toutesRegles.filter(r =>
+                vueActuelle === 'actives' ? r.actif : !r.actif
+            );
+
+            if (lignes.length === 0) {
+                const msg = vueActuelle === 'actives'
+                    ? `<p><strong>Aucune règle active pour ${echapper(clientActif.nom)}.</strong></p>
+                       <p>Utilise le bouton ci-dessus pour créer la première période.</p>`
+                    : `<p><strong>Aucune période archivée pour ${echapper(clientActif.nom)}.</strong></p>
+                       <p>Les périodes que tu archives apparaîtront ici.</p>`;
+                c.innerHTML = `<div class="empty-state">
+                    <div style="font-size:48px;">${vueActuelle === 'actives' ? '📋' : '🗑️'}</div>
+                    ${msg}
+                </div>`;
+                return;
+            }
+
+            const auj = aujourdhuiIso();
+
+            let html;
+            if (vueActuelle === 'actives') {
+                html = `<table class="periodes"><thead><tr>
+                    <th>Contrat</th>
+                    <th>Période</th>
+                    <th>Statut</th>
+                    <th>Règles</th>
+                    <th>Actions</th>
+                </tr></thead><tbody>`;
+            } else {
+                html = `<table class="periodes"><thead><tr>
+                    <th>Contrat (archivé)</th>
+                    <th>Période d'origine</th>
+                    <th>Archivage</th>
+                    <th>Motif</th>
+                    <th>Actions</th>
+                </tr></thead><tbody>`;
+            }
+
+            const jours = ['','Lun','Mar','Mer','Jeu','Ven','Sam','Dim'];
+
+            lignes.forEach(r => {
+                const periodeTxt = formatDate(r.date_debut) + ' → ' + (r.date_fin ? formatDate(r.date_fin) : '∞');
+                const jourLib = jours[r.deadline_jour] || '?';
+                const heureDl = String(r.deadline_heure).padStart(2,'0') + 'h' + String(r.deadline_minute).padStart(2,'0');
+                const heureAnn = String(r.deadline_annulation_heure).padStart(2,'0') + 'h' + String(r.deadline_annulation_minute).padStart(2,'0');
+                const fenetre24h = r.annulation_24h_active
+                    ? `<span style="color:#155724;">Oui</span>${r.annulation_24h_plafond_pct ? ' (plafond '+r.annulation_24h_plafond_pct+'%)' : ''}`
+                    : '<span style="color:#888;">Non</span>';
+
+                if (vueActuelle === 'actives') {
+                    let statutHtml;
+                    if (r.date_debut > auj) {
+                        statutHtml = '<span class="periode-statut statut-future">À venir</span>';
+                    } else if (r.date_fin && r.date_fin < auj) {
+                        statutHtml = '<span class="periode-statut statut-passee">Passée</span>';
+                    } else {
+                        statutHtml = '<span class="periode-statut statut-actuelle">En vigueur</span>';
+                    }
+                    // Archivage possible uniquement pour les périodes futures
+                    const peutArchiver = r.date_debut > auj;
+
+                    html += `<tr>
+                        <td><div class="periode-libelle">${echapper(r.libelle_contrat || '(sans libellé)')}</div></td>
+                        <td class="periode-dates">${periodeTxt}</td>
+                        <td>${statutHtml}</td>
+                        <td class="regle-resume">
+                            Cmd : <strong>${jourLib} ${heureDl}</strong> ·
+                            Ann. tardive : <strong>${heureAnn}</strong> à ${r.pct_annulation_jour_j}% ·
+                            Fenêtre 24h : ${fenetre24h}
+                        </td>
+                        <td class="actions-cell">
+                            <button class="btn-mini modif" onclick="ouvrirModif(${r.id})">✏️ Modifier</button>
+                            ${peutArchiver
+                                ? `<button class="btn-mini suppr" onclick="ouvrirSuppr(${r.id})">🗑️ Archiver</button>`
+                                : `<button class="btn-mini" disabled style="background:#ddd;color:#888;cursor:not-allowed;" title="Archivage possible uniquement pour les périodes futures">🔒</button>`
+                            }
+                        </td>
+                    </tr>`;
+                } else {
+                    // Vue archivées
+                    html += `<tr class="archivee">
+                        <td>
+                            <div class="periode-libelle">${echapper(r.libelle_contrat || '(sans libellé)')}</div>
+                            <div class="regle-resume" style="margin-top:4px;">
+                                Cmd : ${jourLib} ${heureDl} ·
+                                Ann. tardive : ${heureAnn} à ${r.pct_annulation_jour_j}%
+                            </div>
+                        </td>
+                        <td class="periode-dates">${periodeTxt}</td>
+                        <td>
+                            <span class="periode-statut statut-archivee">Archivée</span>
+                            <div class="archivee-meta">
+                                ${formatDateHeure(r.supprime_le)}<br>
+                                par ${echapper(r.supprime_par_email || '?')}
+                            </div>
+                        </td>
+                        <td>
+                            <div class="archivee-motif">${echapper(r.supprime_motif || '(sans motif)')}</div>
+                        </td>
+                        <td class="actions-cell">
+                            <button class="btn-mini restaurer" onclick="ouvrirRestaurer(${r.id})">♻️ Restaurer</button>
+                        </td>
+                    </tr>`;
+                }
+            });
+
+            html += '</tbody></table>';
+            c.innerHTML = html;
+        }
+
+        // ============================================
+        // MODAL : AJOUTER
+        // ============================================
+        function ouvrirAjout() {
+            document.getElementById('ajout-libelle').value = '';
+            document.getElementById('ajout-date-debut').value = '';
+            document.getElementById('ajout-date-fin').value = '';
+            document.getElementById('ajout-deadline-jour').value = '3';
+            document.getElementById('ajout-deadline-heure').value = '12';
+            document.getElementById('ajout-deadline-minute').value = '0';
+            document.getElementById('ajout-24h-active').checked = false;
+            document.getElementById('ajout-24h-plafond').value = '';
+            document.getElementById('ajout-deadline-ann-heure').value = '8';
+            document.getElementById('ajout-deadline-ann-minute').value = '0';
+            document.getElementById('ajout-pct-tardive').value = '50';
+            document.getElementById('modal-ajout').classList.add('active');
+        }
+
+        function fermerModal(id) {
+            document.getElementById(id).classList.remove('active');
+        }
+
+        async function validerAjout() {
+            const libelle = document.getElementById('ajout-libelle').value.trim();
+            const dateDebut = document.getElementById('ajout-date-debut').value;
+            const dateFin = document.getElementById('ajout-date-fin').value || null;
+            const dlJour = parseInt(document.getElementById('ajout-deadline-jour').value);
+            const dlHeure = parseInt(document.getElementById('ajout-deadline-heure').value);
+            const dlMinute = parseInt(document.getElementById('ajout-deadline-minute').value);
+            const ann24hActive = document.getElementById('ajout-24h-active').checked;
+            const ann24hPlafond = document.getElementById('ajout-24h-plafond').value
+                ? parseInt(document.getElementById('ajout-24h-plafond').value) : null;
+            const dlAnnHeure = parseInt(document.getElementById('ajout-deadline-ann-heure').value);
+            const dlAnnMinute = parseInt(document.getElementById('ajout-deadline-ann-minute').value);
+            const pctTardive = parseInt(document.getElementById('ajout-pct-tardive').value);
+
+            if (!libelle || !dateDebut) {
+                afficherStatus('error', '❌ Libellé et date de début obligatoires', 2500); return;
+            }
+            if (dateFin && dateFin < dateDebut) {
+                afficherStatus('error', '❌ Date de fin antérieure à la date de début', 2500); return;
+            }
+            if (!(await demanderNoteSiVide())) return;
+
+            const dateVeille = decalerJourIso(dateDebut, -1);
+
+            const { data: aClore, error: errSearch } = await supaClient
+                .from('regles_client_periode')
+                .select('*')
+                .eq('client_id', clientActif.id)
+                .eq('actif', true)
+                .lte('date_debut', dateDebut)
+                .or(`date_fin.is.null,date_fin.gte.${dateDebut}`);
+
+            if (errSearch) { afficherStatus('error', '❌ ' + errSearch.message, 3000); return; }
+
+            for (const r of (aClore || [])) {
+                if (r.date_debut === dateDebut) continue; // contrainte UNIQUE — sera détectée par l'insert
+                const { error: errUpd } = await supaClient
+                    .from('regles_client_periode')
+                    .update({ date_fin: dateVeille })
+                    .eq('id', r.id);
+                if (errUpd) {
+                    afficherStatus('error', '❌ Erreur clôture ancienne période : ' + errUpd.message, 4000); return;
+                }
+                await ecrireJournalRegle({
+                    type_action: 'cloture_auto',
+                    cible_regle_id: r.id,
+                    details_avant: { date_fin: r.date_fin },
+                    details_apres: { date_fin: dateVeille }
+                });
+            }
+
+            const insert = {
+                client_id: clientActif.id,
+                date_debut: dateDebut,
+                date_fin: dateFin,
+                libelle_contrat: libelle,
+                deadline_jour: dlJour,
+                deadline_heure: dlHeure,
+                deadline_minute: dlMinute,
+                annulation_24h_active: ann24hActive,
+                annulation_24h_plafond_pct: ann24hActive ? ann24hPlafond : null,
+                deadline_annulation_heure: dlAnnHeure,
+                deadline_annulation_minute: dlAnnMinute,
+                pct_annulation_jour_j: pctTardive
+            };
+            const { data: nouveau, error: errIns } = await supaClient
+                .from('regles_client_periode')
+                .insert(insert)
+                .select()
+                .single();
+            if (errIns) { afficherStatus('error', '❌ ' + errIns.message, 4000); return; }
+
+            await ecrireJournalRegle({
+                type_action: 'ajout',
+                cible_regle_id: nouveau.id,
+                details_avant: null,
+                details_apres: insert
+            });
+
+            viderCacheReglesClient();
+            fermerModal('modal-ajout');
+            afficherStatus('success', '✓ Nouvelle période créée');
+            chargerRegles();
+        }
+
+        // ============================================
+        // MODAL : MODIFIER
+        // ============================================
+        function ouvrirModif(regleId) {
+            const r = toutesRegles.find(x => x.id === regleId);
+            if (!r) return;
+            regleEnCours = r;
+            document.getElementById('modif-libelle').value = r.libelle_contrat || '';
+            document.getElementById('modif-date-debut').value = r.date_debut;
+            document.getElementById('modif-date-fin').value = r.date_fin || '';
+            document.getElementById('modif-deadline-jour').value = r.deadline_jour;
+            document.getElementById('modif-deadline-heure').value = r.deadline_heure;
+            document.getElementById('modif-deadline-minute').value = r.deadline_minute;
+            document.getElementById('modif-24h-active').checked = r.annulation_24h_active;
+            document.getElementById('modif-24h-plafond').value = r.annulation_24h_plafond_pct || '';
+            document.getElementById('modif-deadline-ann-heure').value = r.deadline_annulation_heure;
+            document.getElementById('modif-deadline-ann-minute').value = r.deadline_annulation_minute;
+            document.getElementById('modif-pct-tardive').value = r.pct_annulation_jour_j;
+            document.getElementById('modal-modif').classList.add('active');
+        }
+
+        async function validerModif() {
+            if (!regleEnCours) return;
+            if (!(await demanderNoteSiVide())) return;
+
+            const avant = { ...regleEnCours };
+            const update = {
+                libelle_contrat: document.getElementById('modif-libelle').value.trim(),
+                date_debut: document.getElementById('modif-date-debut').value,
+                date_fin: document.getElementById('modif-date-fin').value || null,
+                deadline_jour: parseInt(document.getElementById('modif-deadline-jour').value),
+                deadline_heure: parseInt(document.getElementById('modif-deadline-heure').value),
+                deadline_minute: parseInt(document.getElementById('modif-deadline-minute').value),
+                annulation_24h_active: document.getElementById('modif-24h-active').checked,
+                annulation_24h_plafond_pct: document.getElementById('modif-24h-active').checked
+                    ? (document.getElementById('modif-24h-plafond').value ? parseInt(document.getElementById('modif-24h-plafond').value) : null)
+                    : null,
+                deadline_annulation_heure: parseInt(document.getElementById('modif-deadline-ann-heure').value),
+                deadline_annulation_minute: parseInt(document.getElementById('modif-deadline-ann-minute').value),
+                pct_annulation_jour_j: parseInt(document.getElementById('modif-pct-tardive').value)
+            };
+
+            if (update.date_fin && update.date_fin < update.date_debut) {
+                afficherStatus('error', '❌ Date de fin antérieure à la date de début', 2500); return;
+            }
+
+            const { error } = await supaClient
+                .from('regles_client_periode')
+                .update(update)
+                .eq('id', regleEnCours.id);
+            if (error) { afficherStatus('error', '❌ ' + error.message, 4000); return; }
+
+            await ecrireJournalRegle({
+                type_action: 'modification',
+                cible_regle_id: regleEnCours.id,
+                details_avant: avant,
+                details_apres: update
+            });
+
+            viderCacheReglesClient();
+            fermerModal('modal-modif');
+            afficherStatus('success', '✓ Période modifiée');
+            chargerRegles();
+        }
+
+        // ============================================
+        // MODAL : ARCHIVER (soft delete)
+        // ============================================
+        function ouvrirSuppr(regleId) {
+            const r = toutesRegles.find(x => x.id === regleId);
+            if (!r) return;
+            regleEnCours = r;
+            document.getElementById('suppr-recap').innerHTML = `
+                <strong>${echapper(r.libelle_contrat || '(sans libellé)')}</strong><br>
+                Période : ${formatDate(r.date_debut)} → ${r.date_fin ? formatDate(r.date_fin) : '∞'}
+            `;
+            document.getElementById('suppr-motif').value = '';
+            document.getElementById('suppr-confirm-1').checked = false;
+            document.getElementById('suppr-confirm-2').checked = false;
+            document.getElementById('modal-suppr').classList.add('active');
+        }
+
+        async function validerSuppr() {
+            if (!regleEnCours) return;
+            const motif = document.getElementById('suppr-motif').value.trim();
+            const conf1 = document.getElementById('suppr-confirm-1').checked;
+            const conf2 = document.getElementById('suppr-confirm-2').checked;
+
+            if (!motif) { afficherStatus('error', '❌ Motif obligatoire', 2500); return; }
+            if (!conf1 || !conf2) { afficherStatus('error', '❌ Les deux confirmations sont obligatoires', 2500); return; }
+            if (!(await demanderNoteSiVide())) return;
+
+            const avant = { ...regleEnCours };
+            const update = {
+                actif: false,
+                supprime_le: new Date().toISOString(),
+                supprime_par_user_id: utilisateurConnecte.user.id,
+                supprime_par_email: utilisateurConnecte.user.email,
+                supprime_motif: motif
+            };
+
+            const { error } = await supaClient
+                .from('regles_client_periode')
+                .update(update)
+                .eq('id', regleEnCours.id);
+            if (error) { afficherStatus('error', '❌ ' + error.message, 4000); return; }
+
+            await ecrireJournalRegle({
+                type_action: 'archivage',
+                cible_regle_id: regleEnCours.id,
+                details_avant: avant,
+                details_apres: { ...avant, ...update }
+            });
+
+            viderCacheReglesClient();
+            fermerModal('modal-suppr');
+            afficherStatus('success', '✓ Période archivée (consultable via le toggle Archivées)');
+            chargerRegles();
+        }
+
+        // ============================================
+        // MODAL : RESTAURER une période archivée
+        // ============================================
+        function ouvrirRestaurer(regleId) {
+            const r = toutesRegles.find(x => x.id === regleId);
+            if (!r) return;
+            regleEnCours = r;
+            document.getElementById('restaurer-recap').innerHTML = `
+                <strong>${echapper(r.libelle_contrat || '(sans libellé)')}</strong><br>
+                Période d'origine : ${formatDate(r.date_debut)} → ${r.date_fin ? formatDate(r.date_fin) : '∞'}<br>
+                Archivée le ${formatDateHeure(r.supprime_le)} par ${echapper(r.supprime_par_email || '?')}<br>
+                Motif archivage : <em>${echapper(r.supprime_motif || '(sans motif)')}</em>
+            `;
+            document.getElementById('restaurer-motif').value = '';
+            document.getElementById('restaurer-confirm-1').checked = false;
+            document.getElementById('restaurer-confirm-2').checked = false;
+            document.getElementById('modal-restaurer').classList.add('active');
+        }
+
+        async function validerRestaurer() {
+            if (!regleEnCours) return;
+            const motif = document.getElementById('restaurer-motif').value.trim();
+            const conf1 = document.getElementById('restaurer-confirm-1').checked;
+            const conf2 = document.getElementById('restaurer-confirm-2').checked;
+
+            if (!motif) { afficherStatus('error', '❌ Motif obligatoire', 2500); return; }
+            if (!conf1 || !conf2) { afficherStatus('error', '❌ Les deux confirmations sont obligatoires', 2500); return; }
+            if (!(await demanderNoteSiVide())) return;
+
+            const avant = { ...regleEnCours };
+            const update = {
+                actif: true,
+                supprime_le: null,
+                supprime_par_user_id: null,
+                supprime_par_email: null,
+                supprime_motif: null
+            };
+
+            const { error } = await supaClient
+                .from('regles_client_periode')
+                .update(update)
+                .eq('id', regleEnCours.id);
+            if (error) { afficherStatus('error', '❌ ' + error.message, 4000); return; }
+
+            await ecrireJournalRegle({
+                type_action: 'restauration',
+                cible_regle_id: regleEnCours.id,
+                details_avant: avant,
+                details_apres: { ...avant, ...update, motif_restauration: motif }
+            });
+
+            viderCacheReglesClient();
+            fermerModal('modal-restaurer');
+            afficherStatus('success', '✓ Période restaurée (à nouveau active)');
+            vueActuelle = 'actives'; // bascule vers actives pour voir la restauration
+            chargerRegles();
+        }
+
+        // ============================================
+        // JOURNAL D'AUDIT
+        // ============================================
+        async function ecrireJournalRegle(info) {
+            try {
+                const { error } = await supaClient
+                    .from('journal_actions_admin')
+                    .insert({
+                        admin_user_id: utilisateurConnecte.user.id,
+                        admin_email: utilisateurConnecte.user.email,
+                        admin_nom_affiche: monProfil.nom_affiche || null,
+                        client_id: clientActif.id,
+                        type_action: info.type_action,
+                        cible_type: 'regle_periode',
+                        cible_regle_id: info.cible_regle_id,
+                        details_avant: info.details_avant,
+                        details_apres: info.details_apres,
+                        note: noteSessionAdmin
+                    });
+                if (error) {
+                    console.error('Erreur journal_actions_admin :', error);
+                    afficherStatus('warning', '⚠️ Action faite mais journal non écrit', 3500);
+                }
+            } catch (e) {
+                console.error('Exception journal :', e);
+            }
+        }
+
+        // ============================================
+        // DÉMARRAGE
+        // ============================================
+        (async () => {
+            const ctx = await chargerContexteClient(['admin']);
+            if (!ctx) return;
+            utilisateurConnecte = ctx;
+            monProfil = ctx.profil;
+            afficherMenuComplet('parametres-ejc', ctx.user.email, ctx.profil.role, ctx.profil.nom_affiche);
+
+            await chargerListeClients();
+            afficherBandeauNoteSession();
+        })();
+    </script>
+</body>
+</html>

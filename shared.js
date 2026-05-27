@@ -94,21 +94,15 @@ function annulationOuverte(dateIso) {
 
 // ============================================================
 // SEMAINE EJC - VERSIONS PARAMÉTRABLES PAR CLIENT
-// Les règles sont désormais lues dynamiquement depuis la table
+// Les règles sont lues dynamiquement depuis la table
 // regles_client_periode selon la date concernée.
+// Les règles soft-deletées (actif=false) sont ignorées.
 //
 // ⚠️ Ces fonctions sont ASYNCHRONES (async/await).
-//    Les pages appelantes doivent utiliser "await".
 // ============================================================
 
-// Cache mémoire des règles déjà chargées, pour éviter de
-// retaper la base à chaque appel sur la même page.
-// Clé : `${client_id}::${dateRepasIso}` → règles
 const _cacheReglesClient = {};
 
-// Récupère la règle applicable pour un client à une date donnée.
-// Renvoie un objet règles, ou null si aucune règle n'est définie
-// pour ce client à cette date (cas d'erreur : il faut alerter).
 async function getReglesClient(client, dateRepasIso) {
     if (!client || !client.id) return null;
     if (!dateRepasIso) {
@@ -123,6 +117,7 @@ async function getReglesClient(client, dateRepasIso) {
         .from('regles_client_periode')
         .select('*')
         .eq('client_id', client.id)
+        .eq('actif', true)
         .lte('date_debut', dateRepasIso)
         .or(`date_fin.is.null,date_fin.gte.${dateRepasIso}`)
         .order('date_debut', { ascending: false })
@@ -138,26 +133,18 @@ async function getReglesClient(client, dateRepasIso) {
         return null;
     }
 
-    // Format de retour homogène (compatible avec l'ancien getReglesClient)
     const jours = ['dimanche','lundi','mardi','mercredi','jeudi','vendredi','samedi'];
     const regles = {
-        // Identité de la règle
         id: data.id,
         libelle_contrat: data.libelle_contrat,
         date_debut: data.date_debut,
         date_fin: data.date_fin,
-
-        // Deadline de commande
         deadlineJour: data.deadline_jour,
         deadlineJourLibelle: jours[data.deadline_jour],
         deadlineHeure: data.deadline_heure,
         deadlineMinute: data.deadline_minute,
-
-        // Annulation à 24h (gratuite)
         annulation24hActive: data.annulation_24h_active,
         annulation24hPlafondPct: data.annulation_24h_plafond_pct,
-
-        // Annulation tardive (jour J)
         deadlineAnnulationHeure: data.deadline_annulation_heure,
         deadlineAnnulationMinute: data.deadline_annulation_minute,
         pctAnnulationJourJ: data.pct_annulation_jour_j
@@ -167,13 +154,10 @@ async function getReglesClient(client, dateRepasIso) {
     return regles;
 }
 
-// Vide le cache (utile après modif des règles, ou changement de client)
 function viderCacheReglesClient() {
     for (const k in _cacheReglesClient) delete _cacheReglesClient[k];
 }
 
-// Calcule le moment limite (Date JS) pour commander la semaine
-// du lundi donné, selon les règles du client à cette date.
 async function calculerDeadlineCommande(lundiSemaineConcernee, client) {
     const regles = await getReglesClient(client, lundiSemaineConcernee);
     if (!regles) return null;
@@ -188,14 +172,12 @@ async function calculerDeadlineCommande(lundiSemaineConcernee, client) {
     return deadline;
 }
 
-// La saisie de commande est-elle encore ouverte pour cette semaine ?
 async function commandeOuverteClient(lundiSemaineConcernee, client) {
     const deadline = await calculerDeadlineCommande(lundiSemaineConcernee, client);
     if (!deadline) return false;
     return new Date() < deadline;
 }
 
-// L'annulation tardive est-elle encore possible pour cette date ?
 async function annulationOuverteClient(dateRepasIso, client) {
     const regles = await getReglesClient(client, dateRepasIso);
     if (!regles) return false;
@@ -205,14 +187,6 @@ async function annulationOuverteClient(dateRepasIso, client) {
     return new Date() < d;
 }
 
-// Classifie une annulation selon la règle applicable et l'instant de saisie.
-// Renvoie l'une des chaînes :
-//   'gratuite'        — annulation à 24h+ sous l'ancien contrat
-//   'tardive_50pct'   — annulation le jour J avant la deadline d'annulation
-//   'refusee'         — annulation après la deadline d'annulation
-//   'plafond_depasse' — annulation à 24h+ qui dépasserait le plafond (ancien contrat uniquement)
-//   'erreur_pas_de_regle'  — aucune règle définie (bloquant)
-// Cette fonction NE FAIT QUE classer, elle ne décide pas d'autoriser ou non.
 async function classifierAnnulation(client, dateRepasIso, instantSaisie) {
     const regles = await getReglesClient(client, dateRepasIso);
     if (!regles) return 'erreur_pas_de_regle';
@@ -221,29 +195,24 @@ async function classifierAnnulation(client, dateRepasIso, instantSaisie) {
     const deadlineTardive = new Date(dateRepasIso + 'T00:00:00');
     deadlineTardive.setHours(regles.deadlineAnnulationHeure, regles.deadlineAnnulationMinute, 0, 0);
 
-    // 24h avant l'heure de livraison (on prend 11h30 comme heure de livraison standard)
     const deadline24h = new Date(dateRepas);
     deadline24h.setDate(deadline24h.getDate() - 1);
     deadline24h.setHours(11, 30, 0, 0);
 
     const t = instantSaisie || new Date();
 
-    // Cas 1 : on est encore à plus de 24h
     if (t < deadline24h) {
         if (regles.annulation24hActive) return 'gratuite';
-        // Le nouveau contrat n'a pas de fenêtre 24h explicite, donc dans la veille
-        // c'est traité comme une saisie normale = gratuite tant que dans la journée.
         return 'gratuite';
     }
 
-    // Cas 2 : on est dans la fenêtre tardive (entre 24h avant et la deadline du jour J)
     if (t < deadlineTardive) {
         return 'tardive_' + regles.pctAnnulationJourJ + 'pct';
     }
 
-    // Cas 3 : trop tard
     return 'refusee';
 }
+
 // ============================================================
 // AUTH - Vérification connexion + rôle
 // ============================================================
@@ -278,6 +247,7 @@ async function verifierAuthEtRole(rolesAutorises) {
 
     return { user: session.user, profil };
 }
+
 // ============================================================
 // CONTEXTE CLIENT - chargement enrichi (multi-clients)
 // ============================================================
@@ -362,7 +332,6 @@ function afficherEntete() {
 
 // ============================================================
 // MENU À GROUPES DÉROULANTS
-// 9 boutons principaux, sous-menus dynamiques au clic
 // ============================================================
 const GROUPES_MENU_ADMIN = [
     {
@@ -392,15 +361,16 @@ const GROUPES_MENU_ADMIN = [
         ]
     },
     {
-    id: 'ejc',
-    titre: '📝 Clients externes',
-    type: 'groupe',
-    onglets: [
-        { id: 'commande-ejc',       titre: '📝 Commandes externes', url: 'commande-ejc.html' },
-        { id: 'categories-clients', titre: '🏷️ Catégories clients', url: 'categories-clients.html' },
-        { id: 'journaux-audit',     titre: '📋 Journaux d\'audit',  url: 'journaux-audit.html' }
-    ]
-},
+        id: 'ejc',
+        titre: '📝 Clients externes',
+        type: 'groupe',
+        onglets: [
+            { id: 'commande-ejc',       titre: '📝 Commandes externes', url: 'commande-ejc.html' },
+            { id: 'categories-clients', titre: '🏷️ Catégories clients', url: 'categories-clients.html' },
+            { id: 'journaux-audit',     titre: '📋 Journaux d\'audit',  url: 'journaux-audit.html' },
+            { id: 'parametres-ejc',     titre: '⚙️ Paramètres',         url: 'parametres-ejc.html' }
+        ]
+    },
     {
         id: 'domicile',
         titre: '🏠 Repas à domicile',
@@ -452,17 +422,15 @@ const GROUPES_MENU_ADMIN = [
     }
 ];
 
-// Liste des ids/alias d'onglets qui doivent activer le bouton "Accueil"
-// (au cas où certaines pages s'identifient sous d'autres noms)
 const ALIAS_ACCUEIL = ['accueil', 'dashboard'];
 
 function genererMenuOnglets(pageActive, role) {
-    // Menu spécifique pour les clients EJC
     if (role === 'client_ejc') {
         let h = '<div class="menu-onglets">';
         const ongletsEjc = [
             { id: 'dashboard',    titre: '🏠 Accueil',      url: 'dashboard.html' },
             { id: 'commande-ejc', titre: '🍽️ Saisie repas', url: 'commande-ejc.html' },
+            { id: 'mon-recap',    titre: '📊 Mon récap',    url: 'mon-recap.html' },
             { id: 'factures-ejc', titre: '🧾 Mes factures', url: 'factures-ejc.html' }
         ];
         for (const o of ongletsEjc) {
@@ -473,11 +441,9 @@ function genererMenuOnglets(pageActive, role) {
         return h;
     }
 
-    // Cherche le groupe qui contient la page active (pour la mise en évidence)
     let groupeActifId = null;
     GROUPES_MENU_ADMIN.forEach(grp => {
         if (grp.type === 'direct') {
-            // Accueil accepte les alias 'accueil' OU 'dashboard'
             if (grp.id === 'accueil') {
                 if (ALIAS_ACCUEIL.includes(pageActive)) groupeActifId = grp.id;
             } else if (grp.onglet.id === pageActive) {
@@ -523,7 +489,6 @@ function genererMenuOnglets(pageActive, role) {
     return html;
 }
 
-// Ouvre / ferme le sous-menu d'un groupe
 function toggleSousMenu(grpId) {
     const tous = document.querySelectorAll('.sous-menu');
     const groupes = document.querySelectorAll('.groupe-menu');
@@ -540,7 +505,6 @@ function toggleSousMenu(grpId) {
     }
 }
 
-// Ferme les sous-menus quand on clique ailleurs
 document.addEventListener('click', function(e) {
     if (!e.target.closest('.groupe-menu')) {
         document.querySelectorAll('.sous-menu').forEach(sm => sm.classList.remove('ouvert'));
@@ -675,7 +639,6 @@ async function chargerCategoriesEjc(uniquementActives = true, clientId = null) {
     return data || [];
 }
 
-// Liste des 14 allergènes majeurs (réutilisable partout)
 const ALLERGENES_LISTE = [
     { code: 'gluten',         nom: 'Gluten',           emoji: '🌾' },
     { code: 'crustaces',      nom: 'Crustacés',        emoji: '🦐' },

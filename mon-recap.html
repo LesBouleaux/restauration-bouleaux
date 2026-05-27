@@ -1,0 +1,536 @@
+ <!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Mon récap - Restauration Les Bouleaux</title>
+    <link rel="stylesheet" href="shared.css">
+    <style>
+        .vue-toggle {
+            display: inline-flex;
+            border: 2px solid #2c5530;
+            border-radius: 6px;
+            overflow: hidden;
+        }
+        .vue-toggle button {
+            background: white;
+            color: #2c5530;
+            border: none;
+            padding: 8px 16px;
+            cursor: pointer;
+            font-size: 14px;
+            font-weight: bold;
+        }
+        .vue-toggle button.active {
+            background: #2c5530;
+            color: white;
+        }
+
+        .stats-cards {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+            gap: 15px;
+            margin: 20px 0;
+        }
+        .stat-card {
+            background: white;
+            padding: 18px;
+            border-radius: 8px;
+            text-align: center;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.06);
+            border-top: 4px solid #2c5530;
+        }
+        .stat-card .label {
+            color: #666;
+            font-size: 13px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+        .stat-card .valeur {
+            font-size: 28px;
+            font-weight: bold;
+            color: #2c5530;
+            margin-top: 6px;
+        }
+        .stat-card .sub {
+            color: #888;
+            font-size: 12px;
+        }
+        .stat-card.livres    { border-top-color: #28a745; }
+        .stat-card.gratuit   { border-top-color: #3498db; }
+        .stat-card.demitarif { border-top-color: #f0ad4e; }
+        .stat-card.facturable { border-top-color: #2c5530; }
+
+        table.recap {
+            width: 100%;
+            border-collapse: collapse;
+            background: white;
+            border-radius: 8px;
+            overflow: hidden;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            margin: 15px 0;
+            font-size: 14px;
+        }
+        table.recap th, table.recap td {
+            padding: 8px 10px;
+            text-align: center;
+            border-bottom: 1px solid #eee;
+        }
+        table.recap th {
+            background: #2c5530;
+            color: white;
+        }
+        table.recap th:first-child, table.recap td:first-child {
+            text-align: left;
+            background: #f5f5f5;
+            font-weight: bold;
+            min-width: 200px;
+        }
+        table.recap .ligne-total {
+            background: #f0f8f0;
+            font-weight: bold;
+        }
+        .num-liv  { color: #28a745; font-weight: bold; }
+        .num-grat { color: #3498db; font-weight: bold; }
+        .num-demi { color: #f0ad4e; font-weight: bold; }
+
+        .empty-state {
+            background: white;
+            padding: 40px;
+            border-radius: 8px;
+            text-align: center;
+            color: #888;
+        }
+
+        .alerte-non-figee {
+            background: #fff8e1;
+            border-left: 4px solid #ffc107;
+            padding: 12px 16px;
+            margin: 10px 0;
+            font-size: 13.5px;
+            color: #856404;
+            border-radius: 4px;
+        }
+        .alerte-non-figee strong { color: #6b4d00; }
+
+        .pied-page-client {
+            margin-top: 40px;
+            padding: 14px 18px;
+            background: #f5f5f5;
+            border-radius: 6px;
+            font-size: 12px;
+            color: #666;
+            text-align: center;
+            line-height: 1.6;
+        }
+    </style>
+</head>
+<body>
+    <div id="app-header"></div>
+    <h1>🍽️ Restauration Les Bouleaux</h1>
+    <div id="menu"></div>
+
+    <h2 id="titre-h2">📊 Mon récap</h2>
+
+    <p style="font-size:13px;color:#666;background:#f5f5f5;padding:10px 14px;border-radius:6px;border-left:3px solid #2c5530;">
+        Vous consultez ici en temps réel votre récap de commandes et d'annulations.
+        Pour les semaines déjà passées, ces chiffres font foi pour la facturation.
+    </p>
+
+    <div class="toolbar no-print">
+        <label><strong>Vue :</strong></label>
+        <div class="vue-toggle">
+            <button id="btn-vue-semaine" class="active" onclick="changerVue('semaine')">📅 Semaine</button>
+            <button id="btn-vue-mois" onclick="changerVue('mois')">🗓️ Mois</button>
+        </div>
+
+        <span id="zone-semaine">
+            <button class="btn-secondary" onclick="changerSemaine(-1)">◀</button>
+            <span id="label-semaine" style="font-weight:bold;">...</span>
+            <button class="btn-secondary" onclick="changerSemaine(1)">▶</button>
+        </span>
+
+        <span id="zone-mois" style="display:none;">
+            <input type="month" id="input-mois" onchange="charger()">
+        </span>
+
+        <button class="btn-primary" onclick="charger()">🔄 Actualiser</button>
+        <button class="btn-print" onclick="window.print()">🖨️ Imprimer</button>
+    </div>
+
+    <div id="contenu" class="print-area">
+        <p class="loading">⏳ Chargement...</p>
+    </div>
+
+    <!-- Pied de page client (mention LPD) -->
+    <div class="pied-page-client">
+        Toutes les saisies effectuées sur ce portail sont historisées à des fins de traçabilité et de gestion des litiges.<br>
+        Pour consulter le journal de vos modifications, contactez l'administrateur.
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="shared.js"></script>
+    <script>
+        // ================================================
+        // MON RÉCAP — Page client EJC
+        // Variante de recap-clients.html, simplifiée :
+        // - Pas de sélecteur de client (verrouillé sur SOI)
+        // - Pas d'export CSV/Excel
+        // - Pas d'info contrat affichée (strictement admin)
+        // - Bandeau d'avertissement pour les semaines non figées
+        // ================================================
+
+        let vueActuelle = 'semaine';
+        let lundiCourant = lundiDeLaSemaine(new Date());
+        let categoriesAll = [];
+        let donneesCache = null;
+        let clientActif = null;  // Toujours le client de l'utilisateur connecté
+        let utilisateurConnecte = null;
+
+        function decalerJoursIso(iso, nbJours) {
+            const d = new Date(iso + 'T00:00:00');
+            d.setDate(d.getDate() + nbJours);
+            const yyyy = d.getFullYear();
+            const mm = String(d.getMonth() + 1).padStart(2, '0');
+            const dd = String(d.getDate()).padStart(2, '0');
+            return `${yyyy}-${mm}-${dd}`;
+        }
+
+        function changerVue(v) {
+            vueActuelle = v;
+            document.getElementById('btn-vue-semaine').classList.toggle('active', v === 'semaine');
+            document.getElementById('btn-vue-mois').classList.toggle('active', v === 'mois');
+            document.getElementById('zone-semaine').style.display = (v === 'semaine') ? 'inline-flex' : 'none';
+            document.getElementById('zone-mois').style.display = (v === 'mois') ? 'inline' : 'none';
+            charger();
+        }
+
+        function changerSemaine(delta) {
+            lundiCourant = decalerJoursIso(lundiCourant, delta * 7);
+            charger();
+        }
+
+        function nbJoursMois(annee, mois) {
+            return new Date(annee, mois, 0).getDate();
+        }
+
+        function moisIso() {
+            const v = document.getElementById('input-mois').value;
+            return v || `${new Date().getFullYear()}-${String(new Date().getMonth()+1).padStart(2,'0')}`;
+        }
+
+        // Classification d'une annulation (même logique que recap-clients.html)
+        async function classifierUneAnnulation(annulation, regles) {
+            if (!regles) return 'demi';
+            const dateRepas = annulation.date;
+            const instantSaisie = new Date(annulation.updated_at || annulation.created_at);
+
+            const deadline24h = new Date(dateRepas + 'T00:00:00');
+            deadline24h.setDate(deadline24h.getDate() - 1);
+            deadline24h.setHours(11, 30, 0, 0);
+
+            if (regles.annulation24hActive) {
+                if (instantSaisie < deadline24h) return 'gratuit';
+                return 'demi';
+            } else {
+                return 'demi';
+            }
+        }
+
+        // Détermine si la semaine est ENCORE OUVERTE en commande
+        // (donc les chiffres ne sont pas encore figés pour facturation)
+        async function semaineEstFigee(lundiIso) {
+            const ouverte = await commandeOuverteClient(lundiIso, clientActif);
+            return !ouverte;
+        }
+
+        async function charger() {
+            const contenu = document.getElementById('contenu');
+            contenu.innerHTML = '<p class="loading">⏳ Chargement...</p>';
+
+            if (!clientActif) {
+                contenu.innerHTML = `<div class="empty-state">
+                    <div style="font-size:48px;">⚠️</div>
+                    <p><strong>Votre compte n'est pas rattaché à un client.</strong></p>
+                    <p>Contactez l'administrateur.</p>
+                </div>`;
+                return;
+            }
+
+            categoriesAll = await chargerCategoriesEjc(false, clientActif.id);
+
+            let dateDebut, dateFin, jours, lundiPourFigee;
+            if (vueActuelle === 'semaine') {
+                jours = joursOuvres(lundiCourant);
+                dateDebut = jours[0];
+                dateFin = jours[4];
+                lundiPourFigee = lundiCourant;
+                document.getElementById('label-semaine').textContent =
+                    `Semaine du ${dateFr(jours[0])} au ${dateFr(jours[4])}`;
+            } else {
+                const m = moisIso();
+                const [annee, moisNum] = m.split('-');
+                const an = parseInt(annee), mo = parseInt(moisNum);
+                const nbJ = nbJoursMois(an, mo);
+                dateDebut = `${annee}-${moisNum}-01`;
+                dateFin = `${annee}-${moisNum}-${String(nbJ).padStart(2,'0')}`;
+                jours = [];
+                for (let j = 1; j <= nbJ; j++) {
+                    const d = new Date(an, mo-1, j);
+                    if (d.getDay() !== 0 && d.getDay() !== 6) {
+                        jours.push(`${annee}-${moisNum}-${String(j).padStart(2,'0')}`);
+                    }
+                }
+                lundiPourFigee = null;
+            }
+
+            const regles = await getReglesClient(clientActif, dateDebut);
+
+            if (!regles) {
+                contenu.innerHTML = `<div class="empty-state">
+                    <div style="font-size:48px;">⛔</div>
+                    <p><strong>Aucune règle n'est définie pour vous sur cette période.</strong></p>
+                    <p>Contactez l'administrateur pour résoudre ce problème.</p>
+                </div>`;
+                return;
+            }
+
+            const { data: cmds } = await supaClient
+                .from(TABLE_COMMANDES_EJC).select('*')
+                .eq('client_id', clientActif.id)
+                .gte('date', dateDebut).lte('date', dateFin);
+            const { data: anns } = await supaClient
+                .from(TABLE_ANNULATIONS_EJC).select('*')
+                .eq('client_id', clientActif.id)
+                .gte('date', dateDebut).lte('date', dateFin);
+
+            const annulationsAvecClasse = [];
+            for (const a of (anns || [])) {
+                const classe = await classifierUneAnnulation(a, regles);
+                annulationsAvecClasse.push({ ...a, classe });
+            }
+
+            let semaineFigee = true;
+            if (vueActuelle === 'semaine' && lundiPourFigee) {
+                semaineFigee = await semaineEstFigee(lundiPourFigee);
+            }
+
+            donneesCache = {
+                jours,
+                cmds: cmds || [],
+                anns: annulationsAvecClasse,
+                dateDebut,
+                dateFin,
+                regles,
+                semaineFigee
+            };
+            afficher();
+        }
+
+        function afficher() {
+            const { jours, cmds, anns, dateDebut, dateFin, regles, semaineFigee } = donneesCache;
+            const contenu = document.getElementById('contenu');
+
+            const idsAvecData = new Set();
+            for (const c of cmds) idsAvecData.add(c.categorie_id);
+            for (const a of anns) idsAvecData.add(a.categorie_id);
+            const catsAffichees = categoriesAll.filter(c => c.actif || idsAvecData.has(c.id));
+
+            if (!catsAffichees.length) {
+                contenu.innerHTML = `<div class="empty-state">
+                    <div style="font-size:48px;">🏷️</div>
+                    <p><strong>Aucune catégorie de repas n'est encore configurée.</strong></p>
+                    <p>Contactez l'administrateur.</p>
+                </div>`;
+                return;
+            }
+
+            const cmdMap = {};
+            for (const c of cmds) cmdMap[`${c.date}_${c.categorie_id}`] = c.quantite;
+
+            const annGratMap = {};
+            const annDemiMap = {};
+            for (const a of anns) {
+                const key = `${a.date}_${a.categorie_id}`;
+                if (a.classe === 'gratuit') {
+                    annGratMap[key] = (annGratMap[key] || 0) + a.quantite;
+                } else {
+                    annDemiMap[key] = (annDemiMap[key] || 0) + a.quantite;
+                }
+            }
+
+            let totalCmd = 0;
+            for (const c of cmds) totalCmd += c.quantite;
+            let totalGrat = 0, totalDemi = 0;
+            for (const a of anns) {
+                if (a.classe === 'gratuit') totalGrat += a.quantite;
+                else totalDemi += a.quantite;
+            }
+            const totalLivres = totalCmd - totalGrat - totalDemi;
+            const facturable = totalLivres + (totalDemi * 0.5);
+
+            // Bandeau "semaine non figée" — neutre, sans révéler le nom du contrat
+            let bandeauNonFigee = '';
+            if (vueActuelle === 'semaine' && !semaineFigee) {
+                bandeauNonFigee = `<div class="alerte-non-figee">
+                    ⚠️ <strong>Semaine non encore verrouillée</strong> —
+                    Vous pouvez encore modifier vos commandes jusqu'à
+                    <strong>${regles.deadlineJourLibelle} ${regles.deadlineHeure}h${String(regles.deadlineMinute).padStart(2,'0')}</strong>.
+                    Les chiffres affichés ici reflètent l'état actuel et restent susceptibles d'évoluer.
+                </div>`;
+            }
+
+            let html = `
+                <h3 style="margin-top:0;">
+                    ${vueActuelle === 'semaine'
+                        ? `Semaine du ${dateFr(dateDebut)} au ${dateFr(dateFin)}`
+                        : `Mois : ${dateFr(dateDebut)} → ${dateFr(dateFin)}`}
+                </h3>
+                ${bandeauNonFigee}
+                <div class="stats-cards">
+                    <div class="stat-card livres">
+                        <div class="label">Livrés</div>
+                        <div class="valeur">${totalLivres}</div>
+                        <div class="sub">facturés 100%</div>
+                    </div>
+                    <div class="stat-card gratuit">
+                        <div class="label">Annulés gratuits</div>
+                        <div class="valeur">${totalGrat}</div>
+                        <div class="sub">facturés 0%</div>
+                    </div>
+                    <div class="stat-card demitarif">
+                        <div class="label">Annulés demi-tarif</div>
+                        <div class="valeur">${totalDemi}</div>
+                        <div class="sub">facturés 50%</div>
+                    </div>
+                    <div class="stat-card facturable">
+                        <div class="label">Équiv. facturable</div>
+                        <div class="valeur">${facturable.toFixed(1)}</div>
+                        <div class="sub">livrés + (demi × 0.5)</div>
+                    </div>
+                </div>`;
+
+            if (vueActuelle === 'semaine') {
+                html += renduTableauSemaine(jours, catsAffichees, cmdMap, annGratMap, annDemiMap);
+            } else {
+                html += renduTableauMois(jours, catsAffichees, cmdMap, annGratMap, annDemiMap);
+            }
+
+            contenu.innerHTML = html;
+        }
+
+        function renduTableauSemaine(jours, cats, cmdMap, annGratMap, annDemiMap) {
+            let html = '<table class="recap"><thead><tr><th>Catégorie</th>';
+            for (const j of jours) {
+                const d = new Date(j + 'T00:00:00');
+                html += `<th>${d.toLocaleDateString('fr-FR', { weekday: 'short', day: 'numeric' })}</th>`;
+            }
+            html += '<th>Total</th></tr></thead><tbody>';
+
+            for (const cat of cats) {
+                let tLiv = 0, tGrat = 0, tDemi = 0;
+                let lLiv  = `<tr><td>${cat.nom}<br><small style="color:#888;">Livrés</small></td>`;
+                let lGrat = `<tr><td><small style="color:#888;">Annulés 0%</small></td>`;
+                let lDemi = `<tr><td><small style="color:#888;">Annulés 50%</small></td>`;
+                for (const j of jours) {
+                    const c = cmdMap[`${j}_${cat.id}`] || 0;
+                    const g = annGratMap[`${j}_${cat.id}`] || 0;
+                    const d = annDemiMap[`${j}_${cat.id}`] || 0;
+                    const livres = c - g - d;
+                    tLiv += livres; tGrat += g; tDemi += d;
+                    lLiv  += `<td class="num-liv">${livres || ''}</td>`;
+                    lGrat += `<td class="num-grat">${g || ''}</td>`;
+                    lDemi += `<td class="num-demi">${d || ''}</td>`;
+                }
+                lLiv  += `<td class="num-liv"><strong>${tLiv}</strong></td></tr>`;
+                lGrat += `<td class="num-grat"><strong>${tGrat}</strong></td></tr>`;
+                lDemi += `<td class="num-demi"><strong>${tDemi}</strong></td></tr>`;
+                if (tLiv || tGrat || tDemi) html += lLiv + lGrat + lDemi;
+            }
+
+            html += '<tr class="ligne-total"><td>TOTAL LIVRÉS (jour)</td>';
+            let grandTotalLiv = 0;
+            for (const j of jours) {
+                let tJ = 0;
+                for (const cat of cats) {
+                    const c = cmdMap[`${j}_${cat.id}`] || 0;
+                    const g = annGratMap[`${j}_${cat.id}`] || 0;
+                    const d = annDemiMap[`${j}_${cat.id}`] || 0;
+                    tJ += (c - g - d);
+                }
+                grandTotalLiv += tJ;
+                html += `<td>${tJ}</td>`;
+            }
+            html += `<td>${grandTotalLiv}</td></tr>`;
+            html += '</tbody></table>';
+            return html;
+        }
+
+        function renduTableauMois(jours, cats, cmdMap, annGratMap, annDemiMap) {
+            let html = '<table class="recap"><thead><tr><th>Catégorie</th>';
+            html += '<th>Livrés (100%)</th><th>Annulés 0%</th><th>Annulés 50%</th><th>Équiv. facturable</th>';
+            html += '</tr></thead><tbody>';
+
+            let gtLiv = 0, gtGrat = 0, gtDemi = 0;
+            for (const cat of cats) {
+                let cCmd = 0, cGrat = 0, cDemi = 0;
+                for (const j of jours) {
+                    cCmd  += cmdMap[`${j}_${cat.id}`] || 0;
+                    cGrat += annGratMap[`${j}_${cat.id}`] || 0;
+                    cDemi += annDemiMap[`${j}_${cat.id}`] || 0;
+                }
+                const cLiv = cCmd - cGrat - cDemi;
+                if (cCmd === 0 && cGrat === 0 && cDemi === 0) continue;
+                gtLiv += cLiv; gtGrat += cGrat; gtDemi += cDemi;
+                const cEq = cLiv + (cDemi * 0.5);
+                html += `<tr>
+                    <td>${cat.nom}${cat.actif ? '' : ' <small style="color:#999;">(inactif)</small>'}</td>
+                    <td class="num-liv">${cLiv}</td>
+                    <td class="num-grat">${cGrat}</td>
+                    <td class="num-demi">${cDemi}</td>
+                    <td><strong>${cEq.toFixed(1)}</strong></td>
+                </tr>`;
+            }
+
+            const gtEq = gtLiv + (gtDemi * 0.5);
+            html += `<tr class="ligne-total">
+                <td>TOTAL</td>
+                <td>${gtLiv}</td>
+                <td>${gtGrat}</td>
+                <td>${gtDemi}</td>
+                <td>${gtEq.toFixed(1)}</td>
+            </tr>`;
+            html += '</tbody></table>';
+            return html;
+        }
+
+        // ===== Démarrage =====
+        (async () => {
+            // ⚠️ Cette page est UNIQUEMENT pour les clients EJC
+            const ctx = await chargerContexteClient(['client_ejc']);
+            if (!ctx) return;
+            utilisateurConnecte = ctx;
+
+            afficherMenuComplet('mon-recap', ctx.user.email, ctx.profil.role, ctx.profil.nom_affiche);
+
+            if (!ctx.client) {
+                document.getElementById('contenu').innerHTML = `<div class="empty-state">
+                    <div style="font-size:48px;">⚠️</div>
+                    <p><strong>Votre compte n'est rattaché à aucun client.</strong></p>
+                    <p>Contactez l'administrateur pour qu'il rattache votre compte.</p>
+                </div>`;
+                return;
+            }
+
+            clientActif = ctx.client;
+            document.getElementById('titre-h2').textContent = `📊 Mon récap — ${clientActif.nom}`;
+
+            const now = new Date();
+            document.getElementById('input-mois').value =
+                `${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}`;
+
+            charger();
+        })();
+    </script>
+</body>
+</html>
